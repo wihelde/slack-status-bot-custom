@@ -8,7 +8,7 @@ jq=/usr/local/bin/jq
 spotify=/usr/local/bin/spotify
 
 # define token and emojis to use
-[[ ! -f .token ]] && echo "There was not token-file found. Please create a file called .token, include your slack-tokens and define in line 11 in which line your token is present!" && exit 1
+[[ ! -f .token ]] && echo "There was no token-file found. Please create a file called .token, include your slack-tokens and define in line 11 in which line your token is present!" && exit 1
 LEGACY_TOKEN=$(awk 'NR==2' .token)
 SPOTIFY_EMOJI=":spotify_2:"
 ZOOM_EMOJI=":zoom_3:"
