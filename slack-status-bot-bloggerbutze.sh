@@ -11,14 +11,6 @@ else
 	jq=/usr/local/bin/jq
 fi
 
-# check if spotify-cli is installed and set PATH as variable to be used in launchd
-if ! command -v spotify &> /dev/null
-then
-    echo "spotify-cli could not be found. Please install it via 'brew install shpotify' or manually from 'https://github.com/hnarayanan/shpotify'! "  && exit 1
-else
-	spotify=/usr/local/bin/spotify
-fi
-
 # define token and emojis to use
 [[ ! -f .token ]] && echo "There was no token-file found. Please create a file called .token, include your slack-tokens and define in line 11 in which line your token is present in your token-file!" && exit 1
 LEGACY_TOKEN=$(awk 'NR==5' .token)
@@ -64,7 +56,7 @@ function onexit() {
 
 # get artist and song-title from spotify via spotify-cli
 function SpotifyGetSong() {
-  SPOTIFY_SONG=$($spotify status | grep -E 'Artist|Track' | awk -F': ' '{print $2}' | sed 'N;s/\n/ - /g')
+  SPOTIFY_SONG=$(osascript -e 'tell application "Spotify" to artist of current track & " - " & name of current track')
   echo $SPOTIFY_SONG
 }
 
@@ -107,14 +99,14 @@ function inAMeeting() {
 
 # check if spotify is running
 function isSpotifyPlaying() {
-  SPOTIFY_STATE=$(spotify status | grep -E 'Spotify is currently ' | awk -F' ' '{print $4}' | sed 's/\..*//g')
+  SPOTIFY_STATE=$(osascript -e 'if application "Spotify" is running then' -e 'tell application "Spotify" to player state' -e 'end if')
+  # echo $APPLE_MUSIC_STATE
   [[ "$SPOTIFY_STATE" = "playing" ]] && return 0
   return 1
 }
 
 function isAppleMusicPlaying() {
   APPLE_MUSIC_STATE=$(osascript -e 'if application "Music" is running then' -e 'tell application "Music" to player state' -e 'end if')
-  # echo $APPLE_MUSIC_STATE
   [[ "$APPLE_MUSIC_STATE" = "playing" ]] && return 0
   return 1
 }
@@ -133,7 +125,7 @@ statusReset() {
 echo "Status is clean"
 inAMeeting && setStatusInMeeting && exit 0
 echo "Not in a meeting"
-isSpotifyPlaying && setStatusSpotify
+isSpotifyPlaying && setStatusSpotify && exit 0
 echo "No Spotify running"
 isAppleMusicPlaying && setStatusAppleMusic && exit 0
 echo "No Apple Music is running"
