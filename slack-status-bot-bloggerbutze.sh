@@ -31,8 +31,8 @@ function setProfile() {
 # check if status is clean to be changed
 function isStatusClean() {
   JSON=$(curl -X GET -H "Authorization: Bearer $LEGACY_TOKEN" -H "Content-Type: application/json; charset=UTF-8" -s "https://slack.com/api/users.profile.get")
-  STATUS_EMOJI=$(echo $JSON | $jq '.profile.status_emoji' | sed 's/\"//g')
-  STATUS_TEXT=$(echo $JSON | $jq '.profile.status_text' | sed 's/\"//g')
+  STATUS_EMOJI=$(echo "$JSON" | $jq '.profile.status_emoji' | sed 's/\"//g')
+  STATUS_TEXT=$(echo "$JSON" | $jq '.profile.status_text' | sed 's/\"//g')
   [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_EMOJI" ]] && return 0
   [[ "$STATUS_EMOJI" == ":spiral_calendar_pad:" && "$STATUS_TEXT" == "In a meeting • Outlook Calendar" ]] && return 0
   [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
@@ -57,12 +57,12 @@ function onexit() {
 # get artist and song-title from spotify via spotify-cli
 function SpotifyGetSong() {
   SPOTIFY_SONG=$(osascript -e 'tell application "Spotify" to artist of current track & " - " & name of current track')
-  echo $SPOTIFY_SONG
+  echo "$SPOTIFY_SONG"
 }
 
-function ApplegetSong() {
+function AppleGetSong() {
   APPLE_SONG=$(osascript -e 'tell application "Music" to artist of current track & " - " & name of current track')
-  echo $APPLE_SONG
+  echo "$APPLE_SONG"
 }
 
 # change your status with spotify-infos
@@ -76,7 +76,7 @@ function setStatusSpotify() {
 }
 
 function setStatusAppleMusic() {
-  APPLE_MUSIC_SONG=$(ApplegetSong)
+  APPLE_MUSIC_SONG=$(AppleGetSong)
   echo "Detected Apple Music track: $APPLE_MUSIC_SONG"
   [[ "$APPLE_MUSIC_SONG" == "$STATUS_TEXT" ]] && echo "Same Apple Music song detected. Call to API will be avoided." && return 0
   PAYLOAD="{ \"profile\": { \"status_text\": \"$APPLE_MUSIC_SONG\", \"status_emoji\": \":apple_music:\" } }"
