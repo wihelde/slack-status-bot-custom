@@ -25,7 +25,7 @@ function setProfile() {
   PAYLOAD=$1
   echo "Calling https://api.slack.com/methods/users.profile.set with $PAYLOAD"
   curl -X POST -H "Authorization: Bearer $LEGACY_TOKEN" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set" >/dev/null
-  echo "changed" > .status-esome
+  echo "changed" > .status-bloggerbutze
 }
 
 # check if status is clean to be changed
@@ -45,7 +45,7 @@ function reset() {
   echo 'Resetting status'
   PAYLOAD="{ \"profile\": { \"status_text\" : \"\", \"status_emoji\" : \"\" } }"
   setProfile "$PAYLOAD"
-  echo "reset" > .status-esome
+  echo "reset" > .status-bloggerbutze
 }
 
 function onexit() {
@@ -72,7 +72,7 @@ function setStatusSpotify() {
   [[ "$SPOTIFY_SONG" == "$STATUS_TEXT" ]] && echo "Same Spotify song detected. Call to API will be avoided." && return 0
   PAYLOAD="{ \"profile\": { \"status_text\": \"$SPOTIFY_SONG\", \"status_emoji\": \":spotify_2:\" } }"
   setProfile "$PAYLOAD"
-  echo "changed" > .status-esome
+  echo "changed" > .status-bloggerbutze
 }
 
 function setStatusAppleMusic() {
@@ -81,7 +81,7 @@ function setStatusAppleMusic() {
   [[ "$APPLE_MUSIC_SONG" == "$STATUS_TEXT" ]] && echo "Same Apple Music song detected. Call to API will be avoided." && return 0
   PAYLOAD="{ \"profile\": { \"status_text\": \"$APPLE_MUSIC_SONG\", \"status_emoji\": \":apple_music:\" } }"
   setProfile "$PAYLOAD"
-  echo "changed" > .status-esome
+  echo "changed" > .status-bloggerbutze
 }
 
 # change your status when in zoom-call
@@ -89,7 +89,7 @@ function setStatusInMeeting() {
   [[ "$ZOOM_EMOJI" == "$STATUS_EMOJI" ]] && echo "Still in a meeting. Call to API will be avoided." && return 0
   PAYLOAD="{ \"profile\": { \"status_text\": \"In a meeting\", \"status_emoji\": \":zoom_3:\" } }"
   setProfile "$PAYLOAD"
-  echo "changed" > .status-esome
+  echo "changed" > .status-bloggerbutze
 }
 
 # check if you are still in a meeting
@@ -114,7 +114,7 @@ function isAppleMusicPlaying() {
 # check if status was already reset
 statusReset() {
   test ! -f .status-esome && return 0
-  STATUS=$(cat .status-esome)
+  STATUS=$(cat .status-bloggerbutze)
   [[ "$STATUS" != "reset" ]] && return 0
   return 1
 }
