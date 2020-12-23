@@ -4,12 +4,12 @@
 cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1
 
 # check if jq is installed and set PATH as variable to be used in launchd
-if ! command -v jq &> /dev/null
-then
+ if type jq =  "jq not found"
+ then
     echo "jq could not be found. Please install it via 'brew install jq'! " && exit 1
-else
+ else
 	jq=/usr/local/bin/jq
-fi
+ fi
 
 # define token and emojis to use
 [[ ! -f .token ]] && echo "There was no token-file found. Please create a file called .token, include your slack-tokens and define in line 11 in which line your token is present in your token-file!" && exit 1
@@ -70,7 +70,7 @@ function setStatusSpotify() {
   SPOTIFY_SONG=$(SpotifyGetSong)
   echo "Detected Spotify track: $SPOTIFY_SONG"
   [[ "$SPOTIFY_SONG" == "$STATUS_TEXT" ]] && echo "Same Spotify song detected. Call to API will be avoided." && return 0
-  PAYLOAD="{ \"profile\": { \"status_text\": \"$SPOTIFY_SONG\", \"status_emoji\": \":spotify_2:\" } }"
+  PAYLOAD="{ \"profile\": { \"status_text\": \"$SPOTIFY_SONG\", \"status_emoji\": \":spotify_2:\", \"status_expiration\": 0 } }"
   setProfile "$PAYLOAD"
   echo "changed" > .status-bloggerbutze
 }
@@ -79,7 +79,7 @@ function setStatusAppleMusic() {
   APPLE_MUSIC_SONG=$(AppleGetSong)
   echo "Detected Apple Music track: $APPLE_MUSIC_SONG"
   [[ "$APPLE_MUSIC_SONG" == "$STATUS_TEXT" ]] && echo "Same Apple Music song detected. Call to API will be avoided." && return 0
-  PAYLOAD="{ \"profile\": { \"status_text\": \"$APPLE_MUSIC_SONG\", \"status_emoji\": \":apple_music:\" } }"
+  PAYLOAD="{ \"profile\": { \"status_text\": \"$APPLE_MUSIC_SONG\", \"status_emoji\": \":apple_music:\", \"status_expiration\": 0 } }"
   setProfile "$PAYLOAD"
   echo "changed" > .status-bloggerbutze
 }
@@ -87,7 +87,7 @@ function setStatusAppleMusic() {
 # change your status when in zoom-call
 function setStatusInMeeting() {
   [[ "$ZOOM_EMOJI" == "$STATUS_EMOJI" ]] && echo "Still in a meeting. Call to API will be avoided." && return 0
-  PAYLOAD="{ \"profile\": { \"status_text\": \"In a meeting\", \"status_emoji\": \":zoom_3:\" } }"
+  PAYLOAD="{ \"profile\": { \"status_text\": \"In a meeting\", \"status_emoji\": \":zoom_3:\", \"status_expiration\": 0 } }"
   setProfile "$PAYLOAD"
   echo "changed" > .status-bloggerbutze
 }
