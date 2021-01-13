@@ -12,7 +12,12 @@ LEGACY_TOKEN=$(awk 'NR==2' .token)
 SPOTIFY_EMOJI=":spotify_2:"
 ZOOM_EMOJI=":zoom_3:"
 APPLE_EMOJI=":apple_music:"
-DEFAULT=":heads-down:"
+DEFAULT=:heads-down:
+FOCUS=:get-shit-done:
+MEETING=:spiral_calendar_pad:
+MONDAY=:monday:
+TGIF=:tgif:
+NO_COFFEE=:no-coffee:
 
 trap onexit INT
 
@@ -29,7 +34,7 @@ function isStatusClean() {
   JSON=$(curl -X GET -H "Authorization: Bearer $LEGACY_TOKEN" -H "Content-Type: application/json; charset=UTF-8" -s "https://slack.com/api/users.profile.get")
   STATUS_EMOJI=$(echo "$JSON" | $jq '.profile.status_emoji' | sed 's/\"//g')
   STATUS_TEXT=$(echo "$JSON" | $jq '.profile.status_text' | sed 's/\"//g')
-  [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT" ]] && return 0
+  [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT" || "$STATUS_EMOJI" == "$FOCUS" || "$STATUS_EMOJI" == "$MEETING" || "$STATUS_EMOJI" == "$MONDAY" || "$STATUS_EMOJI" == "$TGIF" || "$STATUS_EMOJI" == "$NO_COFFEE" ]] && return 0
   [[ "$STATUS_EMOJI" == ":spiral_calendar_pad:" && "$STATUS_TEXT" == "In a meeting • Outlook Calendar" ]] && return 0
   [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
   return 1
@@ -39,7 +44,14 @@ function isStatusClean() {
 function reset() {
   [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
   echo 'Resetting status'
-  PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+  DOW=$(date +%u)
+  if [[ $DOW == "1" ]]; then
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"Pretty sure I smell a Monday here ...\", \"status_emoji\" : \"$MONDAY\", \"status_expiration\": 0 } }"
+  elif [[ $DOW == "5" ]]; then
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"TGIF!\", \"status_emoji\" : \"$TGIF\", \"status_expiration\": 0 } }"
+  else
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+  fi
   setProfile "$PAYLOAD"
   echo "reset" > .status-esome
 }

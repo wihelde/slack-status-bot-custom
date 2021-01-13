@@ -39,9 +39,16 @@ function isStatusClean() {
 function reset() {
   [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
   echo 'Resetting status'
-  PAYLOAD="{ \"profile\": { \"status_text\" : \"\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+  DOW=$(date +%u)
+  if [[ $DOW == "1" ]]; then
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"Pretty sure I smell a Monday here ...\", \"status_emoji\" : \"$MONDAY\", \"status_expiration\": 0 } }"
+  elif [[ $DOW == "5" ]]; then
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"TGIF!\", \"status_emoji\" : \"$TGIF\", \"status_expiration\": 0 } }"
+  else
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+  fi
   setProfile "$PAYLOAD"
-  echo "reset" > .status-bloggerbutze
+  echo "reset" > .status-esome
 }
 
 function onexit() {

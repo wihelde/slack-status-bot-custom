@@ -16,13 +16,27 @@ OFF=:mobile_phone_off:
 BREAK=:double_vertical_bar:
 HOLIDAY=:palm_tree:
 DEFAULT=:heads-down:
-
+FOCUS=:get-shit-done:
+MEETING=:spiral_calendar_pad:
+MONDAY=:monday:
+TGIF=:tgif:
+ANNUAL_REVIEW=:gossip:
+NO_COFFEE=:no-coffee:
 
 STATUS="$1"
 
 if [[ $STATUS == "on" ]]; then
     STATE=auto
-    PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+    DOW=$(date +%u)
+    if [[ $DOW == "1" ]]; then
+      PAYLOAD="{ \"profile\": { \"status_text\" : \"Pretty sure I smell a Monday here ...\", \"status_emoji\" : \"$MONDAY\", \"status_expiration\": 0 } }"
+      echo "Its monday - will use another emoji for today"
+    elif [[ $DOW == "5" ]]; then
+      PAYLOAD="{ \"profile\": { \"status_text\" : \"TGIF!\", \"status_emoji\" : \"$TGIF\", \"status_expiration\": 0 } }"
+      echo "Its friday - will use another emoji for today"
+    else
+      PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+    fi
 fi
 
 if [[ $STATUS == "off" ]]; then
@@ -58,6 +72,26 @@ fi
 if [[ $STATUS == "holiday-off" ]]; then
     STATE=away
     PAYLOAD="{ \"profile\": { \"status_text\" : \"strong vacationing\", \"status_emoji\" : \"$HOLIDAY\", \"status_expiration\": 0 } }"
+fi
+
+if [[ $STATUS == "meeting" ]]; then
+    STATE=auto
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"in some non-zoom-meeting\", \"status_emoji\" : \"$MEETING\", \"status_expiration\": 0 } }"
+fi
+
+if [[ $STATUS == "ar" ]]; then
+    STATE=auto
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"Annual Review ongoing\", \"status_emoji\" : \"$ANNUAL_REVIEW\", \"status_expiration\": 0 } }"
+fi
+
+if [[ $STATUS == "dnd" ]]; then
+    STATE=auto
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"Focus-mode - please disturb only in urgent cases\", \"status_emoji\" : \"$FOCUS\", \"status_expiration\": 0 } }"
+fi
+
+if [[ $STATUS == "coffee" ]]; then
+    STATE=auto
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"No coffee - no talk\", \"status_emoji\" : \"$NO_COFFEE\", \"status_expiration\": 0 } }"
 fi
 
 function setProfile() {

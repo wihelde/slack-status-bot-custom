@@ -60,6 +60,26 @@ if [[ $STATUS == "holiday-off" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"strong vacationing\", \"status_emoji\" : \"$HOLIDAY\", \"status_expiration\": 0 } }"
 fi
 
+if [[ $STATUS == "meeting" ]]; then
+    STATE=auto
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+fi
+
+if [[ $STATUS == "ar" ]]; then
+    STATE=auto
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+fi
+
+if [[ $STATUS == "dnd" ]]; then
+    STATE=auto
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+fi
+
+if [[ $STATUS == "coffee" ]]; then
+    STATE=auto
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+fi
+
 function setProfile() {
   curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set" >/dev/null
 }
