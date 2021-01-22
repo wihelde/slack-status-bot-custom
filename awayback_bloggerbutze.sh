@@ -16,6 +16,19 @@ OFF=:mobile_phone_off:
 BREAK=:double_vertical_bar:
 HOLIDAY=:palm_tree:
 DEFAULT=:heads-down:
+OFFLINE_MESSAGE_LIST=( \
+    "I bet you were expecting an away message" \
+    "Does this away message really mean I'm away, or am I pretending to be away?" \
+    "Only stalkers look at other people's away messages." \
+    "Don't Worry!, I dont know where I am either." \
+    "Sorry, I'm not here right now, but feel free to talk to the computer as long as you like." \
+    "I have a secret to tell you... I'm away from my computer right now." \
+    "Roses are red - Violets are blue - Some away messages rhyme, and some don't." \
+    "I'll be back in 5 minutes but if I'm not, just read this away message again." \
+    "Keep staring at the screen and maybe I'll come back." \
+    "I'm not here right now but if you scream really loud into your monitor I might be able to hear you!" \
+)
+OFFLINE_MESSAGE=${OFFLINE_MESSAGE_LIST[ $((RANDOM % ${#OFFLINE_MESSAGE_LIST[@]}))]}
 
 
 STATUS="$1"
@@ -27,7 +40,7 @@ fi
 
 if [[ $STATUS == "off" ]]; then
     STATE=away
-    PAYLOAD="{ \"profile\": { \"status_text\" : \"\", \"status_emoji\" : \"$OFF\", \"status_expiration\": 0 } }"
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"$OFFLINE_MESSAGE\", \"status_emoji\" : \"$OFF\", \"status_expiration\": 0 } }"
 fi
 
 if [[ $STATUS == "sick-on" ]]; then
