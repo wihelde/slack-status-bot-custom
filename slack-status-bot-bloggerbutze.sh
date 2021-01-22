@@ -48,7 +48,7 @@ function reset() {
     PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
   fi
   setProfile "$PAYLOAD"
-  echo "reset" > .status-esome
+  echo "reset" > .status-bloggerbutze
 }
 
 function onexit() {

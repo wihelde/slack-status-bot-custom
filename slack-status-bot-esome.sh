@@ -31,12 +31,22 @@ function setProfile() {
 
 # check if status is clean to be changed
 function isStatusClean() {
+  echo "Calling https://slack.com/api/users.profile.get ..."
   JSON=$(curl -X GET -H "Authorization: Bearer $LEGACY_TOKEN" -H "Content-Type: application/json; charset=UTF-8" -s "https://slack.com/api/users.profile.get")
   STATUS_EMOJI=$(echo "$JSON" | $jq '.profile.status_emoji' | sed 's/\"//g')
   STATUS_TEXT=$(echo "$JSON" | $jq '.profile.status_text' | sed 's/\"//g')
-  [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT" || "$STATUS_EMOJI" == "$FOCUS" || "$STATUS_EMOJI" == "$MEETING" || "$STATUS_EMOJI" == "$MONDAY" || "$STATUS_EMOJI" == "$TGIF" || "$STATUS_EMOJI" == "$NO_COFFEE" ]] && return 0
-  [[ "$STATUS_EMOJI" == ":spiral_calendar_pad:" && "$STATUS_TEXT" == "In a meeting • Outlook Calendar" ]] && return 0
-  [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
+  echo " -> Status Emoji: \"$STATUS_EMOJI\""
+  echo " -> Status Text: \"$STATUS_TEXT\""
+  [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT" || "$STATUS_EMOJI" == "$MEETING" || "$STATUS_EMOJI" == "$MONDAY" || "$STATUS_EMOJI" == "$TGIF" ]] \
+    && echo " -> Status is allowed to change" \
+    && return 0
+  [[ "$STATUS_EMOJI" == ":spiral_calendar_pad:" && "$STATUS_TEXT" == "In a meeting • Outlook Calendar" ]] \
+    && echo " -> Status is allowed to change" \
+    && return 0
+  [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] \
+    && echo " -> Status is allowed to change" \
+    && return 0
+  echo " -> Status is not allowed to change"
   return 1
 }
 
@@ -50,7 +60,7 @@ function reset() {
   elif [[ $DOW == "5" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"TGIF!\", \"status_emoji\" : \"$TGIF\", \"status_expiration\": 0 } }"
   else
-    PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+  PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
   fi
   setProfile "$PAYLOAD"
   echo "reset" > .status-esome
@@ -76,26 +86,32 @@ function AppleGetSong() {
 # change your status with spotify-infos
 function setStatusSpotify() {
   SPOTIFY_SONG=$(SpotifyGetSong)
+  echo "Trying to set Slack-Status to your current Spotify-Song"
   echo "Detected Spotify track: $SPOTIFY_SONG"
   [[ "$SPOTIFY_SONG" == "$STATUS_TEXT" ]] && echo "Same Spotify song detected. Call to API will be avoided." && return 0
   PAYLOAD="{ \"profile\": { \"status_text\": \"$SPOTIFY_SONG\", \"status_emoji\": \"$SPOTIFY_EMOJI\", \"status_expiration\": 0 } }"
+  echo "Setting your Slack-status to your current Spotify-Song"
   setProfile "$PAYLOAD"
   echo "changed" > .status-esome
 }
 
 function setStatusAppleMusic() {
   APPLE_MUSIC_SONG=$(AppleGetSong)
+  echo "Trying to set Slack-Status to your current Apple Music-Song"
   echo "Detected Apple Music track: $APPLE_MUSIC_SONG"
   [[ "$APPLE_MUSIC_SONG" == "$STATUS_TEXT" ]] && echo "Same Apple Music song detected. Call to API will be avoided." && return 0
   PAYLOAD="{ \"profile\": { \"status_text\": \"$APPLE_MUSIC_SONG\", \"status_emoji\": \"$APPLE_EMOJI\", \"status_expiration\": 0 } }"
+  echo "Setting your Slack-status to your current Apple Music-Song"
   setProfile "$PAYLOAD"
   echo "changed" > .status-esome
 }
 
 # change your status when in zoom-call
 function setStatusInMeeting() {
+  echo "Trying to set your Slack-status to show you started a Zoom-Call"
   [[ "$ZOOM_EMOJI" == "$STATUS_EMOJI" ]] && echo "Still in a meeting. Call to API will be avoided." && return 0
   PAYLOAD="{ \"profile\": { \"status_text\": \"In a meeting\", \"status_emoji\": \"$ZOOM_EMOJI\", \"status_expiration\": 0 } }"
+  echo "Setting your Slack-status to show you started a Zoom-Call"
   setProfile "$PAYLOAD"
   echo "changed" > .status-esome
 }
@@ -107,8 +123,10 @@ function inAMeeting() {
 
 # check if spotify is running
 function isSpotifyPlaying() {
-  SPOTIFY_STATE=$(osascript -e 'if application "Spotify" is running then' -e 'tell application "Spotify" to player state' -e 'end if')
-  # echo $APPLE_MUSIC_STATE
+  if [ "$(pgrep -x 'Spotify')" ]
+  then
+    SPOTIFY_STATE=$(osascript -e 'if application "Spotify" is running then' -e 'tell application "Spotify" to player state' -e 'end if')
+  fi
   [[ "$SPOTIFY_STATE" = "playing" ]] && return 0
   return 1
 }
@@ -128,13 +146,21 @@ statusReset() {
 }
 
 # do magic
-( ! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! statusReset ) && echo "Neither Spotify nor Apple Music plays a song. No Zoom call is running. Status was cleared already before. No action taken." && exit 0
-! isStatusClean && echo "Status was set by user. No change will take effect." && exit 0
-echo "Status is clean"
+( ! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! statusReset ) \
+&& echo "Neither Spotify nor Apple Music plays a song." \
+&& echo "No Zoom call is running." \
+&& echo "Status was cleared already before." \
+&& echo "No action taken." && exit 0
+! isStatusClean \
+&& echo "Status was set by user." \
+&& echo "No change will take effect." && exit 0
+echo "Check if in a zoom-call ..."
 inAMeeting && setStatusInMeeting && exit 0
-echo "Not in a meeting"
+echo "Not in a zoom-call"
+echo "Check if Spotify is playing ..."
 isSpotifyPlaying && setStatusSpotify && exit 0
 echo "No Spotify running"
+echo "Check if Apple Music is playing ..."
 isAppleMusicPlaying && setStatusAppleMusic && exit 0
 echo "No Apple Music is running"
 reset
