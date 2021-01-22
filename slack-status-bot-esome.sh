@@ -13,11 +13,9 @@ SPOTIFY_EMOJI=":spotify_2:"
 ZOOM_EMOJI=":zoom_3:"
 APPLE_EMOJI=":apple_music:"
 DEFAULT=:heads-down:
-FOCUS=:get-shit-done:
 MEETING=:spiral_calendar_pad:
 MONDAY=:monday:
 TGIF=:tgif:
-NO_COFFEE=:no-coffee:
 
 trap onexit INT
 
