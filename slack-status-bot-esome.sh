@@ -33,8 +33,8 @@ function isStatusClean() {
   JSON=$(curl -X GET -H "Authorization: Bearer $LEGACY_TOKEN" -H "Content-Type: application/json; charset=UTF-8" -s "https://slack.com/api/users.profile.get")
   STATUS_EMOJI=$(echo "$JSON" | $jq '.profile.status_emoji' | sed 's/\"//g')
   STATUS_TEXT=$(echo "$JSON" | $jq '.profile.status_text' | sed 's/\"//g')
-  echo " -> Status Emoji: \"$STATUS_EMOJI\""
-  echo " -> Status Text: \"$STATUS_TEXT\""
+  echo "Status Emoji: \"$STATUS_EMOJI\""
+  echo "Status Text: \"$STATUS_TEXT\""
   [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT" || "$STATUS_EMOJI" == "$MEETING" || "$STATUS_EMOJI" == "$MONDAY" || "$STATUS_EMOJI" == "$TGIF" ]] \
     && echo " -> Status is allowed to change" \
     && return 0
@@ -48,7 +48,7 @@ function isStatusClean() {
   return 1
 }
 
-# reset your status to "nothing"
+# reset your status to your default-status; special handling for monday and friday
 function reset() {
   [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
   echo 'Resetting status'
@@ -70,12 +70,13 @@ function onexit() {
   exit
 }
 
-# get artist and song-title from spotify via spotify-cli
+# get artist and song-title from spotify via applescript
 function SpotifyGetSong() {
   SPOTIFY_SONG=$(osascript -e 'tell application "Spotify"' -e 'set track_artist to artist of current track' -e 'set track_name to name of current track' -e 'set podcast to album of current track' -e 'if track_artist = "" then' -e 'podcast & " - " & track_name' -e 'else' -e 'track_artist & " - " & track_name' -e 'end if' -e 'end tell')
   echo "$SPOTIFY_SONG"
 }
 
+# get artist and song-title from apple Music via applescript
 function AppleGetSong() {
   APPLE_SONG=$(osascript -e 'tell application "Music" to artist of current track & " - " & name of current track')
   echo "$APPLE_SONG"
@@ -93,6 +94,7 @@ function setStatusSpotify() {
   echo "changed" > .status-esome
 }
 
+# change your status with apple music-infos
 function setStatusAppleMusic() {
   APPLE_MUSIC_SONG=$(AppleGetSong)
   echo "Trying to set Slack-Status to your current Apple Music-Song"
@@ -104,7 +106,7 @@ function setStatusAppleMusic() {
   echo "changed" > .status-esome
 }
 
-# change your status when in zoom-call
+# change your status when in zoom-call and activate DND-mode
 function setStatusInMeeting() {
   echo "Trying to set your Slack-status to show you started a Zoom-Call"
   [[ "$ZOOM_EMOJI" == "$STATUS_EMOJI" ]] && echo "Still in a meeting. Call to API will be avoided." && return 0
@@ -112,9 +114,10 @@ function setStatusInMeeting() {
   echo "Setting your Slack-status to show you started a Zoom-Call"
   setProfile "$PAYLOAD"
   echo "changed" > .status-esome
+  ActivateDND
 }
 
-# check if you are still in a meeting
+# check if you are  in a meeting
 function inAMeeting() {
   lsof -i -P -n 2>&1 | grep zoom | grep UDP > /dev/null
 }
@@ -129,10 +132,16 @@ function isSpotifyPlaying() {
   return 1
 }
 
+# check if apple music is running
 function isAppleMusicPlaying() {
   APPLE_MUSIC_STATE=$(osascript -e 'if application "Music" is running then' -e 'tell application "Music" to player state' -e 'end if')
   [[ "$APPLE_MUSIC_STATE" = "playing" ]] && return 0
   return 1
+}
+
+# change your DND-mode
+function changeDND() {
+  osascript -e 'tell application "System Events"' -e 'keystroke "d" using {command down, option down, shift down}' -e 'end tell'
 }
 
 # check if status was already reset
@@ -143,10 +152,46 @@ statusReset() {
   return 1
 }
 
+# check if DND-mode is already changed
+DNDstatusReset() {
+  DND_STATUS=$(cat .status-DND-esome)
+  # DND_STATUS=$(defaults read com.apple.controlcenter "NSStatusItem Visible DoNotDisturb")
+  if [[ $DND_STATUS != "reset" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Deactivating your DND-mode
+function DeactivateDND() {
+  DND_STATUS=$(cat .status-DND-esome)
+  if [[ $DND_STATUS == "changed" ]]; then
+    echo "Deactivating your DND-mode"
+    changeDND
+    echo "reset" > .status-DND-esome
+  else
+    echo "DND-mode already deactivated"
+  fi
+}
+
+#Activating your DND-mode
+function ActivateDND() {
+  DND_STATUS=$(cat .status-DND-esome)
+  if [[ $DND_STATUS == "reset" ]]; then # 1 = DND is enabled ; 0 = DND is disabled
+    echo "Activating your DND-mode"
+    changeDND
+    echo "changed" > .status-DND-esome
+  else
+    echo "DND-mode already activated"
+  fi
+}
+
 # do magic
-( ! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! statusReset ) \
+( ! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! statusReset ! DNDstatusReset ) \
 && echo "Neither Spotify nor Apple Music plays a song." \
 && echo "No Zoom call is running." \
+&& echo "DND-mode is already deactivated." \
 && echo "Status was cleared already before." \
 && echo "No action taken." && exit 0
 ! isStatusClean \
@@ -155,6 +200,7 @@ statusReset() {
 echo "Check if in a zoom-call ..."
 inAMeeting && setStatusInMeeting && exit 0
 echo "Not in a zoom-call"
+DeactivateDND
 echo "Check if Spotify is playing ..."
 isSpotifyPlaying && setStatusSpotify && exit 0
 echo "No Spotify running"
