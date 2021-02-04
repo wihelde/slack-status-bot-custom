@@ -41,6 +41,8 @@ STATUS="$1"
 if [[ $STATUS == "on" ]]; then
     STATE=auto
     DOW=$(date +%u)
+    DND_STATE=$(cat .awayback_esome_slack_DND)
+    CURL_URL='https://slack.com/api/dnd.endDnd?token='$TOKEN
     if [[ $DOW == "1" ]]; then
       PAYLOAD="{ \"profile\": { \"status_text\" : \"Pretty sure I smell a Monday here ...\", \"status_emoji\" : \"$MONDAY\", \"status_expiration\": 0 } }"
       echo "Its monday - will use another emoji for today"
@@ -50,6 +52,10 @@ if [[ $STATUS == "on" ]]; then
     else
       PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
     fi
+    if [[ "$DND_STATE" == "changed" ]]; then
+      curl -s "$CURL_URL"
+    fi
+    echo "reset" > .awayback_esome_slack_DND
 fi
 
 if [[ $STATUS == "off" ]]; then
@@ -99,7 +105,10 @@ fi
 
 if [[ $STATUS == "dnd" ]]; then
     STATE=auto
+    CURL_URL='https://slack.com/api/dnd.setSnooze?token='$TOKEN'&num_minutes=1440'
     PAYLOAD="{ \"profile\": { \"status_text\" : \"Focus-mode - please disturb only in urgent cases\", \"status_emoji\" : \"$FOCUS\", \"status_expiration\": 0 } }"
+    curl -s "$CURL_URL"
+    echo "changed" > .awayback_esome_slack_DND
 fi
 
 if [[ $STATUS == "coffee" ]]; then

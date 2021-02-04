@@ -53,13 +53,12 @@ function reset() {
   [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
   echo 'Resetting status'
   DOW=$(date +%u)
-  if [[ $DOW == "1" ]]; then
-    PAYLOAD="{ \"profile\": { \"status_text\" : \"Pretty sure I smell a Monday here ...\", \"status_emoji\" : \"$MONDAY\", \"status_expiration\": 0 } }"
-  elif [[ $DOW == "5" ]]; then
-    PAYLOAD="{ \"profile\": { \"status_text\" : \"TGIF!\", \"status_emoji\" : \"$TGIF\", \"status_expiration\": 0 } }"
-  else
-  PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
-  fi
+  [[ $DOW == "1" ]] \
+  && PAYLOAD="{ \"profile\": { \"status_text\" : \"Pretty sure I smell a Monday here ...\", \"status_emoji\" : \"$MONDAY\", \"status_expiration\": 0 } }"
+  [[ $DOW == "5" ]] \
+  && PAYLOAD="{ \"profile\": { \"status_text\" : \"TGIF!\", \"status_emoji\" : \"$TGIF\", \"status_expiration\": 0 } }"
+  [[ $DOW != "5" && $DOW != "1" ]] \
+  && PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
   setProfile "$PAYLOAD"
   echo "reset" > .status-esome
 }
@@ -112,9 +111,9 @@ function setStatusInMeeting() {
   [[ "$ZOOM_EMOJI" == "$STATUS_EMOJI" ]] && echo "Still in a meeting. Call to API will be avoided." && return 0
   PAYLOAD="{ \"profile\": { \"status_text\": \"In a meeting\", \"status_emoji\": \"$ZOOM_EMOJI\", \"status_expiration\": 0 } }"
   echo "Setting your Slack-status to show you started a Zoom-Call"
+  activateDND
   setProfile "$PAYLOAD"
   echo "changed" > .status-esome
-  ActivateDND
 }
 
 # check if you are  in a meeting
@@ -154,41 +153,38 @@ statusReset() {
 
 # check if DND-mode is already changed
 DNDstatusReset() {
+  test ! -f .status-DND-esome && return 0
   DND_STATUS=$(cat .status-DND-esome)
-  # DND_STATUS=$(defaults read com.apple.controlcenter "NSStatusItem Visible DoNotDisturb")
-  if [[ $DND_STATUS != "reset" ]]; then
-    return 0
-  else
-    return 1
-  fi
+  [[ "$DND_STATUS" != "reset" ]] &&  return 0
+  return 1
 }
 
 # Deactivating your DND-mode
 function DeactivateDND() {
   DND_STATUS=$(cat .status-DND-esome)
-  if [[ $DND_STATUS == "changed" ]]; then
-    echo "Deactivating your DND-mode"
-    changeDND
-    echo "reset" > .status-DND-esome
-  else
-    echo "DND-mode already deactivated"
-  fi
+  CURL_URL='https://slack.com/api/dnd.endDnd?token='$LEGACY_TOKEN
+  [[ $DND_STATUS == "changed" ]] \
+  && echo "Deactivating your DND-mode" \
+  && changeDND \
+  && curl -s "$CURL_URL" \
+  && echo "reset" > .status-DND-esome \
+  || echo "DND-mode already deactivated"
 }
 
 #Activating your DND-mode
-function ActivateDND() {
+function activateDND() {
   DND_STATUS=$(cat .status-DND-esome)
-  if [[ $DND_STATUS == "reset" ]]; then # 1 = DND is enabled ; 0 = DND is disabled
-    echo "Activating your DND-mode"
-    changeDND
-    echo "changed" > .status-DND-esome
-  else
-    echo "DND-mode already activated"
-  fi
+  CURL_URL='https://slack.com/api/dnd.setSnooze?token='$LEGACY_TOKEN'&num_minutes=1440'
+  [[ "$DND_STATUS" == "reset" ]] \
+  && echo "Activating your DND-mode" \
+  && curl -s "$CURL_URL" \
+  && changeDND \
+  && echo "changed" > .status-DND-esome \
+  || echo "DND-mode already activated"
 }
 
 # do magic
-( ! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! statusReset ! DNDstatusReset ) \
+( ! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! statusReset && ! DNDstatusReset ) \
 && echo "Neither Spotify nor Apple Music plays a song." \
 && echo "No Zoom call is running." \
 && echo "DND-mode is already deactivated." \
