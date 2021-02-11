@@ -23,7 +23,7 @@ trap onexit INT
 function setProfile() {
   PAYLOAD=$1
   echo "Calling https://api.slack.com/methods/users.profile.set with $PAYLOAD"
-  curl -X POST -H "Authorization: Bearer $LEGACY_TOKEN" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set" >/dev/null
+  curl -X POST -H "Authorization: Bearer $LEGACY_TOKEN" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set" > /dev/null
   echo "changed" > .status-esome
 }
 
@@ -72,12 +72,16 @@ function onexit() {
 # get artist and song-title from spotify via applescript
 function SpotifyGetSong() {
   SPOTIFY_SONG=$(osascript -e 'tell application "Spotify"' -e 'set track_artist to artist of current track' -e 'set track_name to name of current track' -e 'set podcast to album of current track' -e 'if track_artist = "" then' -e 'podcast & " - " & track_name' -e 'else' -e 'track_artist & " - " & track_name' -e 'end if' -e 'end tell')
+  SPOTIFY_SONG_LENGTH=${#SPOTIFY_SONG}
+  [[ $SPOTIFY_SONG_LENGTH -gt 100 ]] && SPOTIFY_SONG=$(echo "$SPOTIFY_SONG" | sed 's/\(.\{97\}\)./\1.../' | cut -c 1-100)
   echo "$SPOTIFY_SONG"
 }
 
 # get artist and song-title from apple Music via applescript
 function AppleGetSong() {
   APPLE_SONG=$(osascript -e 'tell application "Music" to artist of current track & " - " & name of current track')
+  APPLE_SONG_LENGTH=${#SPOTIFY_SONG}
+  [[ $APPLE_SONG_LENGTH -gt 100 ]] && APPLE_SONG=$(echo "$APPLE_SONG" | sed 's/\(.\{97\}\)./\1.../' | cut -c 1-100)
   echo "$APPLE_SONG"
 }
 
@@ -107,11 +111,11 @@ function setStatusAppleMusic() {
 
 # change your status when in zoom-call and activate DND-mode
 function setStatusInMeeting() {
+  ! DNDstatusReset && activateDND
   echo "Trying to set your Slack-status to show you started a Zoom-Call"
   [[ "$ZOOM_EMOJI" == "$STATUS_EMOJI" ]] && echo "Still in a meeting. Call to API will be avoided." && return 0
   PAYLOAD="{ \"profile\": { \"status_text\": \"In a meeting\", \"status_emoji\": \"$ZOOM_EMOJI\", \"status_expiration\": 0 } }"
   echo "Setting your Slack-status to show you started a Zoom-Call"
-  activateDND
   setProfile "$PAYLOAD"
   echo "changed" > .status-esome
 }

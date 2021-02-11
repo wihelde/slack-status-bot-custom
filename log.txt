@@ -1,0 +1,2411 @@
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+Trying to set Slack-Status to your current Spotify-Song
+Detected Spotify track: Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside...
+Same Spotify song detected. Call to API will be avoided.
+Calling https://slack.com/api/users.profile.get ...
+Status Emoji: ":spotify_2:"
+Status Text: "Alle Wege führen nach Ruhm - AWFNR - AWFNR #374 - Karriere-Upgrades, Outdoor-Freaks und Präside..."
+ -> Status is allowed to change
+Check if in a zoom-call ...
+Not in a zoom-call
+DND-mode already deactivated
+Check if Spotify is playing ...
+No Spotify running
+Check if Apple Music is playing ...
+No Apple Music is running
+Resetting status
+Calling https://api.slack.com/methods/users.profile.set with { "profile": { "status_text" : "working hard on something", "status_emoji" : ":heads-down:", "status_expiration": 0 } }
+Done
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
+Neither Spotify nor Apple Music plays a song.
+No Zoom call is running.
+DND-mode is already deactivated.
+Status was cleared already before.
+No action taken.
