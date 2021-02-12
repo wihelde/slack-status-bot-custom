@@ -36,14 +36,14 @@ function isStatusClean() {
   echo "Status Emoji: \"$STATUS_EMOJI\""
   echo "Status Text: \"$STATUS_TEXT\""
   [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT" || "$STATUS_EMOJI" == "$MEETING" || "$STATUS_EMOJI" == "$MONDAY" || "$STATUS_EMOJI" == "$TGIF" ]] \
-    && echo " -> Status is allowed to change" \
-    && return 0
+  && echo " -> Status is allowed to change" \
+  && return 0
   [[ "$STATUS_EMOJI" == ":spiral_calendar_pad:" && "$STATUS_TEXT" == "In a meeting • Outlook Calendar" ]] \
-    && echo " -> Status is allowed to change" \
-    && return 0
+  && echo " -> Status is allowed to change" \
+  && return 0
   [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] \
-    && echo " -> Status is allowed to change" \
-    && return 0
+  && echo " -> Status is allowed to change" \
+  && return 0
   echo " -> Status is not allowed to change"
   return 1
 }
@@ -127,10 +127,8 @@ function inAMeeting() {
 
 # check if spotify is running
 function isSpotifyPlaying() {
-  if [ "$(pgrep -x 'Spotify')" ]
-  then
-    SPOTIFY_STATE=$(osascript -e 'if application "Spotify" is running then' -e 'tell application "Spotify" to player state' -e 'end if')
-  fi
+  [[ "$(pgrep -x 'Spotify')" ]] \
+  && SPOTIFY_STATE=$(osascript -e 'if application "Spotify" is running then' -e 'tell application "Spotify" to player state' -e 'end if')
   [[ "$SPOTIFY_STATE" = "playing" ]] && return 0
   return 1
 }
