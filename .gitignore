@@ -65,3 +65,5 @@ typings/
 .token
 local.*
 .awayback*
+error-*.txt
+log-*.txt

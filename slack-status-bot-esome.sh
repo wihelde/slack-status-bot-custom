@@ -88,9 +88,9 @@ function AppleGetSong() {
 # change your status with spotify-infos
 function setStatusSpotify() {
   SPOTIFY_SONG=$(SpotifyGetSong)
-  echo "Trying to set Slack-Status to your current Spotify-Song"
   echo "Detected Spotify track: $SPOTIFY_SONG"
   [[ "$SPOTIFY_SONG" == "$STATUS_TEXT" ]] && echo "Same Spotify song detected. Call to API will be avoided." && return 0
+  echo "Trying to set Slack-Status to your current Spotify-Song"
   PAYLOAD="{ \"profile\": { \"status_text\": \"$SPOTIFY_SONG\", \"status_emoji\": \"$SPOTIFY_EMOJI\", \"status_expiration\": 0 } }"
   echo "Setting your Slack-status to your current Spotify-Song"
   setProfile "$PAYLOAD"
@@ -100,9 +100,9 @@ function setStatusSpotify() {
 # change your status with apple music-infos
 function setStatusAppleMusic() {
   APPLE_MUSIC_SONG=$(AppleGetSong)
-  echo "Trying to set Slack-Status to your current Apple Music-Song"
   echo "Detected Apple Music track: $APPLE_MUSIC_SONG"
   [[ "$APPLE_MUSIC_SONG" == "$STATUS_TEXT" ]] && echo "Same Apple Music song detected. Call to API will be avoided." && return 0
+  echo "Trying to set Slack-Status to your current Apple Music-Song"
   PAYLOAD="{ \"profile\": { \"status_text\": \"$APPLE_MUSIC_SONG\", \"status_emoji\": \"$APPLE_EMOJI\", \"status_expiration\": 0 } }"
   echo "Setting your Slack-status to your current Apple Music-Song"
   setProfile "$PAYLOAD"
@@ -112,8 +112,8 @@ function setStatusAppleMusic() {
 # change your status when in zoom-call and activate DND-mode
 function setStatusInMeeting() {
   ! DNDstatusReset && activateDND
-  echo "Trying to set your Slack-status to show you started a Zoom-Call"
   [[ "$ZOOM_EMOJI" == "$STATUS_EMOJI" ]] && echo "Still in a meeting. Call to API will be avoided." && return 0
+  echo "Trying to set your Slack-status to show you started a Zoom-Call"
   PAYLOAD="{ \"profile\": { \"status_text\": \"In a meeting\", \"status_emoji\": \"$ZOOM_EMOJI\", \"status_expiration\": 0 } }"
   echo "Setting your Slack-status to show you started a Zoom-Call"
   setProfile "$PAYLOAD"
@@ -142,7 +142,7 @@ function isAppleMusicPlaying() {
 
 # change your DND-mode
 function changeDND() {
-  osascript -e 'tell application "System Events"' -e 'keystroke "d" using {command down, option down, shift down}' -e 'end tell'
+  osascript -e 'tell application "BetterTouchTool"' -e 'execute_assigned_actions_for_trigger "627C9D8D-A891-4A39-8012-401F89588AE5"' -e 'end tell'
 }
 
 # check if status was already reset

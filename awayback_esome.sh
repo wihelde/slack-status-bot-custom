@@ -20,17 +20,20 @@ FOCUS=:get-shit-done:
 MEETING=:spiral_calendar_pad:
 MONDAY=:monday:
 TGIF=:tgif:
-ANNUAL_REVIEW=:gossip:
 NO_COFFEE=:no-coffee:
+SPORT=:rowboat:
+SHOPPING=:shopping_trolley:
+TEAMS=:teams:
+SKYPE=:skype:
 OFFLINE_MESSAGE_LIST=( \
-    "I bet you were expecting an away message" \
+    #"I bet you were expecting an away message" \
     "Does this away message really mean I'm away, or am I pretending to be away?" \
-    "Only stalkers look at other people's away messages." \
+    #"Only stalkers look at other people's away messages." \
     "Don't Worry!, I dont know where I am either." \
     "Sorry, I'm not here right now, but feel free to talk to the computer as long as you like." \
-    "I have a secret to tell you... I'm away from my computer right now." \
+    #"I have a secret to tell you... I'm away from my computer right now." \
     "Roses are red - Violets are blue - Some away messages rhyme, and some don't." \
-    "I'll be back in 5 minutes but if I'm not, just read this away message again." \
+    #"I'll be back in 5 minutes but if I'm not, just read this away message again." \
     "Keep staring at the screen and maybe I'll come back." \
     "I'm not here right now but if you scream really loud into your monitor I might be able to hear you!" \
 )
@@ -98,11 +101,6 @@ if [[ $STATUS == "meeting" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"in some non-zoom-meeting\", \"status_emoji\" : \"$MEETING\", \"status_expiration\": 0 } }"
 fi
 
-if [[ $STATUS == "ar" ]]; then
-    STATE=auto
-    PAYLOAD="{ \"profile\": { \"status_text\" : \"Annual Review ongoing\", \"status_emoji\" : \"$ANNUAL_REVIEW\", \"status_expiration\": 0 } }"
-fi
-
 if [[ $STATUS == "dnd" ]]; then
     STATE=auto
     CURL_URL='https://slack.com/api/dnd.setSnooze?token='$TOKEN'&num_minutes=1440'
@@ -114,6 +112,32 @@ fi
 if [[ $STATUS == "coffee" ]]; then
     STATE=auto
     PAYLOAD="{ \"profile\": { \"status_text\" : \"No coffee - no talk\", \"status_emoji\" : \"$NO_COFFEE\", \"status_expiration\": 0 } }"
+fi
+
+if [[ $STATUS == "sport" ]]; then
+    STATE=auto
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"Doing some sport, because I'm fat (limited reachability)\", \"status_emoji\" : \"$SPORT\", \"status_expiration\": 0 } }"
+fi
+
+if [[ $STATUS == "shopping" ]]; then
+    STATE=away
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"Spending money which I don't have for stuff which I don't need\", \"status_emoji\" : \"$SHOPPING\", \"status_expiration\": 0 } }"
+fi
+
+if [[ $STATUS == "skype" ]]; then
+    STATE=auto
+    CURL_URL='https://slack.com/api/dnd.setSnooze?token='$TOKEN'&num_minutes=1440'
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"in a meeting - most likely Coke-related\", \"status_emoji\" : \"$SKYPE\", \"status_expiration\": 0 } }"
+    curl -s "$CURL_URL" >/dev/null
+    echo "changed" > .awayback_esome_slack_DND
+fi
+
+if [[ $STATUS == "teams" ]]; then
+    STATE=auto
+    CURL_URL='https://slack.com/api/dnd.setSnooze?token='$TOKEN'&num_minutes=1440'
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"in a meeting - most likely Coke-related\", \"status_emoji\" : \"$TEAMS\", \"status_expiration\": 0 } }"
+    curl -s "$CURL_URL"
+    echo "changed" > .awayback_esome_slack_DND
 fi
 
 function setProfile() {
