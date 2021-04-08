@@ -16,6 +16,42 @@ DEFAULT=:heads-down:
 MEETING=:spiral_calendar_pad:
 MONDAY=:monday:
 TGIF=:tgif:
+ON_MESSAGE=( \
+  "Sheep plan for the future. Lions plan far beyond." \
+  "Life is like a film. It can be very good, but also very bad." \
+  "Never make the wrong decision when you should be making the right one." \
+  "Your failure will be less painful later if you stop trying now." \
+  "An eagle always finds a bridge, no matter how raging the river is." \
+  "Insider tip: Fresh air. Use it, because it is like oxygen for the body." \
+  "If you don't succeed, 99% of the time it's because of yourself or something else." \
+  "There are two types of mistakes you can make in life. Avoid both." \
+  "Most people are like ducks. They have hardly any capital investments." \
+  "If it feels like the whole universe is against you, stay calm. It will have its reasons." \
+  "The best thoughts originate in the head." \
+  "Money is like an atomic bomb. Better to have than to need." \
+  "Holiday ban is climate protection!" \
+  "Fire does not ask. Fire does." \
+  )
+
+ON_EMOJI=( \
+  ":lion_face:" \
+  ":clapper:" \
+  ":bulb:" \
+  ":heads_down:" \
+  ":eagle:" \
+  ":lungs:" \
+  ":eyes:" \
+  ":robot_face:" \
+  ":duck:" \
+  ":milky_way:" \
+  ":exploding_head:" \
+  ":bomb:" \
+  ":deciduous_tree:" \
+  ":fire:" \
+)
+ORDER=$(( ( RANDOM % 13 )  + 0 ))
+ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
+ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
 
 trap onexit INT
 
@@ -31,10 +67,14 @@ function setProfile() {
 function isStatusClean() {
   echo "Calling https://slack.com/api/users.profile.get ..."
   JSON=$(curl -X GET -H "Authorization: Bearer $LEGACY_TOKEN" -H "Content-Type: application/json; charset=UTF-8" -s "https://slack.com/api/users.profile.get")
+  echo $JSON
   STATUS_EMOJI=$(echo "$JSON" | $jq '.profile.status_emoji' | sed 's/\"//g')
   STATUS_TEXT=$(echo "$JSON" | $jq '.profile.status_text' | sed 's/\"//g')
   echo "Status Emoji: \"$STATUS_EMOJI\""
   echo "Status Text: \"$STATUS_TEXT\""
+  [[ " ${ON_EMOJI[*]} " =~ ${STATUS_EMOJI} && " ${ON_MESSAGE[*]} " =~ ${STATUS_TEXT} ]] \
+  && echo " -> Status is allowed to change" \
+  && return 0
   [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT" || "$STATUS_EMOJI" == "$MEETING" || "$STATUS_EMOJI" == "$MONDAY" || "$STATUS_EMOJI" == "$TGIF" ]] \
   && echo " -> Status is allowed to change" \
   && return 0
@@ -53,12 +93,14 @@ function reset() {
   [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
   echo 'Resetting status'
   DOW=$(date +%u)
+  eval "ON_MESSAGE=\$ON_MESSAGE_$ORDER"
+  eval "ON_EMOJI=\$ON_EMOJI_$ORDER"
   [[ $DOW == "1" ]] \
   && PAYLOAD="{ \"profile\": { \"status_text\" : \"Pretty sure I smell a Monday here ...\", \"status_emoji\" : \"$MONDAY\", \"status_expiration\": 0 } }"
   [[ $DOW == "5" ]] \
   && PAYLOAD="{ \"profile\": { \"status_text\" : \"TGIF!\", \"status_emoji\" : \"$TGIF\", \"status_expiration\": 0 } }"
   [[ $DOW != "5" && $DOW != "1" ]] \
-  && PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+  && PAYLOAD="{ \"profile\": { \"status_text\" : \"$ON_MESSAGE_FINAL\", \"status_emoji\" : \"$ON_EMOJI_FINAL\", \"status_expiration\": 0 } }"
   setProfile "$PAYLOAD"
   echo "reset" > .status-bloggerbutze
 }

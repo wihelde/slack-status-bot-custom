@@ -15,7 +15,7 @@ SICK=:face_with_thermometer:
 OFF=:mobile_phone_off:
 BREAK=:double_vertical_bar:
 HOLIDAY=:palm_tree:
-DEFAULT=:heads-down:
+#DEFAULT=:heads-down:
 FOCUS=:get-shit-done:
 MEETING=:spiral_calendar_pad:
 MONDAY=:monday:
@@ -25,19 +25,52 @@ SPORT=:rowboat:
 SHOPPING=:shopping_trolley:
 TEAMS=:teams:
 SKYPE=:skype:
+DOG=:dog2:
 OFFLINE_MESSAGE_LIST=( \
-    #"I bet you were expecting an away message" \
     "Does this away message really mean I'm away, or am I pretending to be away?" \
-    #"Only stalkers look at other people's away messages." \
     "Don't Worry!, I dont know where I am either." \
     "Sorry, I'm not here right now, but feel free to talk to the computer as long as you like." \
-    #"I have a secret to tell you... I'm away from my computer right now." \
     "Roses are red - Violets are blue - Some away messages rhyme, and some don't." \
-    #"I'll be back in 5 minutes but if I'm not, just read this away message again." \
     "Keep staring at the screen and maybe I'll come back." \
     "I'm not here right now but if you scream really loud into your monitor I might be able to hear you!" \
 )
 OFFLINE_MESSAGE=${OFFLINE_MESSAGE_LIST[ $((RANDOM % ${#OFFLINE_MESSAGE_LIST[@]}))]}
+ON_MESSAGE=( \
+  "Sheeps plan for the future. Lions plan far beyond." \
+  "Life is like a film. It can be very good, but also very bad." \
+  "Never make the wrong decision when you should be making the right one." \
+  "Your failure will be less painful later if you stop trying now." \
+  "An eagle always finds a bridge, no matter how raging the river is." \
+  "Insider tip: Fresh air. Use it, because it is like oxygen for the body." \
+  "If you don't succeed, 99% of the time it's because of yourself or something else." \
+  "There are two types of mistakes you can make in life. Avoid both." \
+  "Most people are like ducks. They have hardly any capital investments." \
+  "If it feels like the whole universe is against you, stay calm. It will have its reasons." \
+  "The best thoughts originate in the head." \
+  "Money is like an atomic bomb. Better to have than to need." \
+  "Holiday ban is climate protection!" \
+  "Fire does not ask. Fire does." \
+  )
+
+ON_EMOJI=( \
+  ":lion_face:" \
+  ":clapper:" \
+  ":bulb:" \
+  ":heads_down:" \
+  ":eagle:" \
+  ":lungs:" \
+  ":eyes:" \
+  ":robot_face:" \
+  ":duck:" \
+  ":milky_way:" \
+  ":exploding_head:" \
+  ":bomb:" \
+  ":deciduous_tree:" \
+  ":fire:" \
+)
+ORDER=$(( ( RANDOM % 13 )  + 0 ))
+ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
+ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
 
 STATUS="$1"
 
@@ -53,7 +86,7 @@ if [[ $STATUS == "on" ]]; then
       PAYLOAD="{ \"profile\": { \"status_text\" : \"TGIF!\", \"status_emoji\" : \"$TGIF\", \"status_expiration\": 0 } }"
       echo "Its friday - will use another emoji for today"
     else
-      PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$DEFAULT\", \"status_expiration\": 0 } }"
+      PAYLOAD="{ \"profile\": { \"status_text\" : \"$ON_MESSAGE_FINAL\", \"status_emoji\" : \"$ON_EMOJI_FINAL\", \"status_expiration\": 0 } }"
     fi
     if [[ "$DND_STATE" == "changed" ]]; then
       curl -s "$CURL_URL"
@@ -138,6 +171,11 @@ if [[ $STATUS == "teams" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"in a meeting - most likely Coke-related\", \"status_emoji\" : \"$TEAMS\", \"status_expiration\": 0 } }"
     curl -s "$CURL_URL"
     echo "changed" > .awayback_esome_slack_DND
+fi
+
+if [[ $STATUS == "dog" ]]; then
+    STATE=away
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"The dog takes me for a walk\", \"status_emoji\" : \"$DOG\", \"status_expiration\": 0 } }"
 fi
 
 function setProfile() {
