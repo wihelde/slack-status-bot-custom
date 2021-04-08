@@ -16,6 +16,8 @@ DEFAULT=:heads-down:
 MEETING=:spiral_calendar_pad:
 MONDAY=:monday:
 TGIF=:tgif:
+
+# define bunch of random online-messages
 ON_MESSAGE=( \
   "Sheep plan for the future. Lions plan far beyond." \
   "Life is like a film. It can be very good, but also very bad." \
@@ -33,6 +35,7 @@ ON_MESSAGE=( \
   "Fire does not ask. Fire does." \
   )
 
+# define related emojis for random online messages
 ON_EMOJI=( \
   ":lion_face:" \
   ":clapper:" \
@@ -49,6 +52,8 @@ ON_EMOJI=( \
   ":deciduous_tree:" \
   ":fire:" \
 )
+
+# get random number to pick random online message and related emoji
 ORDER=$(( ( RANDOM % 13 )  + 0 ))
 ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
 ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
@@ -87,7 +92,7 @@ function isStatusClean() {
   return 1
 }
 
-# reset your status to your default-status; special handling for monday and friday
+# reset your status to your random default-status; special handling for monday and friday
 function reset() {
   [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
   echo 'Resetting status'

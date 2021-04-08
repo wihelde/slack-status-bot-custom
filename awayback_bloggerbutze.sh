@@ -1,7 +1,9 @@
 #!/bin/bash
 
+# define your working-directory
 cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1
 
+# define your token
 # CONFIG_FILE="$HOME/dev/slack_status_updater/.slack_status_bloggerbutze.conf"
 TOKEN=$(awk 'NR==5' .token)
 
@@ -19,11 +21,12 @@ DEFAULT=:heads-down:
 MONDAY=:monday:
 TGIF=:tgif:
 FOCUS=:get-shit-done:
-NO_COFFEE=:no-coffee:
 SHOPPING=:shopping_trolley:
 TEAMS=:teams:
 SKYPE=:skype:
 DOG=:dog2:
+
+# random offline message
 OFFLINE_MESSAGE_LIST=( \
     "Does this away message really mean I'm away, or am I pretending to be away?" \
     "Don't Worry!, I dont know where I am either." \
@@ -33,8 +36,10 @@ OFFLINE_MESSAGE_LIST=( \
     "I'm not here right now but if you scream really loud into your monitor I might be able to hear you!" \
 )
 OFFLINE_MESSAGE=${OFFLINE_MESSAGE_LIST[ $((RANDOM % ${#OFFLINE_MESSAGE_LIST[@]}))]}
+
+# random online-message
 ON_MESSAGE=( \
-  "Sheeps plan for the future. Lions plan far beyond." \
+  "Sheep plan for the future. Lions plan far beyond." \
   "Life is like a film. It can be very good, but also very bad." \
   "Never make the wrong decision when you should be making the right one." \
   "Your failure will be less painful later if you stop trying now." \
@@ -50,6 +55,7 @@ ON_MESSAGE=( \
   "Fire does not ask. Fire does." \
   )
 
+# related emoji for random online-message
 ON_EMOJI=( \
   ":lion_face:" \
   ":clapper:" \
@@ -66,6 +72,8 @@ ON_EMOJI=( \
   ":deciduous_tree:" \
   ":fire:" \
 )
+
+# get random number to pick random online message and related emoji
 ORDER=$(( ( RANDOM % 13 )  + 0 ))
 ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
 ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
@@ -139,11 +147,6 @@ if [[ $STATUS == "dnd" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"Focus-mode - please disturb only in urgent cases\", \"status_emoji\" : \"$FOCUS\", \"status_expiration\": 0 } }"
     curl -s "$CURL_URL"
     echo "changed" > .awayback_bloggerbutze_slack_DND
-fi
-
-if [[ $STATUS == "coffee" ]]; then
-    STATE=auto
-    PAYLOAD="{ \"profile\": { \"status_text\" : \"working hard on something\", \"status_emoji\" : \"$NO_COFFEE\", \"status_expiration\": 0 } }"
 fi
 
 if [[ $STATUS == "sport" ]]; then
