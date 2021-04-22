@@ -1,14 +1,22 @@
 function setProfile() {
-  curl -X POST -H "Authorization: Bearer $LEGACY_TOKEN" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set" >/dev/null 2>&1
+  LEGACY_TOKEN_ARRAY_FINAL=("$@")
+  for i in "${LEGACY_TOKEN_ARRAY[@]}";
+  do
+    curl -X POST -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set"
+  done
 }
 
 function changeStatus() {
-curl -s --data token="$LEGACY_TOKEN" \
+  LEGACY_TOKEN_ARRAY_FINAL=("$@")
+  for i in "${LEGACY_TOKEN_ARRAY[@]}";
+  do
+    curl -s --data token="$i" \
     --data presence="$STATE" \
     https://slack.com/api/users.setPresence | \
     grep -Eq '"ok": ?true' && \
-        echo "Away status updated ok" || \
-        echo "There was a problem updating the away status"
+    echo "Away status updated ok" || \
+    echo "There was a problem updating the away status"
+  done
 }
 
 STATUS="$1"
@@ -16,6 +24,7 @@ STATUS="$1"
 if [[ $STATUS == "on" ]]; then
     STATE=auto
     # message for monday
+    DeactivateDND
     if [[ $DOW == "1" ]]; then
       PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }"
       osascript -e 'display notification "'"$MONDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
@@ -28,7 +37,6 @@ if [[ $STATUS == "on" ]]; then
       PAYLOAD="{ \"profile\": { \"status_text\" : \"$ON_MESSAGE_FINAL\", \"status_emoji\" : \"$ON_EMOJI_FINAL\", \"status_expiration\": 0 } }"
       osascript -e 'display notification "'"$ON_MESSAGE_FINAL"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
     fi
-    DeactivateDND
 fi
 
 if [[ $STATUS == "off" ]]; then

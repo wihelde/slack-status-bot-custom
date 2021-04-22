@@ -12,8 +12,8 @@ function onexit() {
 export DOW=$(date +%u)
 
 # define your local tracking-files
-STATUS_FILE=status-$SLACK_INSTANCE.txt
-DND_STATUS_FILE=status_DND-$SLACK_INSTANCE.txt
+STATUS_FILE=status.txt
+DND_STATUS_FILE=status_DND.txt
 
 # define save-location for log-files
 [[ ! -d ./logs/ ]] && echo "log-folder not existing - I create it for you" \
@@ -24,5 +24,5 @@ DND_STATUS_FILE=status_DND-$SLACK_INSTANCE.txt
 && touch ./logs/$DND_STATUS_FILE && echo "reset" > .$DND_STATUS_FILE && mv .$DND_STATUS_FILE ./logs/$DND_STATUS_FILE
 
 # define token
-[[ ! -f .token-$SLACK_INSTANCE ]] && echo "There was no token-file found. Please create a file called .token_[SLACK INSTANCE NAME] and include your slack-token!" && exit 1
-LEGACY_TOKEN=$(cat .token-$SLACK_INSTANCE)
+[[ ! -f .token ]] && echo "There was no token-file found. Please create a file called .token and include your slack-token(s)!" && exit 1
+LEGACY_TOKEN_ARRAY=($(grep -v '^#' .token))
