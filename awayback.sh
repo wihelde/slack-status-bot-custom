@@ -9,6 +9,6 @@ SLACK_INSTANCE=esome
 source ./includes/misc.sh
 source ./includes/custom_status_messages.sh
 source ./includes/DND.sh
-source ./includes/manual_message_bot.sh
+source ./includes/custom-status.sh
 
 changeStatus && setProfile && exit 0

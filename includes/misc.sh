@@ -1,7 +1,7 @@
-# IDK
+# exist when interrupt-signal is recognized
 trap onexit INT
 
-# IDK
+# resets the status when exit is recognized
 function onexit() {
   echo 'Exiting'
   isStatusClean && reset

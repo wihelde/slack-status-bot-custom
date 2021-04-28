@@ -19,7 +19,7 @@ function setStatusAppleMusic() {
   echo "Detected Apple Music track: $APPLE_MUSIC_SONG"
   [[ "$APPLE_MUSIC_SONG" == "$STATUS_TEXT" ]] && echo "Same Apple Music song detected. Call to API will be avoided." && return 0
   echo "Trying to set Slack-Status to your current Apple Music-Song"
-  PAYLOAD="{ \"profile\": { \"status_text\": \"$APPLE_MUSIC_SONG\", \"status_emoji\": \"$APPLE_EMOJI\", \"status_expiration\": 0 } }"
+  PAYLOAD="{ \"profile\": { \"status_text\": \"$APPLE_MUSIC_SONG\", \"status_emoji\": \"$APPLE_MUSIC_EMOJI\", \"status_expiration\": 0 } }"
   echo "Setting your Slack-status to your current Apple Music-Song"
   setProfile "$PAYLOAD"
   echo "changed" > ./logs/$STATUS_FILE
