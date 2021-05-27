@@ -8,21 +8,21 @@ HOLIDAY_EMOJI=:palm_tree:
 MEETING_EMOJI=:spiral_calendar_pad:
 MONDAY_EMOJI=:monday:
 OFF_EMOJI=:mobile_phone_off:
-ON_EMOJI=( \
-  ":eagle:" \
-  ":fire:" \
-  ":deciduous_tree:" \
-  ":milky_way:" \
-  ":eyes:" \
-  ":lungs:" \
-  ":clapper:" \
-  ":bomb:" \
-  ":duck:" \
-  ":bulb:" \
-  ":lion_face:" \
-  ":exploding_head:" \
-  ":robot_face:" \
-  ":heads_down:" \
+ON_EMOJI=(
+  ":eagle:"
+  ":fire:"
+  ":deciduous_tree:"
+  ":milky_way:"
+  ":eyes:"
+  ":air:"
+  ":clapper:"
+  ":bomb:"
+  ":duck:"
+  ":bulb:"
+  ":lion_face:"
+  ":exploding_head:"
+  ":robot_face:"
+  ":heads_down:"
 )
 SHOPPING_EMOJI=:shopping_trolley:
 SICK_EMOJI=:face_with_thermometer:
@@ -39,29 +39,29 @@ DOG_MESSAGE="The dog takes me for a walk"
 FOCUS_MESSAGE="Focus-mode - please disturb only in urgent cases"
 MEETING_MESSAGE="in some non-zoom-meeting"
 MONDAY_MESSAGE="Pretty sure I smell a Monday here ..."
-ON_MESSAGE=( \
-  "An eagle always finds a bridge, no matter how raging the river is." \
-  "Fire does not ask. Fire does." \
-  "Holiday ban is climate protection!" \
-  "If it feels like the whole universe is against you, stay calm. It will have its reasons." \
-  "If you don't succeed, 99% of the time it's because of yourself or something else." \
-  "Insider tip: Fresh air. Use it, because it is like oxygen for the body." \
-  "Life is like a film. It can be very good, but also very bad." \
-  "Money is like an atomic bomb. Better to have than to need." \
-  "Most people are like ducks. They have hardly any capital investments." \
-  "Never make the wrong decision when you should be making the right one." \
-  "Sheep plan for the future. Lions plan far beyond." \
-  "The best thoughts originate in the head." \
-  "There are two types of mistakes you can make in life. Avoid both." \
-  "Your failure will be less painful later if you stop trying now." \
-  )
-OFFLINE_MESSAGE_LIST=( \
-    "Does this away message really mean I'm away, or am I pretending to be away?" \
-    "Don't Worry!, I dont know where I am either." \
-    "I'm not here right now but if you scream really loud into your monitor I might be able to hear you!" \
-    "Keep staring at the screen and maybe I'll come back." \
-    "Roses are red - Violets are blue - Some away messages rhyme, and some don't." \
-    "Sorry, I'm not here right now, but feel free to talk to the computer as long as you like." \
+ON_MESSAGE=(
+  "An eagle always finds a bridge, no matter how raging the river is."
+  "Fire does not ask. Fire does."
+  "Holiday ban is climate protection!"
+  "If it feels like the whole universe is against you, stay calm. It will have its reasons."
+  "If you don't succeed, 99% of the time it's because of yourself or something else."
+  "Insider tip: Fresh air. Use it, because it is like oxygen for the body."
+  "Life is like a film. It can be very good, but also very bad."
+  "Money is like an atomic bomb. Better to have than to need."
+  "Most people are like ducks. They have hardly any capital investments."
+  "Never make the wrong decision when you should be making the right one."
+  "Sheep plan for the future. Lions plan far beyond."
+  "The best thoughts originate in the head."
+  "There are two types of mistakes you can make in life. Avoid both."
+  "Your failure will be less painful later if you stop trying now."
+)
+OFFLINE_MESSAGE_LIST=(
+  "Does this away message really mean I'm away, or am I pretending to be away?"
+  "Don't Worry!, I dont know where I am either."
+  "I'm not here right now but if you scream really loud into your monitor I might be able to hear you!"
+  "Keep staring at the screen and maybe I'll come back."
+  "Roses are red - Violets are blue - Some away messages rhyme, and some don't."
+  "Sorry, I'm not here right now, but feel free to talk to the computer as long as you like."
 )
 SHOPPING_MESSAGE="Spending money which I don't have for stuff which I don't need"
 SICK_MESSAGE="Out sick"
@@ -72,9 +72,9 @@ TGIF_MESSAGE="TGIF!"
 VACATION_MESSAGE="strong vacationing"
 
 # get random number to pick random online message and related emoji
-ORDER=$(( ( RANDOM % 13 )  + 0 ))
+ORDER=$(((RANDOM % 13) + 0))
 ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
 ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
 
 # get random offline message
-OFFLINE_MESSAGE=${OFFLINE_MESSAGE_LIST[ $((RANDOM % ${#OFFLINE_MESSAGE_LIST[@]}))]}
+OFFLINE_MESSAGE=${OFFLINE_MESSAGE_LIST[$((RANDOM % ${#OFFLINE_MESSAGE_LIST[@]}))]}

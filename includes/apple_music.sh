@@ -1,7 +1,7 @@
 # check if apple music is running
 function isAppleMusicPlaying() {
   APPLE_MUSIC_STATE=$(osascript -e 'if application "Music" is running then' -e 'tell application "Music" to player state' -e 'end if')
-  [[ "$APPLE_MUSIC_STATE" = "playing" ]] && return 0
+  [[ "$APPLE_MUSIC_STATE" == "playing" ]] && return 0
   return 1
 }
 
@@ -22,5 +22,5 @@ function setStatusAppleMusic() {
   PAYLOAD="{ \"profile\": { \"status_text\": \"$APPLE_MUSIC_SONG\", \"status_emoji\": \"$APPLE_MUSIC_EMOJI\", \"status_expiration\": 0 } }"
   echo "Setting your Slack-status to your current Apple Music-Song"
   setProfile "$PAYLOAD"
-  echo "changed" > ./logs/$STATUS_FILE
+  echo "changed" >./logs/$STATUS_FILE
 }

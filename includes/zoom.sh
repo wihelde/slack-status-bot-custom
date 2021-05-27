@@ -1,6 +1,6 @@
 # check if you are  in a meeting
 function inAMeeting() {
-  lsof -i -P -n 2>&1 | grep zoom | grep UDP > /dev/null
+  lsof -i -P -n 2>&1 | grep zoom | grep UDP >/dev/null
 }
 
 # change your status when in zoom-call and activate DND-mode
@@ -11,5 +11,5 @@ function setStatusInMeeting() {
   echo "Setting your Slack-status to show you started a Zoom-Call"
   setProfile "$PAYLOAD"
   ! DNDstatusReset && activateDND
-  echo "changed" > ./logs/$STATUS_FILE
+  echo "changed" >./logs/$STATUS_FILE
 }

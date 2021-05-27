@@ -1,8 +1,8 @@
 # check if spotify is running
 function isSpotifyPlaying() {
-  [[ "$(pgrep -x 'Spotify')" ]] \
-  && SPOTIFY_STATE=$(osascript -e 'if application "Spotify" is running then' -e 'tell application "Spotify" to player state' -e 'end if')
-  [[ "$SPOTIFY_STATE" = "playing" ]] && return 0
+  [[ "$(pgrep -x 'Spotify')" ]] &&
+    SPOTIFY_STATE=$(osascript -e 'if application "Spotify" is running then' -e 'tell application "Spotify" to player state' -e 'end if')
+  [[ "$SPOTIFY_STATE" == "playing" ]] && return 0
   return 1
 }
 
@@ -23,5 +23,5 @@ function setStatusSpotify() {
   PAYLOAD="{ \"profile\": { \"status_text\": \"$SPOTIFY_SONG\", \"status_emoji\": \"$SPOTIFY_EMOJI\", \"status_expiration\": 0 } }"
   echo "Setting your Slack-status to your current Spotify-Song"
   setProfile "$PAYLOAD"
-  echo "changed" > ./logs/$STATUS_FILE
+  echo "changed" >./logs/$STATUS_FILE
 }
