@@ -12,6 +12,8 @@ source ./includes/apple_music.sh
 source ./includes/spotify.sh
 source ./includes/zoom.sh
 source ./includes/discord.sh
+source ./includes/microsoft_teams.sh
+source ./includes/skype.sh
 source ./includes/DND.sh
 source ./includes/slack.sh
 source ./includes/log_cleanup.sh

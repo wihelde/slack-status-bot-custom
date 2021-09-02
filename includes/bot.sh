@@ -1,9 +1,12 @@
 # do magic
 log_cleanup &&
   echo "logs are cleaned up"
-(! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! inADiscordMeeting && ! statusReset && ! DNDstatusReset) &&
+(! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! inADiscordMeeting && ! inAMicrosoftTeamsMeeting && ! inASkypeMeeting && ! statusReset && ! DNDstatusReset) &&
   echo "Neither Spotify nor Apple Music plays a song." &&
   echo "No Zoom call is running." &&
+  echo "No Discord call is running." &&
+  echo "No Microsoft Teams call is running." &&
+  echo "No Skype call is running." &&
   echo "DND-mode is already deactivated." &&
   echo "Status was cleared already before." &&
   echo "No action taken." && exit 0
@@ -15,6 +18,10 @@ inAMeeting && setStatusInMeeting && exit 0
 echo "Not in a zoom-call"
 inADiscordMeeting && setStatusInDiscordMeeting && exit 0
 echo "Not in a Discord-call"
+inAMicrosoftTeamsMeeting && setStatusInMicrosoftTeamsMeeting && exit 0
+echo "Not in a Microsoft-Teams-call"
+inASkypeMeeting && setStatusInSkypeMeeting && exit 0
+echo "Not in a Skype-call"
 DeactivateDND
 echo "Check if Spotify is playing ..."
 isSpotifyPlaying && setStatusSpotify && exit 0
