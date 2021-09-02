@@ -1,7 +1,7 @@
 # do magic
 log_cleanup &&
   echo "logs are cleaned up"
-(! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! statusReset && ! DNDstatusReset) &&
+(! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! inADiscordMeeting && ! statusReset && ! DNDstatusReset) &&
   echo "Neither Spotify nor Apple Music plays a song." &&
   echo "No Zoom call is running." &&
   echo "DND-mode is already deactivated." &&
@@ -13,6 +13,8 @@ log_cleanup &&
 echo "Check if in a zoom-call ..."
 inAMeeting && setStatusInMeeting && exit 0
 echo "Not in a zoom-call"
+inADiscordMeeting && setStatusInDiscordMeeting && exit 0
+echo "Not in a Discord-call"
 DeactivateDND
 echo "Check if Spotify is playing ..."
 isSpotifyPlaying && setStatusSpotify && exit 0

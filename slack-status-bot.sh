@@ -11,6 +11,7 @@ source ./includes/custom_status_messages.sh
 source ./includes/apple_music.sh
 source ./includes/spotify.sh
 source ./includes/zoom.sh
+source ./includes/discord.sh
 source ./includes/DND.sh
 source ./includes/slack.sh
 source ./includes/log_cleanup.sh

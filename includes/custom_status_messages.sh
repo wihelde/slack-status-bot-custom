@@ -32,6 +32,7 @@ SPOTIFY_EMOJI=:spotify_2:
 TEAMS_EMOJI=:teams:
 TGIF_EMOJI=:tgif:
 ZOOM_EMOJI=:zoom_3:
+DISCORD_EMOJI=:discord:
 
 # Messages
 BREAK_MESSAGE="Having a break. Having no KitKat."
