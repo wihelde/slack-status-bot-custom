@@ -18,6 +18,7 @@ function changeStatus() {
 }
 
 STATUS="$1"
+DATEBACK="$2"
 
 if [[ $STATUS == "on" ]]; then
   STATE=auto
@@ -69,13 +70,24 @@ fi
 
 if [[ $STATUS == "holiday-on" ]]; then
   STATE=auto
-  PAYLOAD="{ \"profile\": { \"status_text\" : \"$VACATION_MESSAGE\", \"status_emoji\" : \"$HOLIDAY_EMOJI\", \"status_expiration\": 0 } }"
+  if ! [[ $DATEBACK == "" ]]; then
+    DATEBACK="- back on ${DATEBACK}"
+  else
+    DATEBACK=""
+  fi
+  PAYLOAD="{ \"profile\": { \"status_text\" : \"$VACATION_MESSAGE $DATEBACK\", \"status_emoji\" : \"$HOLIDAY_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$VACATION_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
 fi
 
 if [[ $STATUS == "holiday-off" ]]; then
   STATE=away
-  PAYLOAD="{ \"profile\": { \"status_text\" : \"$VACATION_MESSAGE\", \"status_emoji\" : \"$HOLIDAY_EMOJI\", \"status_expiration\": 0 } }"
+  if ! [[ $DATEBACK == "" ]]; then
+    DATEBACK="- back on ${DATEBACK}"
+  else
+    DATEBACK=""
+  fi
+  PAYLOAD="{ \"profile\": { \"status_text\" : \"$VACATION_MESSAGE $DATEBACK\", \"status_emoji\" : \"$HOLIDAY_EMOJI\", \"status_expiration\": 0 } }"
+  echo $PAYLOAD
   osascript -e 'display notification "'"$VACATION_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
 fi
 
