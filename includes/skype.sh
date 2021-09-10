@@ -1,6 +1,6 @@
 # check if you are  in a meeting
 function inASkypeMeeting() {
-  lsof -i -P -n 2>&1 | grep Skype | grep UDP | grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}": >/dev/null
+  lsof -i -P -n 2>&1 | grep Skype | grep UDP | grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}:" >/dev/null
 }
 
 # change your status when in zoom-call and activate DND-mode
