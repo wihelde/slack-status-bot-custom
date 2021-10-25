@@ -1,6 +1,6 @@
 # check if you are  in a meeting
 function inAMicrosoftTeamsMeeting() {
-  lsof -i -P -n 2>&1 | grep Microsoft | grep UDP | grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}[\:](500[0-9]{2})$" >/dev/null
+  lsof -i -P -n 2>&1 | grep Microsoft | grep UDP | grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}[\:](5000[0-9]{1})$" >/dev/null
 }
 
 # change your status when in zoom-call and activate DND-mode

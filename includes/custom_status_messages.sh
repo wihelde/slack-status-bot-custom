@@ -29,6 +29,7 @@ SICK_EMOJI=:face_with_thermometer:
 SKYPE_EMOJI=:skype:
 SPORT_EMOJI=:rowboat:
 SPOTIFY_EMOJI=:spotify_2:
+DEEZER_EMOJI=:deezer:
 TEAMS_EMOJI=:teams:
 TGIF_EMOJI=:tgif:
 ZOOM_EMOJI=:zoom_3:

@@ -10,6 +10,7 @@ source ./includes/misc.sh
 source ./includes/custom_status_messages.sh
 source ./includes/apple_music.sh
 source ./includes/spotify.sh
+# source ./includes/deezer.sh
 source ./includes/zoom.sh
 source ./includes/discord.sh
 source ./includes/microsoft_teams.sh
