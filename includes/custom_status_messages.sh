@@ -23,6 +23,17 @@ ON_EMOJI=(
   ":exploding_head:"
   ":robot_face:"
   ":heads_down:"
+  ":heart_eyes:"
+  ":twisted_rightwards_arrows:"
+  ":tropical_fish:"
+  ":+1:"
+  ":arrow_upper_right:"
+  ":brain:"
+  ":shark:"
+  ":penguin:"
+  ":construction:"
+  ":question:"
+  ":elephant:"
 )
 SHOPPING_EMOJI=:shopping_trolley:
 SICK_EMOJI=:face_with_thermometer:
@@ -56,6 +67,17 @@ ON_MESSAGE=(
   "The best thoughts originate in the head."
   "There are two types of mistakes you can make in life. Avoid both."
   "Your failure will be less painful later if you stop trying now."
+  "Love for another person is also always a cost factor"
+  "You have only one option: move on, stop or turn back. You can't do both together."
+  "You can paint a goldfish like a lion, but when the rain comes, it will show who is the eagle"
+  "If you're a real winner, turn November into Yes-vember"
+  "When going downhill, just walk backwards"
+  "Sometimes your path leads you to crossroads where your life turns 360°."
+  "One shark never leaves another out in the cold"
+  "Be like a very successful animal!"
+  "Avoid problems. They only complicate your life"
+  "There will be that one day when some things will be different than they are now. But not today."
+  "Problems are like elephants. The smaller they are, the better you can defeat them."
 )
 OFFLINE_MESSAGE_LIST=(
   "Does this away message really mean I'm away, or am I pretending to be away?"
