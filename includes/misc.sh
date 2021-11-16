@@ -9,7 +9,7 @@ function onexit() {
 }
 
 # set PATH for jq as variable to be used in launchd
-jq=/usr/local/bin/jq
+jq=/opt/homebrew/bin/jq
 
 # get current day of week
 export DOW=$(date +%u)
