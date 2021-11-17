@@ -9,6 +9,17 @@ MEETING_EMOJI=:spiral_calendar_pad:
 MONDAY_EMOJI=:monday:
 OFF_EMOJI=:mobile_phone_off:
 ON_EMOJI=(
+  ":heart_eyes:"
+  ":twisted_rightwards_arrows:"
+  ":tropical_fish:"
+  ":+1:"
+  ":arrow_upper_right:"
+  ":brain:"
+  ":shark:"
+  ":penguin:"
+  ":construction:"
+  ":question:"
+  ":elephant:"
   ":eagle:"
   ":fire:"
   ":deciduous_tree:"
@@ -23,17 +34,6 @@ ON_EMOJI=(
   ":exploding_head:"
   ":robot_face:"
   ":heads_down:"
-  ":heart_eyes:"
-  ":twisted_rightwards_arrows:"
-  ":tropical_fish:"
-  ":+1:"
-  ":arrow_upper_right:"
-  ":brain:"
-  ":shark:"
-  ":penguin:"
-  ":construction:"
-  ":question:"
-  ":elephant:"
 )
 SHOPPING_EMOJI=:shopping_trolley:
 SICK_EMOJI=:face_with_thermometer:
@@ -53,6 +53,17 @@ FOCUS_MESSAGE="Focus-mode - please disturb only in urgent cases"
 MEETING_MESSAGE="in some non-zoom-meeting"
 MONDAY_MESSAGE="Pretty sure I smell a Monday here ..."
 ON_MESSAGE=(
+  "Love for another person is also always a cost factor"
+  "You have only one option: move on, stop or turn back. You can't do both together."
+  "You can paint a goldfish like a lion, but when the rain comes, it will show who is the eagle"
+  "If you're a real winner, turn November into Yes-vember"
+  "When going downhill, just walk backwards"
+  "Sometimes your path leads you to crossroads where your life turns 360°."
+  "One shark never leaves another out in the cold"
+  "Be like a very successful animal!"
+  "Avoid problems. They only complicate your life"
+  "There will be that one day when some things will be different than they are now. But not today."
+  "Problems are like elephants. The smaller they are, the better you can defeat them."
   "An eagle always finds a bridge, no matter how raging the river is."
   "Fire does not ask. Fire does."
   "Holiday ban is climate protection!"
@@ -67,17 +78,6 @@ ON_MESSAGE=(
   "The best thoughts originate in the head."
   "There are two types of mistakes you can make in life. Avoid both."
   "Your failure will be less painful later if you stop trying now."
-  "Love for another person is also always a cost factor"
-  "You have only one option: move on, stop or turn back. You can't do both together."
-  "You can paint a goldfish like a lion, but when the rain comes, it will show who is the eagle"
-  "If you're a real winner, turn November into Yes-vember"
-  "When going downhill, just walk backwards"
-  "Sometimes your path leads you to crossroads where your life turns 360°."
-  "One shark never leaves another out in the cold"
-  "Be like a very successful animal!"
-  "Avoid problems. They only complicate your life"
-  "There will be that one day when some things will be different than they are now. But not today."
-  "Problems are like elephants. The smaller they are, the better you can defeat them."
 )
 OFFLINE_MESSAGE_LIST=(
   "Does this away message really mean I'm away, or am I pretending to be away?"
@@ -96,7 +96,7 @@ TGIF_MESSAGE="TGIF!"
 VACATION_MESSAGE="strong vacationing"
 
 # get random number to pick random online message and related emoji
-ORDER=$(((RANDOM % 13) + 0))
+ORDER=$(((RANDOM % 24) + 0))
 ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
 ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
 
