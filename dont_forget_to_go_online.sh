@@ -23,17 +23,13 @@ function isStatusClean() {
     echo "Status Emoji: \"$STATUS_EMOJI\""
     echo "Status Text: \"$STATUS_TEXT\""
     # check for automatic custom_status_message
-    [[ " ${OFF_EMOJI[*]} " =~ ${STATUS_EMOJI} && " ${OFFLINE_MESSAGE[*]} " =~ ${STATUS_TEXT} ]] &&
+    [[ " ${OFF_EMOJI[*]} " =~ ${STATUS_EMOJI} && " ${OFFLINE_MESSAGE[*]} " =~ ${STATUS_TEXT} || "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] &&
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by script
-    [[ "$STATUS_EMOJI" == " ${OFF_EMOJI[*]} " || "$STATUS_EMOJI" == "$SICK_EMOJI" || "$STATUS_EMOJI" == "$HOLIDAY_EMOJI" ]] &&
+    [[ ! " ${OFF_EMOJI[*]} " =~ ${STATUS_EMOJI} ]] &&
       echo " -> Status is not allowed to change" &&
       return 1
-    # check for empty status-message
-    [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] &&
-      echo " -> Status is allowed to change" &&
-      return 0
     # prevent status-message-change
     echo " -> Status is allowed to change"
     return 0
@@ -56,9 +52,8 @@ function changeStatus() {
 function setProfile() {
   LEGACY_TOKEN_ARRAY_FINAL=("$@")
   DeactivateDND
-  echo $DOW
   if [[ $DOW == "1" ]]; then
-    PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$ON_EMOJI\", \"status_expiration\": 0 } }"
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }"
       for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
         curl -X POST -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set"
       done
