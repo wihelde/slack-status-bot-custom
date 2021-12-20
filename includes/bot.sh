@@ -1,7 +1,7 @@
 # do magic
 log_cleanup &&
   echo "logs are cleaned up"
-(! isSpotifyPlaying && ! isDeezerPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! inADiscordMeeting && ! inAMicrosoftTeamsMeeting && ! inASkypeMeeting && ! statusReset && ! DNDstatusReset) &&
+(! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! inADiscordMeeting && ! inAMicrosoftTeamsMeeting && ! inASkypeMeeting && ! statusReset && ! DNDstatusReset) &&
   echo "Neither Spotify nor Apple Music plays a song." &&
   echo "No Zoom call is running." &&
   echo "No Discord call is running." &&
