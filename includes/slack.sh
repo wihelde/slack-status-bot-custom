@@ -19,7 +19,7 @@ function isStatusClean() {
     echo "Status Emoji: \"$STATUS_EMOJI\""
     echo "Status Text: \"$STATUS_TEXT\""
     # check for automatic custom_status_message
-    [[ " ${ON_EMOJI[*]} " =~ ${STATUS_EMOJI} && " ${ON_MESSAGE[*]} " =~ ${STATUS_TEXT} ]] &&
+    [[ " ${ON_EMOJI[*]} " =~ ${STATUS_EMOJI} ]] &&
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by script
@@ -48,6 +48,10 @@ function reset() {
   [[ $DOW == "1" ]] &&
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }" &&
     osascript -e 'display notification "'"$MONDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  # message for thursday
+  [[ $DOW == "4" ]] &&
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"$THURSDAY_MESSAGE\", \"status_emoji\" : \"$THURSDAY_EMOJI\", \"status_expiration\": 0 } }" &&
+    osascript -e 'display notification "'"$THURSDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
   # message for friday
   [[ $DOW == "5" ]] &&
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$TGIF_MESSAGE\", \"status_emoji\" : \"$TGIF_EMOJI\", \"status_expiration\": 0 } }" &&

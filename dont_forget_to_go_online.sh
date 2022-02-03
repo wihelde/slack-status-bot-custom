@@ -23,7 +23,7 @@ function isStatusClean() {
     echo "Status Emoji: \"$STATUS_EMOJI\""
     echo "Status Text: \"$STATUS_TEXT\""
     # check for automatic custom_status_message
-    [[ " ${OFF_EMOJI[*]} " =~ ${STATUS_EMOJI} && " ${OFFLINE_MESSAGE[*]} " =~ ${STATUS_TEXT} || "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] &&
+    [[ " ${OFF_EMOJI[*]} " =~ ${STATUS_EMOJI} ]] &&
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by script
@@ -58,6 +58,12 @@ function setProfile() {
         curl -X POST -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set"
       done
     osascript -e 'display notification "'"$MONDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  elif [[ $DOW == "4" ]]; then
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"$THURSDAY_MESSAGE\", \"status_emoji\" : \"$THURSDAY_EMOJI\", \"status_expiration\": 0 } }"
+      for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
+        curl -X POST -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set"
+      done
+    osascript -e 'display notification "'"$THURSDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
   elif [[ $DOW == "5" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$TGIF_MESSAGE\", \"status_emoji\" : \"$TGIF_EMOJI\", \"status_expiration\": 0 } }"
       for i in "${LEGACY_TOKEN_ARRAY[@]}"; do

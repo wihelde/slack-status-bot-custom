@@ -8,11 +8,12 @@ HOLIDAY_EMOJI=:palm_tree:
 MEETING_EMOJI=:spiral_calendar_pad:
 MONDAY_EMOJI=:monday:
 OFF_EMOJI=:mobile_phone_off:
+THURSDAY_EMOJI=:badger:
 ON_EMOJI=(
   ":heart_eyes:"
   ":twisted_rightwards_arrows:"
   ":tropical_fish:"
-  ":+1:"
+  ":thumbsup:"
   ":arrow_upper_right:"
   ":brain:"
   ":shark:"
@@ -52,6 +53,7 @@ DOG_MESSAGE="The dog takes me for a walk"
 FOCUS_MESSAGE="Focus-mode - please disturb only in urgent cases"
 MEETING_MESSAGE="in some non-zoom-meeting"
 MONDAY_MESSAGE="Pretty sure I smell a Monday here ..."
+THURSDAY_MESSAGE="Happy Donnersdachs!"
 ON_MESSAGE=(
   "Love for another person is also always a cost factor"
   "You have only one option: move on, stop or turn back. You can't do both together."

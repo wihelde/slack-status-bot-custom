@@ -22,7 +22,7 @@ function isStatusClean() {
     echo "Status Emoji: \"$STATUS_EMOJI\""
     echo "Status Text: \"$STATUS_TEXT\""
     # check for automatic custom_status_message
-    [[ " ${ON_EMOJI[*]} " =~ ${STATUS_EMOJI} && " ${ON_MESSAGE[*]} " =~ ${STATUS_TEXT} ]] &&
+    [[ " ${ON_EMOJI[*]} " =~ ${STATUS_EMOJI} ]] &&
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by script
