@@ -1,6 +1,6 @@
 # check if you are  in a meeting
 function inADiscordMeeting() {
-  lsof -i -P -n 2>&1 | grep Discord | grep UDP >/dev/null
+  lsof -i -P -n 2>&1 | grep Discord | grep UDP | grep -E "[\:]([0-9]{5})$" >/dev/null
 }
 
 # change your status when in zoom-call and activate DND-mode

@@ -23,7 +23,7 @@ function isStatusClean() {
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by script
-    [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT_EMOJI" || "$STATUS_EMOJI" == "$MEETING_EMOJI" || "$STATUS_EMOJI" == "$MONDAY_EMOJI" || "$STATUS_EMOJI" == "$TGIF_EMOJI" || "$STATUS_EMOJI" == "$DISCORD_EMOJI" || "$STATUS_EMOJI" == "$TEAMS_EMOJI"  || "$STATUS_EMOJI" == "$SKYPE_EMOJI" ]] &&
+    [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT_EMOJI" || "$STATUS_EMOJI" == "$MEETING_EMOJI" || "$STATUS_EMOJI" == "$MONDAY_EMOJI" || "$STATUS_EMOJI" == "$TGIF_EMOJI" || "$STATUS_EMOJI" == "$DISCORD_EMOJI" || "$STATUS_EMOJI" == "$TEAMS_EMOJI"  || "$STATUS_EMOJI" == "$SKYPE_EMOJI" || "$STATUS_EMOJI" == "$THURSDAY_EMOJI" ]] &&
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by outlook
@@ -49,9 +49,9 @@ function reset() {
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }" &&
     osascript -e 'display notification "'"$MONDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
   # message for thursday
-  [[ $DOW == "4" ]] &&
-    PAYLOAD="{ \"profile\": { \"status_text\" : \"$THURSDAY_MESSAGE\", \"status_emoji\" : \"$THURSDAY_EMOJI\", \"status_expiration\": 0 } }" &&
-    osascript -e 'display notification "'"$THURSDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  # [[ $DOW == "4" ]] &&
+  #   PAYLOAD="{ \"profile\": { \"status_text\" : \"$THURSDAY_MESSAGE\", \"status_emoji\" : \"$THURSDAY_EMOJI\", \"status_expiration\": 0 } }" &&
+  #   osascript -e 'display notification "'"$THURSDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
   # message for friday
   [[ $DOW == "5" ]] &&
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$TGIF_MESSAGE\", \"status_emoji\" : \"$TGIF_EMOJI\", \"status_expiration\": 0 } }" &&

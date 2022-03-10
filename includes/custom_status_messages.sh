@@ -31,10 +31,16 @@ ON_EMOJI=(
   ":bomb:"
   ":duck:"
   ":bulb:"
-  ":lion_face:"
+  ":sheep:"
   ":exploding_head:"
   ":robot_face:"
   ":heads_down:"
+  ":sunglasses:"
+  ":older_adult:"
+  ":hotdog:"
+  ":panda_face:"
+  ":door:"
+  ":lion_face:"
 )
 SHOPPING_EMOJI=:shopping_trolley:
 SICK_EMOJI=:face_with_thermometer:
@@ -80,6 +86,12 @@ ON_MESSAGE=(
   "The best thoughts originate in the head."
   "There are two types of mistakes you can make in life. Avoid both."
   "Your failure will be less painful later if you stop trying now."
+  "Why go outside when the sun can shine on your bed?"
+  "I'm at an age now where the next day your body whispers in your ear: never do that again."
+  "Some people react confused when a sentence doesn't end the way they want it to potato salad."
+  "These are not dark circles under the eyes, these are shadows of great actions!"
+  "There are two words that will open many doors for you in life: pull and push."
+  "The lion is the shark among the eagles!"
 )
 OFFLINE_MESSAGE_LIST=(
   "Does this away message really mean I'm away, or am I pretending to be away?"
@@ -88,6 +100,17 @@ OFFLINE_MESSAGE_LIST=(
   "Keep staring at the screen and maybe I'll come back."
   "Roses are red - Violets are blue - Some away messages rhyme, and some don't."
   "Sorry, I'm not here right now, but feel free to talk to the computer as long as you like."
+  "My dog ate my away message"
+  "I'll be back in 5 minutes. If I'm not back by then, I'll be longer."
+  "I'm not here right now...but if I were... wouldn't that be awesome?"
+  "I'm sitting on the TV watching the couch"
+  "This away message will provide you with no entertainment, nor information as to where I am."
+  "I'm currently staring at the back of my eyelids..."
+  "My other away message is funny."
+  "One day I will come up with a good away message, but until then, I'm away!"
+  "Out watching the grass grow"
+  "I fell out of my chair. This might take a while!"
+  "Message Under Construction"
 )
 SHOPPING_MESSAGE="Spending money which I don't have for stuff which I don't need"
 SICK_MESSAGE="Out sick"
@@ -98,7 +121,7 @@ TGIF_MESSAGE="TGIF!"
 VACATION_MESSAGE="strong vacationing"
 
 # get random number to pick random online message and related emoji
-ORDER=$(((RANDOM % 24) + 0))
+ORDER=$(((RANDOM % 30) + 0))
 ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
 ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
 
