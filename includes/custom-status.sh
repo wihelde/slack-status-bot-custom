@@ -27,18 +27,17 @@ if [[ $STATUS == "on" ]]; then
   if [[ $DOW == "1" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }"
     osascript -e 'display notification "'"$MONDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
-  # message for thursday
-  # elif [[ $DOW == "4" ]]; then
-  #   PAYLOAD="{ \"profile\": { \"status_text\" : \"$THURSDAY_MESSAGE\", \"status_emoji\" : \"$THURSDAY_EMOJI\", \"status_expiration\": 0 } }"
-  #   osascript -e 'display notification "'"$THURSDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+    echo "monday" > ./logs/$STATUS_CHECK_FILE
   # message for friday
   elif [[ $DOW == "5" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$TGIF_MESSAGE\", \"status_emoji\" : \"$TGIF_EMOJI\", \"status_expiration\": 0 } }"
     osascript -e 'display notification "'"$TGIF_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+    echo "friday" > ./logs/$STATUS_CHECK_FILE
   # message for all other days
   else
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$ON_MESSAGE_FINAL\", \"status_emoji\" : \"$ON_EMOJI_FINAL\", \"status_expiration\": 0 } }"
     osascript -e 'display notification "'"$ON_MESSAGE_FINAL"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+    echo "weekday" > ./logs/$STATUS_CHECK_FILE
   fi
 fi
 

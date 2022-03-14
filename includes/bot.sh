@@ -1,6 +1,8 @@
 # do magic
 log_cleanup &&
   echo "logs are cleaned up"
+is_status_correct &&
+  echo "checking your status"
 (! isSpotifyPlaying && ! isAppleMusicPlaying && ! inAMeeting && ! inADiscordMeeting && ! inAMicrosoftTeamsMeeting && ! inASkypeMeeting && ! statusReset && ! DNDstatusReset) &&
   echo "Neither Spotify nor Apple Music plays a song." &&
   echo "No Zoom call is running." &&
