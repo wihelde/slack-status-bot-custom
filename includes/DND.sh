@@ -12,14 +12,12 @@ DNDstatusReset() {
 }
 
 function activate_DND_call() {
-  LEGACY_TOKEN_ARRAY_FINAL=("$@")
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     curl -X POST -H "Authorization: Bearer $i" -s 'https://slack.com/api/dnd.setSnooze?&num_minutes=1440'
   done
 }
 
 function Deactivate_DND_call() {
-  LEGACY_TOKEN_ARRAY_FINAL=("$@")
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     curl -X POST -H "Authorization: Bearer $i" -s 'https://slack.com/api/dnd.endDnd'
   done
