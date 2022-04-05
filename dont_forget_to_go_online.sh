@@ -15,7 +15,6 @@ source ./includes/DND.sh
 # check if status is clean to be changed
 function isStatusClean() {
   echo "Calling https://slack.com/api/users.profile.get ..."
-  LEGACY_TOKEN_ARRAY_FINAL=("$@")
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     JSON=$(curl -X GET -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s "https://slack.com/api/users.profile.get")
     STATUS_EMOJI=$(echo "$JSON" | $jq '.profile.status_emoji' | sed 's/\"//g')
@@ -37,7 +36,6 @@ function isStatusClean() {
 }
 
 function changeStatus() {
-  LEGACY_TOKEN_ARRAY_FINAL=("$@")
   STATE=auto
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     curl -s --data token="$i" \
@@ -50,7 +48,6 @@ function changeStatus() {
 }
 
 function setProfile() {
-  LEGACY_TOKEN_ARRAY_FINAL=("$@")
   DeactivateDND
   if [[ $DOW == "1" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }"

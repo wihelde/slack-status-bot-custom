@@ -1,12 +1,10 @@
 function setProfile() {
-  LEGACY_TOKEN_ARRAY_FINAL=("$@")
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     curl -X POST -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set"
   done
 }
 
 function changeStatus() {
-  LEGACY_TOKEN_ARRAY_FINAL=("$@")
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     curl -s --data token="$i" \
       --data presence="$STATE" \
@@ -33,6 +31,10 @@ if [[ $STATUS == "on" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$TGIF_MESSAGE\", \"status_emoji\" : \"$TGIF_EMOJI\", \"status_expiration\": 0 } }"
     osascript -e 'display notification "'"$TGIF_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
     echo "friday" > ./logs/$STATUS_CHECK_FILE
+  elif [[ $DOW == "6" || $DOW == "7" ]]; then
+    PAYLOAD="{ \"profile\": { \"status_text\" : \"$ON_MESSAGE_FINAL\", \"status_emoji\" : \"$ON_EMOJI_FINAL\", \"status_expiration\": 0 } }"
+    osascript -e 'display notification "'"$ON_MESSAGE_FINAL"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+    echo "not working" > ./logs/$STATUS_CHECK_FILE
   # message for all other days
   else
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$ON_MESSAGE_FINAL\", \"status_emoji\" : \"$ON_EMOJI_FINAL\", \"status_expiration\": 0 } }"
@@ -45,18 +47,21 @@ if [[ $STATUS == "off" ]]; then
   STATE=away
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$OFFLINE_MESSAGE\", \"status_emoji\" : \"$OFF_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$OFFLINE_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi
 
 if [[ $STATUS == "sick-on" ]]; then
   STATE=auto
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$SICK_MESSAGE\", \"status_emoji\" : \"$SICK_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$SICK_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi
 
 if [[ $STATUS == "sick-off" ]]; then
   STATE=away
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$SICK_MESSAGE sick\", \"status_emoji\" : \"$SICK_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$SICK_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi
 
 if [[ $STATUS == "break-on" ]]; then
@@ -97,6 +102,7 @@ if [[ $STATUS == "holiday-on" ]]; then
   fi
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$VACATION_MESSAGE $DATEBACK_MESSAGE\", \"status_emoji\" : \"$HOLIDAY_EMOJI\", \"status_expiration\": $TIMESTAMP } }"
   osascript -e 'display notification "'"$VACATION_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi
 
 if [[ $STATUS == "holiday-off" ]]; then
@@ -126,6 +132,7 @@ if [[ $STATUS == "holiday-off" ]]; then
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$VACATION_MESSAGE $DATEBACK_MESSAGE\", \"status_emoji\" : \"$HOLIDAY_EMOJI\", \"status_expiration\": $TIMESTAMP } }"
   echo $PAYLOAD
   osascript -e 'display notification "'"$VACATION_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi
 
 if [[ $STATUS == "meeting" ]]; then
