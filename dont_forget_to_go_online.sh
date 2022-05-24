@@ -8,9 +8,9 @@
 # define your working-directory
 cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1
 
-source ./includes/misc.sh
-source ./includes/custom_status_messages.sh
-source ./includes/DND.sh
+source ./includes/helper/misc.sh
+source ./includes/helper/custom_status_messages.sh
+source ./includes/functions/DND.sh
 
 # check if status is clean to be changed
 function isStatusClean() {
@@ -22,7 +22,7 @@ function isStatusClean() {
     echo "Status Emoji: \"$STATUS_EMOJI\""
     echo "Status Text: \"$STATUS_TEXT\""
     # check for automatic custom_status_message
-    [[ " ${OFF_EMOJI[*]} " =~ ${STATUS_EMOJI} ]] &&
+    [[ " ${OFF_EMOJI[*]} " =~ ${STATUS_EMOJI} || "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] &&
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by script

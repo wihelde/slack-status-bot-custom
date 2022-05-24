@@ -20,6 +20,7 @@ LAST_HOLIDAY="$2"
 
 if [[ $STATUS == "on" ]]; then
   STATE=auto
+  export FINAL_STATUS="reset"
   # message for monday
   DeactivateDND
   if [[ $DOW == "1" ]]; then
@@ -146,12 +147,6 @@ if [[ $STATUS == "dnd" ]]; then
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$FOCUS_MESSAGE\", \"status_emoji\" : \"$FOCUS_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$FOCUS_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
   activateDND
-fi
-
-if [[ $STATUS == "sport" ]]; then
-  STATE=auto
-  PAYLOAD="{ \"profile\": { \"status_text\" : \"$SPORT_MESSAGE\", \"status_emoji\" : \"$SPORT_EMOJI\", \"status_expiration\": 0 } }"
-  osascript -e 'display notification "'"$SPORT_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
 fi
 
 if [[ $STATUS == "shopping" ]]; then

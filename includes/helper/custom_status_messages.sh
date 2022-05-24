@@ -1,14 +1,12 @@
 # EMOJIs
 APPLE_MUSIC_EMOJI=:apple_music:
 BREAK_EMOJI=:double_vertical_bar:
-DEFAULT_EMOJI=:heads-down:
 DOG_EMOJI=:dog2:
 FOCUS_EMOJI=:get-shit-done:
 HOLIDAY_EMOJI=:palm_tree:
 MEETING_EMOJI=:spiral_calendar_pad:
 MONDAY_EMOJI=:monday:
 OFF_EMOJI=:mobile_phone_off:
-THURSDAY_EMOJI=:badger:
 ON_EMOJI=(
   ":heart_eyes:"
   ":twisted_rightwards_arrows:"
@@ -28,7 +26,6 @@ ON_EMOJI=(
   ":eyes:"
   ":air:"
   ":clapper:"
-  ":bomb:"
   ":duck:"
   ":bulb:"
   ":sheep:"
@@ -45,21 +42,22 @@ ON_EMOJI=(
 SHOPPING_EMOJI=:shopping_trolley:
 SICK_EMOJI=:face_with_thermometer:
 SKYPE_EMOJI=:skype:
-SPORT_EMOJI=:rowboat:
 SPOTIFY_EMOJI=:spotify_2:
-DEEZER_EMOJI=:deezer:
 TEAMS_EMOJI=:teams:
 TGIF_EMOJI=:tgif:
 ZOOM_EMOJI=:zoom_3:
 DISCORD_EMOJI=:discord:
+REMEET_EMOJI=:remeet:
+REMEET_VIRTUAL_DESK_EMOJI=:remeet:
 
 # Messages
 BREAK_MESSAGE="Having a break. Having no KitKat."
 DOG_MESSAGE="The dog takes me for a walk"
 FOCUS_MESSAGE="Focus-mode - please disturb only in urgent cases"
-MEETING_MESSAGE="in some non-zoom-meeting"
+MEETING_MESSAGE="in some non-zoom-meeting - will answer later"
+REMEET_MESSAGE="In some remeet-call - will answer later"
+REMEET_VIRTUAL_DESK_MESSAGE="At my virtual desk. Come by if you want"
 MONDAY_MESSAGE="Pretty sure I smell a Monday here ..."
-THURSDAY_MESSAGE="Happy Donnersdachs!"
 ON_MESSAGE=(
   "Love for another person is also always a cost factor"
   "You have only one option: move on, stop or turn back. You can't do both together."
@@ -79,7 +77,6 @@ ON_MESSAGE=(
   "If you don't succeed, 99% of the time it's because of yourself or something else."
   "Insider tip: Fresh air. Use it, because it is like oxygen for the body."
   "Life is like a film. It can be very good, but also very bad."
-  "Money is like an atomic bomb. Better to have than to need."
   "Most people are like ducks. They have hardly any capital investments."
   "Never make the wrong decision when you should be making the right one."
   "Sheep plan for the future. Lions plan far beyond."
@@ -115,15 +112,14 @@ OFFLINE_MESSAGE_LIST=(
 SHOPPING_MESSAGE="Spending money which I don't have for stuff which I don't need"
 SICK_MESSAGE="Out sick"
 SKYPE_MESSAGE="in a meeting - most likely Coke-related"
-SPORT_MESSAGE="Doing some sport, because I'm fat (limited reachability)"
 TEAMS_MESSAGE="in a meeting - most likely Coke-related"
 TGIF_MESSAGE="TGIF!"
 VACATION_MESSAGE="strong vacationing"
 
 # get random number to pick random online message and related emoji
-ORDER=$(((RANDOM % 30) + 0))
-ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
-ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
+ORDER=$(((RANDOM % 28) + 0))
+export ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
+export ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
 
 # get random offline message
 OFFLINE_MESSAGE=${OFFLINE_MESSAGE_LIST[$((RANDOM % ${#OFFLINE_MESSAGE_LIST[@]}))]}

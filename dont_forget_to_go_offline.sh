@@ -8,13 +8,12 @@
 # define your working-directory
 cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1
 
-source ./includes/misc.sh
-source ./includes/custom_status_messages.sh
+source ./includes/helper/misc.sh
+source ./includes/helper/custom_status_messages.sh
 
 # check if status is clean to be changed
 function isStatusClean() {
   echo "Calling https://slack.com/api/users.profile.get ..."
-  LEGACY_TOKEN_ARRAY_FINAL=("$@")
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     JSON=$(curl -X GET -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s "https://slack.com/api/users.profile.get")
     STATUS_EMOJI=$(echo "$JSON" | $jq '.profile.status_emoji' | sed 's/\"//g')
@@ -44,7 +43,6 @@ function isStatusClean() {
 }
 
 function changeStatus() {
-  LEGACY_TOKEN_ARRAY_FINAL=("$@")
   STATE=away
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     curl -s --data token="$i" \
@@ -57,7 +55,6 @@ function changeStatus() {
 }
 
 function setProfile() {
-  LEGACY_TOKEN_ARRAY_FINAL=("$@")
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$OFFLINE_MESSAGE\", \"status_emoji\" : \"$OFF_EMOJI\", \"status_expiration\": 0 } }"
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     curl -X POST -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set"

@@ -7,6 +7,7 @@ cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1
 jq=/opt/homebrew/bin/jq
 
 source ./includes/misc.sh
+source ./includes/shortcuts_app.sh
 source ./includes/custom_status_messages.sh
 source ./includes/apple_music.sh
 source ./includes/spotify.sh
@@ -14,6 +15,8 @@ source ./includes/spotify.sh
 source ./includes/zoom.sh
 source ./includes/discord.sh
 source ./includes/microsoft_teams.sh
+source ./includes/remeet.sh
+source ./includes/remeet_virtual_desk.sh
 source ./includes/skype.sh
 source ./includes/DND.sh
 source ./includes/slack.sh

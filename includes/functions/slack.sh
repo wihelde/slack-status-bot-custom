@@ -1,3 +1,8 @@
+source ./includes/helper/misc.sh
+source ./includes/helper/custom_status_messages.sh
+source ./includes/functions/DND.sh
+source ./includes/functions/shortcuts_app.sh
+
 # change your slack-status
 function setProfile() {
   PAYLOAD=$1
@@ -10,7 +15,7 @@ function setProfile() {
 function changePresence() {
   STATE=$1
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
-    curl -s --data token="$i" --data presence="$STATE" "https://slack.com/api/users.setPresence"
+    curl -s --data token="$i" --data presence="$STATE" "https://slack.com/api/users.setPresence" >/dev/null
   done
 }
 
@@ -28,7 +33,7 @@ function isStatusClean() {
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by script
-    [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT_EMOJI" || "$STATUS_EMOJI" == "$MEETING_EMOJI" || "$STATUS_EMOJI" == "$MONDAY_EMOJI" || "$STATUS_EMOJI" == "$TGIF_EMOJI" || "$STATUS_EMOJI" == "$DISCORD_EMOJI" || "$STATUS_EMOJI" == "$TEAMS_EMOJI"  || "$STATUS_EMOJI" == "$SKYPE_EMOJI" || "$STATUS_EMOJI" == "$THURSDAY_EMOJI" ]] &&
+    [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT_EMOJI" || "$STATUS_EMOJI" == "$MEETING_EMOJI" || "$STATUS_EMOJI" == "$MONDAY_EMOJI" || "$STATUS_EMOJI" == "$TGIF_EMOJI" || "$STATUS_EMOJI" == "$DISCORD_EMOJI" || "$STATUS_EMOJI" == "$TEAMS_EMOJI"  || "$STATUS_EMOJI" == "$SKYPE_EMOJI" || "$STATUS_EMOJI" == "$THURSDAY_EMOJI" || "$STATUS_EMOJI" == "$REMEET_EMOJI" ]] &&
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by outlook
@@ -47,7 +52,11 @@ function isStatusClean() {
 
 # reset your status to your random default-status; special handling for monday and friday
 function reset() {
-  [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
+#  [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
+  ORDER=$(((RANDOM % 28) + 0))
+  ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
+  ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
+  export FINAL_STATUS="reset"
   echo 'Resetting status'
   # message for monday
   [[ $DOW == "1" ]] &&
@@ -64,8 +73,11 @@ function reset() {
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$ON_MESSAGE_FINAL\", \"status_emoji\" : \"$ON_EMOJI_FINAL\", \"status_expiration\": 0 } }" &&
     osascript -e 'display notification "'"$ON_MESSAGE_FINAL"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
     echo "weekday" > ./logs/$STATUS_CHECK_FILE
-  setProfile "$PAYLOAD"
-  echo "reset" >./logs/$STATUS_FILE
+  isStatusClean &&
+  setProfile "$PAYLOAD" &&
+  DeactivateDND &&
+  LightOff &&
+  AirPurifierON
 }
 
 # check if your status is still correct
@@ -73,40 +85,32 @@ function is_status_correct() {
     # message for monday
     STATUS_CHECK=$(cat ./logs/$STATUS_CHECK_FILE)
     [[ $DOW == "1" && ( $STATUS_CHECK != "monday" && $STATUS_CHECK != "not working" ) ]] &&
+      echo "monday" > ./logs/$STATUS_CHECK_FILE &&
+      echo "reset" >./logs/$STATUS_FILE &&
       PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }" &&
       osascript -e 'display notification "'"$MONDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
       setProfile "$PAYLOAD" &&
       STATE="auto" &&
-      changePresence "$STATE" &&
-      echo "monday" > ./logs/$STATUS_CHECK_FILE &&
-      echo "reset" >./logs/$STATUS_FILE
+      changePresence "$STATE"
     # message for all other workdays
     [[ ( $DOW = "2" || $DOW = "3" || $DOW = "4" ) && ( $STATUS_CHECK != "weekday" && $STATUS_CHECK != "not working" ) ]] &&
+      echo "reset" >./logs/$STATUS_FILE
+      echo "weekday" > ./logs/$STATUS_CHECK_FILE &&
       PAYLOAD="{ \"profile\": { \"status_text\" : \"$ON_MESSAGE_FINAL\", \"status_emoji\" : \"$ON_EMOJI_FINAL\", \"status_expiration\": 0 } }" &&
       osascript -e 'display notification "'"$ON_MESSAGE_FINAL"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
-      echo "weekday" > ./logs/$STATUS_CHECK_FILE &&
       setProfile "$PAYLOAD" &&
       STATE="auto" &&
-      changePresence "$STATE" &&
-      echo "reset" >./logs/$STATUS_FILE
+      changePresence "$STATE"
     # message for friday
     [[ $DOW == "5" && ( $STATUS_CHECK != "friday" && $STATUS_CHECK != "not working" ) ]] &&
+      echo "friday" > ./logs/$STATUS_CHECK_FILE &&
+      echo "reset" >./logs/$STATUS_FILE &&
       PAYLOAD="{ \"profile\": { \"status_text\" : \"$TGIF_MESSAGE\", \"status_emoji\" : \"$TGIF_EMOJI\", \"status_expiration\": 0 } }" &&
       osascript -e 'display notification "'"$TGIF_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
       setProfile "$PAYLOAD" &&
       STATE="auto" &&
-      changePresence "$STATE" &&
-      echo "friday" > ./logs/$STATUS_CHECK_FILE &&
-      echo "reset" >./logs/$STATUS_FILE
+      changePresence "$STATE"
     # message for weekend
     [[ ( $DOW = "6" || $DOW = "7" ) && $STATUS_CHECK != "not working" ]] &&
       echo "not working" > ./logs/$STATUS_CHECK_FILE
-}
-
-# check if status was already reset
-statusReset() {
-  test ! -f ./logs/$STATUS_FILE && return 0
-  STATUS=$(cat ./logs/$STATUS_FILE)
-  [[ "$STATUS" != "reset" ]] && return 0
-  return 1
 }
