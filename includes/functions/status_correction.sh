@@ -3,12 +3,45 @@ source ./includes/helper/custom_status_messages.sh
 source ./includes/functions/slack.sh
 source ./includes/functions/zoom.sh
 source ./includes/functions/spotify.sh
-source ./includes/functions/remeet.sh
-source ./includes/functions/remeet_virtual_desk.sh
-source ./includes/functions/skype.sh
 source ./includes/functions/microsoft_teams.sh
-source ./includes/functions/discord.sh
 source ./includes/functions/apple_music.sh
+
+# check if your status is still correct
+function is_status_correct() {
+    DOW=$(date +%u)
+    # message for monday
+    STATUS_CHECK=$(cat ./logs/$STATUS_CHECK_FILE)
+    [[ $DOW == "1" && $STATUS_CHECK != "monday" && $STATUS_CHECK != "not working" ]] &&
+      echo "monday" > ./logs/$STATUS_CHECK_FILE &&
+      PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }" &&
+      osascript -e 'display notification "'"$MONDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
+      setProfile "$PAYLOAD" &&
+      STATE="auto" &&
+      changePresence "$STATE"
+    # message for all other workdays
+    [[ ( $DOW = "2" || $DOW = "3" || $DOW = "4" ) && ( $STATUS_CHECK != "weekday" && $STATUS_CHECK != "not working" ) ]] &&
+      echo "weekday" > ./logs/$STATUS_CHECK_FILE &&
+      PAYLOAD="{ \"profile\": { \"status_text\" : \"$ON_MESSAGE_FINAL\", \"status_emoji\" : \"$ON_EMOJI_FINAL\", \"status_expiration\": 0 } }" &&
+      osascript -e 'display notification "'"$ON_MESSAGE_FINAL"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
+      setProfile "$PAYLOAD" &&
+      STATE="auto" &&
+      changePresence "$STATE"
+    # message for friday
+    [[ $DOW == "5" && ( $STATUS_CHECK != "friday" && $STATUS_CHECK != "not working" ) ]] &&
+      echo "friday" > ./logs/$STATUS_CHECK_FILE &&
+      PAYLOAD="{ \"profile\": { \"status_text\" : \"$TGIF_MESSAGE\", \"status_emoji\" : \"$TGIF_EMOJI\", \"status_expiration\": 0 } }" &&
+      osascript -e 'display notification "'"$TGIF_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
+      setProfile "$PAYLOAD" &&
+      STATE="auto" &&
+      changePresence "$STATE"
+    # message for weekend
+    [[ ( $DOW = "6" || $DOW = "7" ) && $STATUS_CHECK != "not working" && $STATUS_CHECK != "weekend" ]] &&
+      echo "weekend" > ./logs/$STATUS_CHECK_FILE &&
+      PAYLOAD="{ \"profile\": { \"status_text\" : \"$OFFLINE_MESSAGE\", \"status_emoji\" : \"$OFF_EMOJI\", \"status_expiration\": 0 } }" &&
+      setProfile "$PAYLOAD" &&
+      STATE="auto" &&
+      changePresence "$STATE"
+}
 
 function correctStatus() {
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
@@ -21,15 +54,8 @@ function correctStatus() {
       reset
     ( ! isSpotifyPlaying && [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" ]] ) &&
       reset
-    ( ! inARemeetMeeting && [[ "$STATUS_EMOJI" == "$REMEET_EMOJI" && $STATUS_TEXT == "$REMEET_MESSAGE" ]] ) &&
-      reset
-    ( ! inARemeetMeetingVirtualDesk && [[ "$STATUS_EMOJI" == "$REMEET_VIRTUAL_DESK_EMOJI" && $STATUS_TEXT == "$REMEET_VIRTUAL_DESK_MESSAGE" ]] ) &&
-      reset
-    ( ! inASkypeMeeting && [[ "$STATUS_EMOJI" == "$SKYPE_EMOJI" ]] ) &&
-      reset
     ( ! inAMicrosoftTeamsMeeting && [[ "$STATUS_EMOJI" == "$TEAMS_EMOJI" ]] ) &&
       reset
-    ( ! inADiscordMeeting && [[ "$STATUS_EMOJI" == "$DISCORD_EMOJI" ]] ) &&
-      reset
     ( ! isAppleMusicPlaying && [[ "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" ]] ) && reset
+    is_status_correct
 }

@@ -22,7 +22,7 @@ if [[ $STATUS == "on" ]]; then
   STATE=auto
   export FINAL_STATUS="reset"
   # message for monday
-  DeactivateDND
+  Deactivate_DND_call
   if [[ $DOW == "1" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }"
     osascript -e 'display notification "'"$MONDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
@@ -63,6 +63,7 @@ if [[ $STATUS == "sick-off" ]]; then
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$SICK_MESSAGE sick\", \"status_emoji\" : \"$SICK_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$SICK_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
   echo "not working" > ./logs/$STATUS_CHECK_FILE
+  activate_DND_call
 fi
 
 if [[ $STATUS == "break-on" ]]; then
@@ -140,13 +141,14 @@ if [[ $STATUS == "meeting" ]]; then
   STATE=auto
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$MEETING_MESSAGE\", \"status_emoji\" : \"$MEETING_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$MEETING_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  activate_DND_call
 fi
 
 if [[ $STATUS == "dnd" ]]; then
   STATE=auto
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$FOCUS_MESSAGE\", \"status_emoji\" : \"$FOCUS_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$FOCUS_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
-  activateDND
+  activate_DND_call
 fi
 
 if [[ $STATUS == "shopping" ]]; then
@@ -161,16 +163,15 @@ if [[ $STATUS == "dog" ]]; then
   osascript -e 'display notification "'"$DOG_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
 fi
 
-if [[ $STATUS == "skype" ]]; then
+if [[ $STATUS == "remeet" ]]; then
   STATE=auto
-  PAYLOAD="{ \"profile\": { \"status_text\" : \"$SKYPE\", \"status_emoji\" : \"$SKYPE_EMOJI\", \"status_expiration\": 0 } }"
-  osascript -e 'display notification "'"$SKYPE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
-  activateDND
+  PAYLOAD="{ \"profile\": { \"status_text\": \"$REMEET_MESSAGE\", \"status_emoji\": \"$REMEET_EMOJI\", \"status_expiration\": 0 } }"
+  osascript -e 'display notification "'"$REMEET_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  activate_DND_call
 fi
 
-if [[ $STATUS == "teams" ]]; then
-  STATE=auto
-  PAYLOAD="{ \"profile\": { \"status_text\" : \"$TEAMS_MESSAGE\", \"status_emoji\" : \"$TEAMS_EMOJI\", \"status_expiration\": 0 } }"
-  osascript -e 'display notification "'"$TEAMS_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
-  activateDND
+if [[ $STATUS == "travel" ]]; then
+  STATE=away
+  PAYLOAD="{ \"profile\": { \"status_text\" : \"$TRAVEL_MESSAGE\", \"status_emoji\" : \"$TRAVEL_EMOJI\", \"status_expiration\": 0 } }"
+  osascript -e 'display notification "'"$TRAVEL_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
 fi

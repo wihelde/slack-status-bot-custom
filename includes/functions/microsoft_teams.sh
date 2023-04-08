@@ -1,4 +1,3 @@
-source ./includes/functions/shortcuts_app.sh
 source ./includes/functions/DND.sh
 source ./includes/helper/misc.sh
 source ./includes/helper/custom_status_messages.sh
@@ -12,13 +11,9 @@ function inAMicrosoftTeamsMeeting() {
 # change your status when in zoom-call and activate DND-mode
 function setStatusInMicrosoftTeamsMeeting() {
   ( inAMicrosoftTeamsMeeting && [[ $FINAL_STATUS == "inAMicrosoftTeamsCall" ]] ) &&
-    LightOn &&
-    AirPurifierOFF &&
     activateDND
   ( inAMicrosoftTeamsMeeting && [[ $FINAL_STATUS != "inAMicrosoftTeamsCall" ]] && isStatusClean ) &&
     export FINAL_STATUS="inAMicrosoftTeamsCall" &&
-    LightOn &&
-    AirPurifierOFF &&
     activateDND &&
     echo "Trying to set your Slack-status to show you started a Microsoft-Teams-Call" &&
     PAYLOAD="{ \"profile\": { \"status_text\": \"In a meeting - will answer later\", \"status_emoji\": \"$TEAMS_EMOJI\", \"status_expiration\": 0 } }" &&

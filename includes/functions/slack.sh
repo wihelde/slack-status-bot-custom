@@ -1,7 +1,6 @@
 source ./includes/helper/misc.sh
 source ./includes/helper/custom_status_messages.sh
 source ./includes/functions/DND.sh
-source ./includes/functions/shortcuts_app.sh
 
 # change your slack-status
 function setProfile() {
@@ -52,12 +51,14 @@ function isStatusClean() {
 
 # reset your status to your random default-status; special handling for monday and friday
 function reset() {
+  DOW=$(date +%u)
 #  [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] && return 0
   ORDER=$(((RANDOM % 28) + 0))
   ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
   ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
   export FINAL_STATUS="reset"
   echo 'Resetting status'
+  echo $DOW
   # message for monday
   [[ $DOW == "1" ]] &&
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }" &&
@@ -75,42 +76,5 @@ function reset() {
     echo "weekday" > ./logs/$STATUS_CHECK_FILE
   isStatusClean &&
   setProfile "$PAYLOAD" &&
-  DeactivateDND &&
-  LightOff &&
-  AirPurifierON
-}
-
-# check if your status is still correct
-function is_status_correct() {
-    # message for monday
-    STATUS_CHECK=$(cat ./logs/$STATUS_CHECK_FILE)
-    [[ $DOW == "1" && ( $STATUS_CHECK != "monday" && $STATUS_CHECK != "not working" ) ]] &&
-      echo "monday" > ./logs/$STATUS_CHECK_FILE &&
-      echo "reset" >./logs/$STATUS_FILE &&
-      PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }" &&
-      osascript -e 'display notification "'"$MONDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
-      setProfile "$PAYLOAD" &&
-      STATE="auto" &&
-      changePresence "$STATE"
-    # message for all other workdays
-    [[ ( $DOW = "2" || $DOW = "3" || $DOW = "4" ) && ( $STATUS_CHECK != "weekday" && $STATUS_CHECK != "not working" ) ]] &&
-      echo "reset" >./logs/$STATUS_FILE
-      echo "weekday" > ./logs/$STATUS_CHECK_FILE &&
-      PAYLOAD="{ \"profile\": { \"status_text\" : \"$ON_MESSAGE_FINAL\", \"status_emoji\" : \"$ON_EMOJI_FINAL\", \"status_expiration\": 0 } }" &&
-      osascript -e 'display notification "'"$ON_MESSAGE_FINAL"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
-      setProfile "$PAYLOAD" &&
-      STATE="auto" &&
-      changePresence "$STATE"
-    # message for friday
-    [[ $DOW == "5" && ( $STATUS_CHECK != "friday" && $STATUS_CHECK != "not working" ) ]] &&
-      echo "friday" > ./logs/$STATUS_CHECK_FILE &&
-      echo "reset" >./logs/$STATUS_FILE &&
-      PAYLOAD="{ \"profile\": { \"status_text\" : \"$TGIF_MESSAGE\", \"status_emoji\" : \"$TGIF_EMOJI\", \"status_expiration\": 0 } }" &&
-      osascript -e 'display notification "'"$TGIF_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
-      setProfile "$PAYLOAD" &&
-      STATE="auto" &&
-      changePresence "$STATE"
-    # message for weekend
-    [[ ( $DOW = "6" || $DOW = "7" ) && $STATUS_CHECK != "not working" ]] &&
-      echo "not working" > ./logs/$STATUS_CHECK_FILE
+  DeactivateDND
 }

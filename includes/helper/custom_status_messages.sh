@@ -31,7 +31,7 @@ ON_EMOJI=(
   ":sheep:"
   ":exploding_head:"
   ":robot_face:"
-  ":heads_down:"
+  ":heads-down:"
   ":sunglasses:"
   ":older_adult:"
   ":hotdog:"
@@ -49,6 +49,7 @@ ZOOM_EMOJI=:zoom_3:
 DISCORD_EMOJI=:discord:
 REMEET_EMOJI=:remeet:
 REMEET_VIRTUAL_DESK_EMOJI=:remeet:
+TRAVEL_EMOJI=:car:
 
 # Messages
 BREAK_MESSAGE="Having a break. Having no KitKat."
@@ -115,6 +116,7 @@ SKYPE_MESSAGE="in a meeting - most likely Coke-related"
 TEAMS_MESSAGE="in a meeting - most likely Coke-related"
 TGIF_MESSAGE="TGIF!"
 VACATION_MESSAGE="strong vacationing"
+TRAVEL_MESSAGE="On my way to Adventure Land"
 
 # get random number to pick random online message and related emoji
 ORDER=$(((RANDOM % 28) + 0))

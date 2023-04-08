@@ -8,30 +8,16 @@
 ENABLE_SPOTIFY="yes"
 
 # Do you want to share your Apple Music-Status? Please use "yes" or "no"
-ENABLE_APPLE_MUSIC="yes"
+ENABLE_APPLE_MUSIC="no"
 
 # Do you want to share your Zoom-Status? Please use "yes" or "no"
 ENABLE_ZOOM="yes"
-
-# Do you want to share your REMEET-Status? Please use "yes" or "no"
-ENABLE_REMEET="yes"
-# What is your remeet-user? Go to your virtual desk and copy the everything after https://esome.remeet.com/meet/
-export REMEET_USER="martin-behrendt"
-
-# Do you want to share your Skype-Status? Please use "yes" or "no"
-ENABLE_SKYPE="no"
-
-# Do you want to share your Discord-Status? Please use "yes" or "no"
-ENABLE_DISCORD="no"
 
 # Do you want to share your Microsoft Teams-Status? Please use "yes" or "no"
 ENABLE_MICROSOFT_TEAMS="yes"
 
 # Do you want to enable and disable your Mac OS Focus-mode during calls?
 export ENABLE_FOCUS_SWITCH="yes"
-# To do so, please create a shortcut in the shortcuts-app and paste the names of your shortcuts below
-export FOCUS_ON="Fokus ein"
-export FOCUS_OFF="Fokus aus"
 
 #####################
 ### Do not touch! ###
@@ -44,11 +30,7 @@ cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1
 trap 'kill -9 $(jobs -p)' EXIT
 
 [[ "$ENABLE_ZOOM" == "yes" ]] && source ./includes/zoom.sh &
-[[ "$ENABLE_REMEET" == "yes" ]] && source ./includes/remeet_virtual_desk.sh &
-[[ "$ENABLE_REMEET" == "yes" ]] && source ./includes/remeet.sh &
 [[ "$ENABLE_SPOTIFY" == "yes" ]] && source ./includes/spotify.sh &
 [[ "$ENABLE_APPLE_MUSIC" == "yes" ]] && source ./includes/apple_music.sh &
-[[ "$ENABLE_DISCORD" == "yes" ]] && source ./includes/discord.sh &
 [[ "$ENABLE_MICROSOFT_TEAMS" == "yes" ]] && source ./includes/microsoft_teams.sh &
-[[ "$ENABLE_SKYPE" == "yes" ]] && source ./includes/skype.sh &
 source ./includes/status_correction.sh

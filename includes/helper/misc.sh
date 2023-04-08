@@ -3,7 +3,6 @@ jq=/opt/homebrew/bin/jq
 
 # get current day of week
 export DOW=$(date +%u)
-export date=$(date +"%Y-%m-%d %T")
 
 # define your local tracking-files
 STATUS_CHECK_FILE=status_check.txt

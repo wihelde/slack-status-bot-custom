@@ -1,9 +1,6 @@
-source ./includes/functions/shortcuts_app.sh
-source ./includes/functions/DND.sh
 source ./includes/helper/misc.sh
 source ./includes/helper/custom_status_messages.sh
 source ./includes/functions/slack.sh
-source ./includes/functions/remeet_virtual_desk.sh
 
 # check if spotify is running
 function isSpotifyPlaying() {
@@ -25,16 +22,16 @@ function SpotifyGetSong() {
 # change your status with spotify-infos
 function setStatusSpotify() {
   SPOTIFY_SONG=$(SpotifyGetSong)
-  ( ! inARemeetMeetingVirtualDesk && isSpotifyPlaying ) &&
+  ( isSpotifyPlaying ) &&
     echo "Detected Spotify track: $SPOTIFY_SONG" &&
     [[ $FINAL_STATUS == "$SPOTIFY_SONG" ]] &&
     echo "Same Spotify song detected. Call to API will be avoided."
-  ( ! inARemeetMeetingVirtualDesk && isSpotifyPlaying && [[ $FINAL_STATUS != "$SPOTIFY_SONG" ]] && isStatusClean ) &&
+  ( isSpotifyPlaying && [[ $FINAL_STATUS != "$SPOTIFY_SONG" ]] && isStatusClean ) &&
     export FINAL_STATUS="$SPOTIFY_SONG" &&
     echo "Trying to set Slack-Status to your current Spotify-Song" &&
     PAYLOAD="{ \"profile\": { \"status_text\": \"$SPOTIFY_SONG\", \"status_emoji\": \"$SPOTIFY_EMOJI\", \"status_expiration\": 0 } }" &&
     echo "Setting your Slack-status to your current Spotify-Song" &&
     setProfile "$PAYLOAD"
-  ( ! inARemeetMeetingVirtualDesk && ! isSpotifyPlaying && [[ $FINAL_STATUS == "$SPOTIFY_SONG" && "$SPOTIFY_SONG" != "" ]] ) &&
+  ( ! isSpotifyPlaying && [[ $FINAL_STATUS == "$SPOTIFY_SONG" && "$SPOTIFY_SONG" != "" ]] ) &&
     reset
 }
