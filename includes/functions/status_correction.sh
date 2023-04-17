@@ -11,7 +11,7 @@ function is_status_correct() {
     DOW=$(date +%u)
     # message for monday
     STATUS_CHECK=$(cat ./logs/$STATUS_CHECK_FILE)
-    [[ $DOW == "1" && $STATUS_CHECK != "monday" && $STATUS_CHECK != "not working" ]] &&
+    [[ $DOW == "1" && $STATUS_CHECK != "monday" && $STATUS_CHECK != "not working" ]] && isStatusClean &&
       echo "monday" > ./logs/$STATUS_CHECK_FILE &&
       PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }" &&
       osascript -e 'display notification "'"$MONDAY_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
@@ -19,7 +19,7 @@ function is_status_correct() {
       STATE="auto" &&
       changePresence "$STATE"
     # message for all other workdays
-    [[ ( $DOW = "2" || $DOW = "3" || $DOW = "4" ) && ( $STATUS_CHECK != "weekday" && $STATUS_CHECK != "not working" ) ]] &&
+    [[ ( $DOW = "2" || $DOW = "3" || $DOW = "4" ) && ( $STATUS_CHECK != "weekday" && $STATUS_CHECK != "not working" ) ]] && isStatusClean &&
       echo "weekday" > ./logs/$STATUS_CHECK_FILE &&
       PAYLOAD="{ \"profile\": { \"status_text\" : \"$ON_MESSAGE_FINAL\", \"status_emoji\" : \"$ON_EMOJI_FINAL\", \"status_expiration\": 0 } }" &&
       osascript -e 'display notification "'"$ON_MESSAGE_FINAL"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
@@ -27,7 +27,7 @@ function is_status_correct() {
       STATE="auto" &&
       changePresence "$STATE"
     # message for friday
-    [[ $DOW == "5" && ( $STATUS_CHECK != "friday" && $STATUS_CHECK != "not working" ) ]] &&
+    [[ $DOW == "5" && ( $STATUS_CHECK != "friday" && $STATUS_CHECK != "not working" ) ]] && isStatusClean &&
       echo "friday" > ./logs/$STATUS_CHECK_FILE &&
       PAYLOAD="{ \"profile\": { \"status_text\" : \"$TGIF_MESSAGE\", \"status_emoji\" : \"$TGIF_EMOJI\", \"status_expiration\": 0 } }" &&
       osascript -e 'display notification "'"$TGIF_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"' &&
@@ -35,7 +35,7 @@ function is_status_correct() {
       STATE="auto" &&
       changePresence "$STATE"
     # message for weekend
-    [[ ( $DOW = "6" || $DOW = "7" ) && $STATUS_CHECK != "not working" && $STATUS_CHECK != "weekend" ]] &&
+    [[ ( $DOW = "6" || $DOW = "7" ) && $STATUS_CHECK != "not working" && $STATUS_CHECK != "weekend" ]] && isStatusClean &&
       echo "weekend" > ./logs/$STATUS_CHECK_FILE &&
       PAYLOAD="{ \"profile\": { \"status_text\" : \"$OFFLINE_MESSAGE\", \"status_emoji\" : \"$OFF_EMOJI\", \"status_expiration\": 0 } }" &&
       setProfile "$PAYLOAD" &&

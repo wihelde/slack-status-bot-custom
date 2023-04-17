@@ -38,6 +38,9 @@ ON_EMOJI=(
   ":panda_face:"
   ":door:"
   ":lion_face:"
+  ":cucumber:"
+  ":placard:"
+  ":speech_balloon:"
 )
 SHOPPING_EMOJI=:shopping_trolley:
 SICK_EMOJI=:face_with_thermometer:
@@ -90,6 +93,9 @@ ON_MESSAGE=(
   "These are not dark circles under the eyes, these are shadows of great actions!"
   "There are two words that will open many doors for you in life: pull and push."
   "The lion is the shark among the eagles!"
+  "The human body consists of 90% water. So we are cucumbers with feelings"
+  "Your advertising could be here!"
+  "I hate people who, in the middle of a sentence...."
 )
 OFFLINE_MESSAGE_LIST=(
   "Does this away message really mean I'm away, or am I pretending to be away?"
@@ -119,7 +125,7 @@ VACATION_MESSAGE="strong vacationing"
 TRAVEL_MESSAGE="On my way to Adventure Land"
 
 # get random number to pick random online message and related emoji
-ORDER=$(((RANDOM % 28) + 0))
+ORDER=$(((RANDOM % 31) + 0))
 export ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
 export ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
 
