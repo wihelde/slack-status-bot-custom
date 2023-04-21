@@ -29,8 +29,8 @@ cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1
 # kills all background processes when this script is killed
 trap 'kill -9 $(jobs -p)' EXIT
 
-[[ "$ENABLE_ZOOM" == "yes" ]] && source ./includes/zoom.sh &
+source ./includes/status_correction.sh &
 [[ "$ENABLE_SPOTIFY" == "yes" ]] && source ./includes/spotify.sh &
-[[ "$ENABLE_APPLE_MUSIC" == "yes" ]] && source ./includes/apple_music.sh &
 [[ "$ENABLE_MICROSOFT_TEAMS" == "yes" ]] && source ./includes/microsoft_teams.sh &
-source ./includes/status_correction.sh
+[[ "$ENABLE_APPLE_MUSIC" == "yes" ]] && source ./includes/apple_music.sh &
+[[ "$ENABLE_ZOOM" == "yes" ]] && source ./includes/zoom.sh
