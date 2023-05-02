@@ -32,7 +32,7 @@ function isStatusClean() {
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by script
-    [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT_EMOJI" || "$STATUS_EMOJI" == "$MEETING_EMOJI" || "$STATUS_EMOJI" == "$MONDAY_EMOJI" || "$STATUS_EMOJI" == "$TGIF_EMOJI" || "$STATUS_EMOJI" == "$DISCORD_EMOJI" || "$STATUS_EMOJI" == "$TEAMS_EMOJI"  || "$STATUS_EMOJI" == "$SKYPE_EMOJI" || "$STATUS_EMOJI" == "$THURSDAY_EMOJI" || "$STATUS_EMOJI" == "$REMEET_EMOJI" ]] &&
+    [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT_EMOJI" || "$STATUS_EMOJI" == "$MEETING_EMOJI" || "$STATUS_EMOJI" == "$MONDAY_EMOJI" || "$STATUS_EMOJI" == "$TGIF_EMOJI" || "$STATUS_EMOJI" == "$DISCORD_EMOJI" || "$STATUS_EMOJI" == "$TEAMS_EMOJI"  || "$STATUS_EMOJI" == "$SKYPE_EMOJI" || "$STATUS_EMOJI" == "$THURSDAY_EMOJI" || "$STATUS_EMOJI" == "$REMEET_EMOJI" || "$STATUS_EMOJI" == "$OFF_EMOJI" ]] &&
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by outlook
