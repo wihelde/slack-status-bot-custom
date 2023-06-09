@@ -30,6 +30,7 @@ cd "$(dirname "$0")" >/dev/null 2>&1 || exit 1
 trap 'kill -9 $(jobs -p)' EXIT
 
 source ./includes/status_correction.sh &
+source ./includes/presence_correction.sh &
 [[ "$ENABLE_SPOTIFY" == "yes" ]] && source ./includes/spotify.sh &
 [[ "$ENABLE_MICROSOFT_TEAMS" == "yes" ]] && source ./includes/microsoft_teams.sh &
 [[ "$ENABLE_APPLE_MUSIC" == "yes" ]] && source ./includes/apple_music.sh &
