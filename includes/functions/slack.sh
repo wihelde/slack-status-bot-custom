@@ -21,6 +21,7 @@ function changePresence() {
 # check if status is clean to be changed
 function isStatusClean() {
   echo "Calling https://slack.com/api/users.profile.get ..."
+  STATUS_CHECK=$(cat ./logs/$STATUS_CHECK_FILE)
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     JSON=$(curl -X GET -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s "https://slack.com/api/users.profile.get")
     STATUS_EMOJI=$(echo "$JSON" | $jq '.profile.status_emoji' | sed 's/\"//g')
@@ -32,7 +33,8 @@ function isStatusClean() {
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by script
-    [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT_EMOJI" || "$STATUS_EMOJI" == "$MEETING_EMOJI" || "$STATUS_EMOJI" == "$MONDAY_EMOJI" || "$STATUS_EMOJI" == "$TGIF_EMOJI" || "$STATUS_EMOJI" == "$DISCORD_EMOJI" || "$STATUS_EMOJI" == "$TEAMS_EMOJI"  || "$STATUS_EMOJI" == "$SKYPE_EMOJI" || "$STATUS_EMOJI" == "$THURSDAY_EMOJI" || "$STATUS_EMOJI" == "$REMEET_EMOJI" || "$STATUS_EMOJI" == "$OFF_EMOJI" ]] &&
+    [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT_EMOJI" || "$STATUS_EMOJI" == "$MEETING_EMOJI" || "$STATUS_EMOJI" == "$MONDAY_EMOJI" || "$STATUS_EMOJI" == "$TGIF_EMOJI" || "$STATUS_EMOJI" == "$DISCORD_EMOJI" || "$STATUS_EMOJI" == "$TEAMS_EMOJI"  || "$STATUS_EMOJI" == "$SKYPE_EMOJI" || "$STATUS_EMOJI" == "$THURSDAY_EMOJI" || "$STATUS_EMOJI" == "$REMEET_EMOJI" || "$STATUS_EMOJI" == "$OFF_EMOJI" || "$STATUS_EMOJI" == "$OFFICELY_OFFICE" || "$STATUS_EMOJI" == "$OFFICELY_HOME" ]] &&
+    [[ $STATUS_CHECK != "not working" ]] &&
       echo " -> Status is allowed to change" &&
       return 0
     # check for status-message set by outlook

@@ -7,8 +7,9 @@ HOLIDAY_EMOJI=:palm_tree:
 MEETING_EMOJI=:spiral_calendar_pad:
 MONDAY_EMOJI=:monday:
 OFF_EMOJI=:mobile_phone_off:
+OFFICELY_OFFICE=:office:
+OFFICELY_HOME=:house_with_garden:
 ON_EMOJI=(
-  ":heart_eyes:"
   ":twisted_rightwards_arrows:"
   ":tropical_fish:"
   ":thumbsup:"
@@ -17,7 +18,7 @@ ON_EMOJI=(
   ":shark:"
   ":penguin:"
   ":construction:"
-  ":question:"
+  ":neutral_face:"
   ":elephant:"
   ":eagle:"
   ":fire:"
@@ -27,20 +28,22 @@ ON_EMOJI=(
   ":air:"
   ":clapper:"
   ":duck:"
-  ":bulb:"
+  ":index_pointing_at_the_viewer:"
   ":sheep:"
   ":exploding_head:"
-  ":robot_face:"
+  ":bulb:"
   ":heads-down:"
   ":sunglasses:"
   ":older_adult:"
-  ":hotdog:"
+  ":potato:"
   ":panda_face:"
   ":door:"
   ":lion_face:"
   ":cucumber:"
   ":placard:"
-  ":speech_balloon:"
+  ":speak_no_evil:"
+  ":muscle:"
+  ":melting_face:"
 )
 SHOPPING_EMOJI=:shopping_trolley:
 SICK_EMOJI=:face_with_thermometer:
@@ -63,7 +66,6 @@ REMEET_MESSAGE="In some remeet-call - will answer later"
 REMEET_VIRTUAL_DESK_MESSAGE="At my virtual desk. Come by if you want"
 MONDAY_MESSAGE="Pretty sure I smell a Monday here ..."
 ON_MESSAGE=(
-  "Love for another person is also always a cost factor"
   "You have only one option: move on, stop or turn back. You can't do both together."
   "You can paint a goldfish like a lion, but when the rain comes, it will show who is the eagle"
   "If you're a real winner, turn November into Yes-vember"
@@ -96,6 +98,8 @@ ON_MESSAGE=(
   "The human body consists of 90% water. So we are cucumbers with feelings"
   "Your advertising could be here!"
   "I hate people who, in the middle of a sentence...."
+  "Don't let ANYONE ruin your day - it's YOUR day, ruin it YOURSELF!"
+  "Another fine day ruined by responsibility"
 )
 OFFLINE_MESSAGE_LIST=(
   "Does this away message really mean I'm away, or am I pretending to be away?"
@@ -125,7 +129,7 @@ VACATION_MESSAGE="strong vacationing"
 TRAVEL_MESSAGE="On my way to Adventure Land"
 
 # get random number to pick random online message and related emoji
-ORDER=$(((RANDOM % 31) + 0))
+ORDER=$(((RANDOM % 32) + 0))
 export ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
 export ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
 
