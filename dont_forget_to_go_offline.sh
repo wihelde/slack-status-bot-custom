@@ -60,6 +60,7 @@ function setProfile() {
     curl -X POST -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set"
   done
   osascript -e 'display notification "'"$OFFLINE_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  osascript -e 'try' -e 'if application "Gather" is running then' -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "u" using command down' -e 'end tell' -e 'end if' -e 'end try'
   echo "not working" > ./logs/$STATUS_CHECK_FILE
 }
 

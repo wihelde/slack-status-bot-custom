@@ -15,6 +15,15 @@ function changeStatus() {
   done
 }
 
+function GatherOffline() {
+  osascript -e 'try' -e 'if application "Gather" is running then' -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "u" using command down' -e 'end tell' -e 'end if' -e 'end try'
+}
+
+function GatherOnline() {
+  #osascript -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'key code 53' -e 'end tell'
+  osascript -e 'try' -e 'if application "Gather" is running then' -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'key code 53' -e 'end tell' -e 'end if' -e 'end try'
+}
+
 STATUS="$1"
 LAST_HOLIDAY="$2"
 
@@ -22,6 +31,7 @@ if [[ $STATUS == "on" ]]; then
   STATE=auto
   export FINAL_STATUS="reset"
   # message for monday
+  GatherOnline
   Deactivate_DND_call
   if [[ $DOW == "1" ]]; then
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }"
@@ -48,6 +58,7 @@ if [[ $STATUS == "off" ]]; then
   STATE=away
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$OFFLINE_MESSAGE\", \"status_emoji\" : \"$OFF_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$OFFLINE_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
   echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi
 
@@ -55,6 +66,7 @@ if [[ $STATUS == "sick-on" ]]; then
   STATE=auto
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$SICK_MESSAGE\", \"status_emoji\" : \"$SICK_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$SICK_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  (osascript -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "u" using command down' -e 'end tell')
   echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi
 
@@ -62,6 +74,7 @@ if [[ $STATUS == "sick-off" ]]; then
   STATE=away
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$SICK_MESSAGE sick\", \"status_emoji\" : \"$SICK_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$SICK_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
   echo "not working" > ./logs/$STATUS_CHECK_FILE
   activate_DND_call
 fi
@@ -70,12 +83,14 @@ if [[ $STATUS == "break-on" ]]; then
   STATE=auto
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$BREAK_MESSAGE\", \"status_emoji\" : \"$BREAK_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$BREAK_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
 fi
 
 if [[ $STATUS == "break-off" ]]; then
   STATE=away
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$BREAK_MESSAGE\", \"status_emoji\" : \"$BREAK_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$BREAK_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
 fi
 
 if [[ $STATUS == "holiday-on" ]]; then
@@ -99,11 +114,12 @@ if [[ $STATUS == "holiday-on" ]]; then
   if [[ $LAST_HOLIDAY == "" ]]; then
     TIMESTAMP="0"
   else
-    TIMESTAMP_PARSE=$(date -j -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%Y:%m:%d 23:59:59')
+    TIMESTAMP_PARSE=$(date -j -f "%d.%m.%Y" "$DATE_BACK" '+%Y:%m:%d 23:59:59')
     TIMESTAMP=$(date -j -f "%Y:%m:%d %H:%M:%S" "$TIMESTAMP_PARSE" +%s)
   fi
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$VACATION_MESSAGE $DATEBACK_MESSAGE\", \"status_emoji\" : \"$HOLIDAY_EMOJI\", \"status_expiration\": $TIMESTAMP } }"
   osascript -e 'display notification "'"$VACATION_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
   echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi
 
@@ -134,6 +150,7 @@ if [[ $STATUS == "holiday-off" ]]; then
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$VACATION_MESSAGE $DATEBACK_MESSAGE\", \"status_emoji\" : \"$HOLIDAY_EMOJI\", \"status_expiration\": $TIMESTAMP } }"
   echo $PAYLOAD
   osascript -e 'display notification "'"$VACATION_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
   echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi
 
@@ -141,6 +158,7 @@ if [[ $STATUS == "meeting" ]]; then
   STATE=auto
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$MEETING_MESSAGE\", \"status_emoji\" : \"$MEETING_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$MEETING_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
   activate_DND_call
 fi
 
@@ -148,6 +166,7 @@ if [[ $STATUS == "dnd" ]]; then
   STATE=auto
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$FOCUS_MESSAGE\", \"status_emoji\" : \"$FOCUS_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$FOCUS_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
   activate_DND_call
 fi
 
@@ -155,18 +174,21 @@ if [[ $STATUS == "shopping" ]]; then
   STATE=away
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$SHOPPING_MESSAGE\", \"status_emoji\" : \"$SHOPPING_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$SHOPPING_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
 fi
 
 if [[ $STATUS == "dog" ]]; then
   STATE=away
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$DOG_MESSAGE\", \"status_emoji\" : \"$DOG_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$DOG_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
 fi
 
 if [[ $STATUS == "remeet" ]]; then
   STATE=auto
   PAYLOAD="{ \"profile\": { \"status_text\": \"$REMEET_MESSAGE\", \"status_emoji\": \"$REMEET_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$REMEET_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
   activate_DND_call
 fi
 
@@ -174,4 +196,5 @@ if [[ $STATUS == "travel" ]]; then
   STATE=away
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$TRAVEL_MESSAGE\", \"status_emoji\" : \"$TRAVEL_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$TRAVEL_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
 fi

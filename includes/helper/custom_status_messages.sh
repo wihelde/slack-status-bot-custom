@@ -44,6 +44,7 @@ ON_EMOJI=(
   ":speak_no_evil:"
   ":muscle:"
   ":melting_face:"
+  ":warning:"
 )
 SHOPPING_EMOJI=:shopping_trolley:
 SICK_EMOJI=:face_with_thermometer:
@@ -100,6 +101,7 @@ ON_MESSAGE=(
   "I hate people who, in the middle of a sentence...."
   "Don't let ANYONE ruin your day - it's YOUR day, ruin it YOURSELF!"
   "Another fine day ruined by responsibility"
+  "Mistakes are a betrayal of the employer"
 )
 OFFLINE_MESSAGE_LIST=(
   "Does this away message really mean I'm away, or am I pretending to be away?"
@@ -129,7 +131,7 @@ VACATION_MESSAGE="strong vacationing"
 TRAVEL_MESSAGE="On my way to Adventure Land"
 
 # get random number to pick random online message and related emoji
-ORDER=$(((RANDOM % 32) + 0))
+ORDER=$(((RANDOM % 33) + 0))
 export ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
 export ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
 
