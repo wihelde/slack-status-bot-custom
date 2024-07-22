@@ -18,7 +18,7 @@ function GatherOffline() {
 
 function GatherOnline() {
   #osascript -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'key code 53' -e 'end tell'
-  osascript -e 'try' -e 'if application "Gather" is running then' -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'key code 53' -e 'end tell' -e 'end if' -e 'end try'
+  osascript -e 'try' -e 'if application "Gather" is running then' -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "i" using command down' -e 'end tell' -e 'end if' -e 'end try'
 }
 
 # Deactivate your DND-mode

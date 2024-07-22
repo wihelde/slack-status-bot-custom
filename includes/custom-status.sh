@@ -21,7 +21,7 @@ function GatherOffline() {
 
 function GatherOnline() {
   #osascript -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'key code 53' -e 'end tell'
-  osascript -e 'try' -e 'if application "Gather" is running then' -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'key code 53' -e 'end tell' -e 'end if' -e 'end try'
+  osascript -e 'try' -e 'if application "Gather" is running then' -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "i" using command down' -e 'end tell' -e 'end if' -e 'end try'
 }
 
 STATUS="$1"
@@ -66,7 +66,7 @@ if [[ $STATUS == "sick-on" ]]; then
   STATE=auto
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$SICK_MESSAGE\", \"status_emoji\" : \"$SICK_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$SICK_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
-  (osascript -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "u" using command down' -e 'end tell')
+  GatherOffline
   echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi
 
