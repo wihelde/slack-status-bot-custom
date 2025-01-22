@@ -4,6 +4,6 @@ source ./includes/functions/huddle.sh
 trap 'kill -9 $(jobs -p)' EXIT
 
 while true; do
-  setStatusInHuddle
+  setStatusInAHuddle
   sleep 1
 done;

@@ -37,5 +37,5 @@ source ./includes/presence_correction.sh &
 [[ "$ENABLE_SPOTIFY" == "yes" ]] && source ./includes/spotify.sh &
 [[ "$ENABLE_MICROSOFT_TEAMS" == "yes" ]] && source ./includes/microsoft_teams.sh &
 [[ "$ENABLE_APPLE_MUSIC" == "yes" ]] && source ./includes/apple_music.sh &
+[[ "$ENABLE_ZOOM" == "yes" ]] && source ./includes/zoom.sh &
 [[ "$ENABLE_SLACK_HUDDLE" == "yes" ]] && source ./includes/huddle.sh
-[[ "$ENABLE_ZOOM" == "yes" ]] && source ./includes/zoom.sh

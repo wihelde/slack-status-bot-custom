@@ -21,7 +21,7 @@ function inAhuddle() {
   }
 
 # change your status when in zoom-call and activate DND-mode
-function setStatusInHuddle() {
+function setStatusInAHuddle() {
   ( inAhuddle && [[ $FINAL_STATUS == "inAhuddle" ]] ) &&
     activateDND
   ( inAhuddle && [[ $FINAL_STATUS != "inAhuddle" ]] && isStatusClean ) &&
