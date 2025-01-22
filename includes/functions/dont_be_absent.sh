@@ -3,17 +3,17 @@ source ./includes/functions/slack.sh
 
 # check if presence is correct
 function isPresenceActive() {
-  echo "Calling https://slack.com/api/users.getPresence ..."
+  echo "$DATE: Calling https://slack.com/api/users.getPresence ..."
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     JSON=$(curl -X GET -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s "https://slack.com/api/users.getPresence")
     presence=$(echo "$JSON" | $jq '.presence' | sed 's/\"//g')
-    echo "presence: \"$presence\""
+    echo "$DATE: presence: \"$presence\""
     # check for automatic custom_status_message
     [[ "$presence" == "away" ]] &&
-      echo " -> Presence needs to be changed" &&
+      echo "$DATE:  -> Presence needs to be changed" &&
       return 0
     # prevent status-message-change
-    echo " -> Presence is already active"
+    echo "$DATE:  -> Presence is already active"
     return 1
   done
 }
@@ -29,11 +29,11 @@ function isPresenceCorrect() {
             --data presence="auto" \
             https://slack.com/api/users.setPresence |
             grep -Eq '"ok": ?true' &&
-            echo "Away status updated ok" ||
-            echo "There was a problem updating the away status"
+            echo "$DATE: Away status updated ok" ||
+            echo "$DATE: There was a problem updating the away status"
         done
     else
-      echo "presence update not allowed"
+      echo "$DATE: presence update not allowed"
     fi
 
 }

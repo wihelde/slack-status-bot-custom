@@ -57,6 +57,9 @@ DISCORD_EMOJI=:discord:
 REMEET_EMOJI=:remeet:
 REMEET_VIRTUAL_DESK_EMOJI=:remeet:
 TRAVEL_EMOJI=:car:
+PARENTAL_LEAVE_EMOJI=:baby:
+CHILD_DOC_EMOJI=:baby:
+HUDDLE_EMOJI=:headphones:
 
 # Messages
 BREAK_MESSAGE="Having a break. Having no KitKat."
@@ -128,7 +131,10 @@ SKYPE_MESSAGE="in a meeting - most likely Coke-related"
 TEAMS_MESSAGE="in a meeting - most likely Coke-related"
 TGIF_MESSAGE="TGIF!"
 VACATION_MESSAGE="strong vacationing"
+PARENTAL_LEAVE_MESSAGE="strong parenting"
 TRAVEL_MESSAGE="On my way to Adventure Land"
+CHILD_DOC_MESSAGE="At the pediatrician with the little baby-girl. Will be back soon."
+HUDDLE_MESSAGE="In a huddle ... will answer later"
 
 # get random number to pick random online message and related emoji
 ORDER=$(((RANDOM % 33) + 0))

@@ -16,3 +16,5 @@ STATUS_CHECK_FILE=status_check.txt
 # define token
 [[ ! -f .token ]] && echo "There was no token-file found. Please create a file called .token and include your slack-token(s)!" && exit 1
 LEGACY_TOKEN_ARRAY=($(grep -v '^#' .token))
+
+DATE=$(date '+%Y-%m-%d %H:%M:%S')

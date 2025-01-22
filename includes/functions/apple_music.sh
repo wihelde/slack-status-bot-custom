@@ -22,7 +22,7 @@ function AppleGetSong() {
 function setStatusAppleMusic() {
   APPLE_MUSIC_SONG=$(AppleGetSong)
   ( isAppleMusicPlaying ) &&
-    echo "Detected Apple Music track: $APPLE_MUSIC_SONG" &&
+    echo " Detected Apple Music track: $APPLE_MUSIC_SONG" &&
     [[ $FINAL_STATUS == "$APPLE_MUSIC_SONG" ]] &&
     echo "Same Apple Music Song detected. Call to API will be avoided."
   ( isAppleMusicPlaying && [[ $FINAL_STATUS != "$APPLE_MUSIC_SONG" ]] && isStatusClean ) &&

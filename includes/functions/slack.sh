@@ -5,7 +5,7 @@ source ./includes/functions/DND.sh
 # change your slack-status
 function setProfile() {
   PAYLOAD=$1
-  echo "Calling https://api.slack.com/methods/users.profile.set with $PAYLOAD"
+  echo "$DATE: Calling https://api.slack.com/methods/users.profile.set with $PAYLOAD"
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     curl -X POST -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s -d "$PAYLOAD" "https://slack.com/api/users.profile.set" >/dev/null
   done
@@ -20,33 +20,33 @@ function changePresence() {
 
 # check if status is clean to be changed
 function isStatusClean() {
-  echo "Calling https://slack.com/api/users.profile.get ..."
+  echo "$DATE: Calling https://slack.com/api/users.profile.get ..."
   STATUS_CHECK=$(cat ./logs/$STATUS_CHECK_FILE)
   for i in "${LEGACY_TOKEN_ARRAY[@]}"; do
     JSON=$(curl -X GET -H "Authorization: Bearer $i" -H "Content-Type: application/json; charset=UTF-8" -s "https://slack.com/api/users.profile.get")
     STATUS_EMOJI=$(echo "$JSON" | $jq '.profile.status_emoji' | sed 's/\"//g')
     STATUS_TEXT=$(echo "$JSON" | $jq '.profile.status_text' | sed 's/\"//g')
-    echo "Status Emoji: \"$STATUS_EMOJI\""
-    echo "Status Text: \"$STATUS_TEXT\""
+    echo "$DATE: Status Emoji: \"$STATUS_EMOJI\""
+    echo "$DATE: Status Text: \"$STATUS_TEXT\""
     # check for automatic custom_status_message
     [[ " ${ON_EMOJI[*]} " =~ ${STATUS_EMOJI} ]] &&
-      echo " -> Status is allowed to change" &&
+      echo "$DATE:  -> Status is allowed to change" &&
       return 0
     # check for status-message set by script
-    [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT_EMOJI" || "$STATUS_EMOJI" == "$MEETING_EMOJI" || "$STATUS_EMOJI" == "$MONDAY_EMOJI" || "$STATUS_EMOJI" == "$TGIF_EMOJI" || "$STATUS_EMOJI" == "$DISCORD_EMOJI" || "$STATUS_EMOJI" == "$TEAMS_EMOJI"  || "$STATUS_EMOJI" == "$SKYPE_EMOJI" || "$STATUS_EMOJI" == "$THURSDAY_EMOJI" || "$STATUS_EMOJI" == "$REMEET_EMOJI" || "$STATUS_EMOJI" == "$OFF_EMOJI" || "$STATUS_EMOJI" == "$OFFICELY_OFFICE" || "$STATUS_EMOJI" == "$OFFICELY_HOME" ]] &&
+    [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" || "$STATUS_EMOJI" == "$ZOOM_EMOJI" || "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" || "$STATUS_EMOJI" == "$DEFAULT_EMOJI" || "$STATUS_EMOJI" == "$MEETING_EMOJI" || "$STATUS_EMOJI" == "$MONDAY_EMOJI" || "$STATUS_EMOJI" == "$TGIF_EMOJI" || "$STATUS_EMOJI" == "$DISCORD_EMOJI" || "$STATUS_EMOJI" == "$TEAMS_EMOJI"  || "$STATUS_EMOJI" == "$SKYPE_EMOJI" || "$STATUS_EMOJI" == "$THURSDAY_EMOJI" || "$STATUS_EMOJI" == "$REMEET_EMOJI" || "$STATUS_EMOJI" == "$OFF_EMOJI" || "$STATUS_EMOJI" == "$OFFICELY_OFFICE" || "$STATUS_EMOJI" == "$OFFICELY_HOME" || "$STATUS_EMOJI" == "$HUDDLE_EMOJI" ]] &&
     [[ $STATUS_CHECK != "not working" ]] &&
-      echo " -> Status is allowed to change" &&
+      echo "$DATE:  -> Status is allowed to change" &&
       return 0
     # check for status-message set by outlook
     [[ "$STATUS_EMOJI" == ":spiral_calendar_pad:" && "$STATUS_TEXT" == "In a meeting • Outlook Calendar" ]] &&
-      echo " -> Status is allowed to change" &&
+      echo "$DATE:  -> Status is allowed to change" &&
       return 0
     # check for empty status-message
     [[ "$STATUS_EMOJI" == "" && "$STATUS_TEXT" == "" ]] &&
-      echo " -> Status is allowed to change" &&
+      echo "$DATE:  -> Status is allowed to change" &&
       return 0
     # prevent status-message-change
-    echo " -> Status is not allowed to change"
+    echo "$DATE:  -> Status is not allowed to change"
     return 1
   done
 }
@@ -59,8 +59,8 @@ function reset() {
   ON_MESSAGE_FINAL=${ON_MESSAGE[$ORDER]}
   ON_EMOJI_FINAL=${ON_EMOJI[$ORDER]}
   export FINAL_STATUS="reset"
-  echo 'Resetting status'
-  echo $DOW
+  echo '$DATE: Resetting status'
+  # echo $DOW
   # message for monday
   [[ $DOW == "1" ]] &&
     PAYLOAD="{ \"profile\": { \"status_text\" : \"$MONDAY_MESSAGE\", \"status_emoji\" : \"$MONDAY_EMOJI\", \"status_expiration\": 0 } }" &&
