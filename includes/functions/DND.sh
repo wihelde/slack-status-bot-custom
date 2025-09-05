@@ -24,10 +24,10 @@ function GatherOnline() {
 # Deactivate your DND-mode
 function DeactivateDND() {
     [[ "$ENABLE_FOCUS_SWITCH" == "yes" && $FINAL_DND_STATUS == "DNDInactive" ]] &&
-    echo "DND-mode already deactivated"
+    echo "$DATE: DND-mode already deactivated"
   [[ "$ENABLE_FOCUS_SWITCH" == "yes" && $FINAL_DND_STATUS != "DNDInactive" ]] &&
     export FINAL_DND_STATUS="DNDInactive" &&
-    echo "Deactivating your DND-mode" &&
+    echo "$DATE: Deactivating your DND-mode" &&
     Deactivate_DND_call &&
     GatherOnline
   return 0

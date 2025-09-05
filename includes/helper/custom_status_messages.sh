@@ -57,12 +57,15 @@ DISCORD_EMOJI=:discord:
 REMEET_EMOJI=:remeet:
 REMEET_VIRTUAL_DESK_EMOJI=:remeet:
 TRAVEL_EMOJI=:car:
+PARENTAL_LEAVE_EMOJI=:baby:
+CHILD_DOC_EMOJI=:baby:
+HUDDLE_EMOJI=:headphones:
 
 # Messages
 BREAK_MESSAGE="Having a break. Having no KitKat."
 DOG_MESSAGE="The dog takes me for a walk"
 FOCUS_MESSAGE="Focus-mode - please disturb only in urgent cases"
-MEETING_MESSAGE="in some non-zoom-meeting - will answer later"
+MEETING_MESSAGE="in some offline-meeting - will answer later"
 REMEET_MESSAGE="In some remeet-call - will answer later"
 REMEET_VIRTUAL_DESK_MESSAGE="At my virtual desk. Come by if you want"
 MONDAY_MESSAGE="Pretty sure I smell a Monday here ..."
@@ -128,7 +131,10 @@ SKYPE_MESSAGE="in a meeting - most likely Coke-related"
 TEAMS_MESSAGE="in a meeting - most likely Coke-related"
 TGIF_MESSAGE="TGIF!"
 VACATION_MESSAGE="strong vacationing"
+PARENTAL_LEAVE_MESSAGE="strong parenting"
 TRAVEL_MESSAGE="On my way to Adventure Land"
+CHILD_DOC_MESSAGE="At the pediatrician with the little baby-girl. Will be back soon."
+HUDDLE_MESSAGE="In a huddle ... will answer later"
 
 # get random number to pick random online message and related emoji
 ORDER=$(((RANDOM % 33) + 0))

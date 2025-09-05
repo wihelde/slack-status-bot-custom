@@ -23,14 +23,14 @@ function SpotifyGetSong() {
 function setStatusSpotify() {
   SPOTIFY_SONG=$(SpotifyGetSong)
   ( isSpotifyPlaying ) &&
-    echo "Detected Spotify track: $SPOTIFY_SONG" &&
+    echo "$DATE: Detected Spotify track: $SPOTIFY_SONG" &&
     [[ $FINAL_STATUS == "$SPOTIFY_SONG" ]] &&
-    echo "Same Spotify song detected. Call to API will be avoided."
+    echo "$DATE: Same Spotify song detected. Call to API will be avoided."
   ( isSpotifyPlaying && [[ $FINAL_STATUS != "$SPOTIFY_SONG" ]] && isStatusClean ) &&
     export FINAL_STATUS="$SPOTIFY_SONG" &&
-    echo "Trying to set Slack-Status to your current Spotify-Song" &&
+    echo "$DATE: Trying to set Slack-Status to your current Spotify-Song" &&
     PAYLOAD="{ \"profile\": { \"status_text\": \"$SPOTIFY_SONG\", \"status_emoji\": \"$SPOTIFY_EMOJI\", \"status_expiration\": 0 } }" &&
-    echo "Setting your Slack-status to your current Spotify-Song" &&
+    echo "$DATE: Setting your Slack-status to your current Spotify-Song" &&
     setProfile "$PAYLOAD"
   ( ! isSpotifyPlaying && [[ $FINAL_STATUS == "$SPOTIFY_SONG" && "$SPOTIFY_SONG" != "" ]] ) &&
     reset

@@ -62,6 +62,14 @@ if [[ $STATUS == "off" ]]; then
   echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi
 
+if [[ $STATUS == "child-doc" ]]; then
+  STATE=away
+  PAYLOAD="{ \"profile\": { \"status_text\" : \"$CHILD_DOC_MESSAGE\", \"status_emoji\" : \"$CHILD_DOC_EMOJI\", \"status_expiration\": 0 } }"
+  osascript -e 'display notification "'"$CHILD_DOC_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
+  echo "not working" > ./logs/$STATUS_CHECK_FILE
+fi
+
 if [[ $STATUS == "sick-on" ]]; then
   STATE=auto
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$SICK_MESSAGE\", \"status_emoji\" : \"$SICK_EMOJI\", \"status_expiration\": 0 } }"
@@ -72,7 +80,7 @@ fi
 
 if [[ $STATUS == "sick-off" ]]; then
   STATE=away
-  PAYLOAD="{ \"profile\": { \"status_text\" : \"$SICK_MESSAGE sick\", \"status_emoji\" : \"$SICK_EMOJI\", \"status_expiration\": 0 } }"
+  PAYLOAD="{ \"profile\": { \"status_text\" : \"$SICK_MESSAGE\", \"status_emoji\" : \"$SICK_EMOJI\", \"status_expiration\": 0 } }"
   osascript -e 'display notification "'"$SICK_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
   GatherOffline
   echo "not working" > ./logs/$STATUS_CHECK_FILE
@@ -94,28 +102,20 @@ if [[ $STATUS == "break-off" ]]; then
 fi
 
 if [[ $STATUS == "holiday-on" ]]; then
-  STATE=auto
-  if ! [[ $LAST_HOLIDAY == "" ]]; then
-    LAST_HOLIDAY_DAY=$(date -j -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%Y-%m-%d')
-    LAST_HOLIDAY_DAY=$(date -j -f '%Y-%m-%d' "$LAST_HOLIDAY_DAY" +'%A')
-    if [[ $LAST_HOLIDAY_DAY == "Friday" ]]; then
-      DATE_BACK=$(date -j -v +3d -f "%d.%m.%Y" "$LAST_HOLIDAY")
-      DATE_BACK=$(date -j -f "%a %b %e %H:%M:%S %Z %Y" "$DATE_BACK" '+%d.%m.%Y')
-      DATEBACK_MESSAGE=" (back on ${DATE_BACK})"
-    else
-      DATE_BACK=$(date -j -v +1d -f "%d.%m.%Y" "$LAST_HOLIDAY")
-      DATE_BACK=$(date -j -f "%a %b %e %H:%M:%S %Z %Y" "$DATE_BACK" '+%d.%m.%Y')
-      DATEBACK_MESSAGE=" (back on ${DATE_BACK})"
-    fi
-  else
-    LAST_HOLIDAY=""
-  fi
+  STATE=away
+  if [[ -n $LAST_HOLIDAY ]]; then
+      LAST_HOLIDAY_DAY=$(date -j -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%A')
+      ADD_DAYS=1
+      [[ $LAST_HOLIDAY_DAY == "Friday" ]] && ADD_DAYS=3
 
-  if [[ $LAST_HOLIDAY == "" ]]; then
-    TIMESTAMP="0"
+      DATE_BACK=$(date -j -v +"$ADD_DAYS"d -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%d.%m.%Y')
+      DATEBACK_MESSAGE=" (back on ${DATE_BACK})"
+
+      TIMESTAMP_PARSE=$(date -j -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%Y:%m:%d 23:59:59')
+      TIMESTAMP=$(date -j -v +"$((ADD_DAYS - 1))"d -f "%Y:%m:%d %H:%M:%S" "$TIMESTAMP_PARSE" +%s)
   else
-    TIMESTAMP_PARSE=$(date -j -f "%d.%m.%Y" "$DATE_BACK" '+%Y:%m:%d 23:59:59')
-    TIMESTAMP=$(date -j -f "%Y:%m:%d %H:%M:%S" "$TIMESTAMP_PARSE" +%s)
+      LAST_HOLIDAY=""
+      TIMESTAMP="0"
   fi
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$VACATION_MESSAGE $DATEBACK_MESSAGE\", \"status_emoji\" : \"$HOLIDAY_EMOJI\", \"status_expiration\": $TIMESTAMP } }"
   osascript -e 'display notification "'"$VACATION_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
@@ -125,31 +125,47 @@ fi
 
 if [[ $STATUS == "holiday-off" ]]; then
   STATE=away
-  if ! [[ $LAST_HOLIDAY == "" ]]; then
-      LAST_HOLIDAY_DAY=$(date -j -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%Y-%m-%d')
-      LAST_HOLIDAY_DAY=$(date -j -f '%Y-%m-%d' "$LAST_HOLIDAY_DAY" +'%A')
-      if [[ $LAST_HOLIDAY_DAY == "Friday" ]]; then
-        DATE_BACK=$(date -j -v +3d -f "%d.%m.%Y" "$LAST_HOLIDAY")
-        DATE_BACK=$(date -j -f "%a %b %e %H:%M:%S %Z %Y" "$DATE_BACK" '+%d.%m.%Y')
-        DATEBACK_MESSAGE=" (back on ${DATE_BACK})"
-      else
-        DATE_BACK=$(date -j -v +1d -f "%d.%m.%Y" "$LAST_HOLIDAY")
-        DATE_BACK=$(date -j -f "%a %b %e %H:%M:%S %Z %Y" "$DATE_BACK" '+%d.%m.%Y')
-        DATEBACK_MESSAGE=" (back on ${DATE_BACK})"
-      fi
-    else
-      LAST_HOLIDAY=""
-    fi
+  if [[ -n $LAST_HOLIDAY ]]; then
+      LAST_HOLIDAY_DAY=$(date -j -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%A')
+      ADD_DAYS=1
+      [[ $LAST_HOLIDAY_DAY == "Friday" ]] && ADD_DAYS=3
 
-    if [[ $LAST_HOLIDAY == "" ]]; then
-      TIMESTAMP="0"
-    else
+      DATE_BACK=$(date -j -v +"$ADD_DAYS"d -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%d.%m.%Y')
+      DATEBACK_MESSAGE=" (back on ${DATE_BACK})"
+
       TIMESTAMP_PARSE=$(date -j -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%Y:%m:%d 23:59:59')
-      TIMESTAMP=$(date -j -f "%Y:%m:%d %H:%M:%S" "$TIMESTAMP_PARSE" +%s)
-    fi
+      TIMESTAMP=$(date -j -v +"$((ADD_DAYS - 1))"d -f "%Y:%m:%d %H:%M:%S" "$TIMESTAMP_PARSE" +%s)
+  else
+      LAST_HOLIDAY=""
+      TIMESTAMP="0"
+  fi
   PAYLOAD="{ \"profile\": { \"status_text\" : \"$VACATION_MESSAGE $DATEBACK_MESSAGE\", \"status_emoji\" : \"$HOLIDAY_EMOJI\", \"status_expiration\": $TIMESTAMP } }"
   echo $PAYLOAD
   osascript -e 'display notification "'"$VACATION_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
+  GatherOffline
+  echo "not working" > ./logs/$STATUS_CHECK_FILE
+fi
+
+if [[ $STATUS == "parental-leave" ]]; then
+  STATE=away
+  if [[ -n $LAST_HOLIDAY ]]; then
+      LAST_HOLIDAY_DAY=$(date -j -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%A')
+      ADD_DAYS=1
+      [[ $LAST_HOLIDAY_DAY == "Friday" ]] && ADD_DAYS=3
+
+      DATE_BACK=$(date -j -v +"$ADD_DAYS"d -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%d.%m.%Y')
+      DATEBACK_MESSAGE=" (back on ${DATE_BACK})"
+
+      TIMESTAMP_PARSE=$(date -j -f "%d.%m.%Y" "$LAST_HOLIDAY" '+%Y:%m:%d 23:59:59')
+      TIMESTAMP=$(date -j -v +"$((ADD_DAYS - 1))"d -f "%Y:%m:%d %H:%M:%S" "$TIMESTAMP_PARSE" +%s)
+  else
+      LAST_HOLIDAY=""
+      TIMESTAMP="0"
+  fi
+  echo "TIMESTAMP: $TIMESTAMP"  # Debug-Ausgabe
+  PAYLOAD="{ \"profile\": { \"status_text\" : \"$PARENTAL_LEAVE_MESSAGE $DATEBACK_MESSAGE\", \"status_emoji\" : \"$PARENTAL_LEAVE_EMOJI\", \"status_expiration\": $TIMESTAMP } }"
+  echo $PAYLOAD
+  osascript -e 'display notification "'"$PARENTAL_LEAVE_MESSAGE"'" with title "Slack Status Bot" subtitle "Your status is reset to ... " sound name "Glass"'
   GatherOffline
   echo "not working" > ./logs/$STATUS_CHECK_FILE
 fi

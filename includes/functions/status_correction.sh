@@ -2,6 +2,7 @@ source ./includes/helper/misc.sh
 source ./includes/helper/custom_status_messages.sh
 source ./includes/functions/slack.sh
 source ./includes/functions/zoom.sh
+source ./includes/functions/huddle.sh
 source ./includes/functions/spotify.sh
 source ./includes/functions/microsoft_teams.sh
 source ./includes/functions/apple_music.sh
@@ -52,10 +53,13 @@ function correctStatus() {
 
     ( ! inAMeeting && [[ "$STATUS_EMOJI" == "$ZOOM_EMOJI" ]] ) &&
       reset
+    ( ! inAhuddle && [[ "$STATUS_EMOJI" == "$HUDDLE_EMOJI" ]] ) &&
+      reset
     ( ! isSpotifyPlaying && [[ "$STATUS_EMOJI" == "$SPOTIFY_EMOJI" ]] ) &&
       reset
     ( ! inAMicrosoftTeamsMeeting && [[ "$STATUS_EMOJI" == "$TEAMS_EMOJI" ]] ) &&
       reset
-    ( ! isAppleMusicPlaying && [[ "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" ]] ) && reset
+    ( ! isAppleMusicPlaying && [[ "$STATUS_EMOJI" == "$APPLE_MUSIC_EMOJI" ]] ) &&
+    reset
     is_status_correct
 }
