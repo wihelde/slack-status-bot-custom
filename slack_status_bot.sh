@@ -8,7 +8,7 @@
 ENABLE_SPOTIFY="yes"
 
 # Do you want to share your Apple Music-Status? Please use "yes" or "no"
-ENABLE_APPLE_MUSIC="no"
+ENABLE_APPLE_MUSIC="yes"
 
 # Do you want to share your Zoom-Status? Please use "yes" or "no"
 ENABLE_ZOOM="yes"

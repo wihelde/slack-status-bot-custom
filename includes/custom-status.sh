@@ -15,14 +15,23 @@ function changeStatus() {
   done
 }
 
-function GatherOffline() {
-  osascript -e 'try' -e 'if application "Gather" is running then' -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "u" using command down' -e 'end tell' -e 'end if' -e 'end try'
-}
+#function GatherOffline() {
+#  #osascript -e 'try' -e 'if application "Discord" is running then' -e 'tell application "Discord" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "d" using {command down, shift down}' -e 'end tell' -e 'end if' -e 'end try'
+#  /usr/bin/osascript <<'APPLESCRIPT'
+#tell application "System Events"
+#  keystroke "d" using {command down, shift down}
+#end tell
+#APPLESCRIPT
+#}
 
-function GatherOnline() {
-  #osascript -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'key code 53' -e 'end tell'
-  osascript -e 'try' -e 'if application "Gather" is running then' -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "i" using command down' -e 'end tell' -e 'end if' -e 'end try'
-}
+#function GatherOnline() {
+#  #osascript -e 'try' -e 'if application "Discord" is running then' -e 'tell application "Discord" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "d" using {command down, shift down}' -e 'end tell' -e 'end if' -e 'end try'
+#  /usr/bin/osascript <<'APPLESCRIPT'
+#tell application "System Events"
+#  keystroke "d" using {command down, shift down}
+#end tell
+#APPLESCRIPT
+#}
 
 STATUS="$1"
 LAST_HOLIDAY="$2"
