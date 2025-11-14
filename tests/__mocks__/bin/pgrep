@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+# Minimal pgrep mock for tests
+# Supports: pgrep -x 'Spotify'
+
+if [[ "$1" == "-x" && "$2" == "Spotify" ]]; then
+  if [[ "${MOCK_SPOTIFY_PROCESS}" == "1" ]]; then
+    echo "12345"
+    exit 0
+  else
+    exit 1
+  fi
+fi
+
+exit 1
+
+
+
+

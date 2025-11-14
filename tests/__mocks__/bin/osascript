@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# Minimal osascript mock for tests
+# Detects common AppleScript snippets used in the repo and prints canned output
+
+args="$*"
+
+# Spotify player state
+if [[ "${args}" == *'application "Spotify" is running'* && "${args}" == *'tell application "Spotify" to player state'* ]]; then
+  if [[ "${MOCK_SPOTIFY_STATE}" == "playing" ]]; then
+    echo "playing"
+    exit 0
+  fi
+  echo "paused"
+  exit 0
+fi
+
+# Spotify track info
+if [[ "${args}" == *'tell application "Spotify"'* && "${args}" == *'artist of current track'* && "${args}" == *'name of current track'* ]]; then
+  echo "${MOCK_SPOTIFY_TRACK:-Artist - Song}"
+  exit 0
+fi
+
+# Apple Music player state
+if [[ "${args}" == *'application "Music" is running'* && "${args}" == *'tell application "Music" to player state'* ]]; then
+  if [[ "${MOCK_APPLE_STATE}" == "playing" ]]; then
+    echo "playing"
+    exit 0
+  fi
+  echo "paused"
+  exit 0
+fi
+
+# Apple Music track info
+if [[ "${args}" == *'tell application "Music" to artist of current track'* && "${args}" == *'name of current track'* ]]; then
+  echo "${MOCK_APPLE_TRACK:-Artist AM - Song AM}"
+  exit 0
+fi
+
+# Notifications and other UI calls: no-op
+exit 0
+
+
+
+

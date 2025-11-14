@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# Minimal date mock for tests
+# Handles: date +%u (day of week 1..7)
+
+if [[ "$1" == "+%u" ]]; then
+  echo "${MOCK_DATE_U:-3}"
+  exit 0
+fi
+
+# Fallback to system date for anything else
+/bin/date "$@"
+
+
+
+
