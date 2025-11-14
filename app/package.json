@@ -10,9 +10,10 @@
     "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron-dev\"",
     "react-start": "cross-env BROWSER=none react-scripts start",
     "react-build": "react-scripts build",
+    "tsc": "tsc",
     "electron-dev": "cross-env NODE_ENV=development ELECTRON_START_URL=http://localhost:3000 electron .",
-    "electron-build": "npm run react-build && electron-builder",
-    "build": "npm run react-build && npm run electron-build",
+    "electron-build": "npm run react-build && npm run tsc && electron-builder",
+    "build": "npm run react-build && npm run tsc && npm run electron-build",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "test": "jest",
@@ -57,10 +58,14 @@
     "appId": "com.slack-status-bot.app",
     "productName": "Slack Status Bot",
     "files": [
-      "dist/**/*",
-      "node_modules/**/*",
-      "package.json"
+      "build/**/*",
+      "dist/**/*.js",
+      "public/**/*",
+      "package.json",
+      "node_modules/axios/**/*",
+      "node_modules/electron-is-dev/**/*"
     ],
+    "asar": false,
     "directories": {
       "buildResources": "assets"
     },

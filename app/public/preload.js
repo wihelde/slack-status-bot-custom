@@ -50,6 +50,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @param {boolean} enabled
    */
   toggleSource: (source, enabled) => ipcRenderer.invoke('toggle-source', source, enabled),
+  setSourceOrder: (sourceOrder) => ipcRenderer.invoke('set-source-order', sourceOrder),
+  getSourceOrder: () => ipcRenderer.invoke('get-source-order'),
 
   /**
    * Get daemon status

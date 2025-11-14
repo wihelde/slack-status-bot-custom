@@ -19,18 +19,22 @@ let mainWindow;
 let tray;
 
 // Simple config storage in user app data
-const getConfigDir = () => {
+const getConfigPath = () => {
   const appData = app.getPath('userData');
   return path.join(appData, 'config.json');
 };
 
 const loadConfig = () => {
   try {
-    const configPath = getConfigDir();
+    const configPath = getConfigPath();
     console.log('[Config] Loading config from:', configPath);
+    console.log('[Config] File exists:', fs.existsSync(configPath));
     if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      console.log('[Config] Loaded config:', { hasTokens: !!config.slackTokens });
+      const content = fs.readFileSync(configPath, 'utf-8');
+      console.log('[Config] File content:', content);
+      const config = JSON.parse(content);
+      console.log('[Config] Parsed config:', JSON.stringify(config, null, 2));
+      console.log('[Config] Loaded config:', { hasTokens: !!config.slackTokens, tokenCount: config.slackTokens?.length });
       return config;
     }
     console.log('[Config] Config file does not exist');
@@ -42,7 +46,7 @@ const loadConfig = () => {
 
 const saveConfig = (config) => {
   try {
-    const configPath = getConfigDir();
+    const configPath = getConfigPath();
     const dir = path.dirname(configPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -177,9 +181,21 @@ app.whenReady().then(() => {
 
   // Initialize daemon if available
   try {
-    // Try to import compiled daemon
-    console.log('[Daemon] Attempting to load daemon from:', path.resolve(__dirname, '../dist/daemon'));
-    const daemonModule = require('../dist/daemon');
+    let daemonPath;
+    
+    if (isDev) {
+      // Dev: regular dist folder
+      daemonPath = path.resolve(__dirname, '../dist/daemon');
+    } else {
+      // Production: asar is disabled, dist is at /Applications/App.app/Contents/Resources/app/dist
+      // __dirname is /Applications/App.app/Contents/Resources/app/build
+      const appPath = path.resolve(__dirname, '..');
+      daemonPath = path.join(appPath, 'dist', 'daemon');
+    }
+    
+    console.log('[Daemon] Loading daemon from:', daemonPath);
+    
+    const daemonModule = require(daemonPath);
     console.log('[Daemon] Loaded daemon module:', Object.keys(daemonModule));
     createDaemon = daemonModule.createDaemon;
     console.log('[Daemon] createDaemon function available:', typeof createDaemon);
@@ -391,6 +407,36 @@ ipcMain.handle('toggle-source', async (event, source, enabled) => {
     return { success: true };
   } catch (error) {
     console.error('Error toggling source:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('set-source-order', async (event, sourceOrder) => {
+  try {
+    config.sourceOrder = sourceOrder;
+    saveConfig(config);
+    console.log('[IPC] Source order updated:', sourceOrder);
+    
+    // Update daemon's source order in real-time if running
+    if (daemon) {
+      await daemon.setSourceOrder(sourceOrder);
+      console.log('[IPC] Daemon source order updated and re-evaluated in real-time');
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting source order:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-source-order', async (event) => {
+  try {
+    const order = config.sourceOrder || ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'];
+    console.log('[IPC] Source order requested:', order);
+    return { success: true, sourceOrder: order };
+  } catch (error) {
+    console.error('Error getting source order:', error);
     return { success: false, error: error.message };
   }
 });

@@ -181,9 +181,21 @@ app.whenReady().then(() => {
 
   // Initialize daemon if available
   try {
-    // Try to import compiled daemon
-    console.log('[Daemon] Attempting to load daemon from:', path.resolve(__dirname, '../dist/daemon'));
-    const daemonModule = require('../dist/daemon');
+    let daemonPath;
+    
+    if (isDev) {
+      // Dev: regular dist folder
+      daemonPath = path.resolve(__dirname, '../dist/daemon');
+    } else {
+      // Production: asar is disabled, dist is at /Applications/App.app/Contents/Resources/app/dist
+      // __dirname is /Applications/App.app/Contents/Resources/app/build
+      const appPath = path.resolve(__dirname, '..');
+      daemonPath = path.join(appPath, 'dist', 'daemon');
+    }
+    
+    console.log('[Daemon] Loading daemon from:', daemonPath);
+    
+    const daemonModule = require(daemonPath);
     console.log('[Daemon] Loaded daemon module:', Object.keys(daemonModule));
     createDaemon = daemonModule.createDaemon;
     console.log('[Daemon] createDaemon function available:', typeof createDaemon);
@@ -395,6 +407,36 @@ ipcMain.handle('toggle-source', async (event, source, enabled) => {
     return { success: true };
   } catch (error) {
     console.error('Error toggling source:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('set-source-order', async (event, sourceOrder) => {
+  try {
+    config.sourceOrder = sourceOrder;
+    saveConfig(config);
+    console.log('[IPC] Source order updated:', sourceOrder);
+    
+    // Update daemon's source order in real-time if running
+    if (daemon) {
+      await daemon.setSourceOrder(sourceOrder);
+      console.log('[IPC] Daemon source order updated and re-evaluated in real-time');
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting source order:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-source-order', async (event) => {
+  try {
+    const order = config.sourceOrder || ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'];
+    console.log('[IPC] Source order requested:', order);
+    return { success: true, sourceOrder: order };
+  } catch (error) {
+    console.error('Error getting source order:', error);
     return { success: false, error: error.message };
   }
 });

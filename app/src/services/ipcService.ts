@@ -27,6 +27,8 @@ declare global {
       goOnline: () => Promise<{ success: boolean; data?: boolean; error?: string }>;
       goAway: () => Promise<{ success: boolean; data?: boolean; error?: string }>;
       toggleSource: (source: string, enabled: boolean) => Promise<{ success: boolean; error?: string }>;
+      setSourceOrder: (sourceOrder: string[]) => Promise<{ success: boolean; error?: string }>;
+      getSourceOrder: () => Promise<{ success: boolean; sourceOrder?: string[]; error?: string }>;
       getDaemonStatus: () => Promise<{
         success: boolean;
         data?: { running: boolean };
@@ -168,6 +170,40 @@ export class IPCService {
     } catch (error) {
       console.error('Error toggling source:', error);
       return false;
+    }
+  }
+
+  /**
+   * Set source priority order
+   */
+  static async setSourceOrder(sourceOrder: string[]): Promise<boolean> {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return false;
+    }
+    try {
+      const result = await window.electronAPI.setSourceOrder(sourceOrder);
+      return result.success;
+    } catch (error) {
+      console.error('Error setting source order:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get current source priority order
+   */
+  static async getSourceOrder(): Promise<string[] | null> {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return null;
+    }
+    try {
+      const result = await window.electronAPI.getSourceOrder();
+      return result.success ? result.sourceOrder || [] : null;
+    } catch (error) {
+      console.error('Error getting source order:', error);
+      return null;
     }
   }
 

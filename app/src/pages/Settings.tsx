@@ -9,6 +9,8 @@ const Settings: React.FC = () => {
   const [error, setError] = useState('');
   const [tokens, setTokens] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [sourceOrder, setSourceOrder] = useState<string[]>(['spotify', 'appleMusic', 'zoom', 'teams', 'huddle']);
+  const [draggedSource, setDraggedSource] = useState<string | null>(null);
 
   useEffect(() => {
     loadConfig();
@@ -23,6 +25,14 @@ const Settings: React.FC = () => {
         console.log('[Settings] Setting tokens:', tokenData.tokens);
         setTokens(tokenData.tokens || []);
       }
+
+      // Load source order
+      const order = await IPCService.getSourceOrder();
+      if (order) {
+        console.log('[Settings] Source order loaded:', order);
+        setSourceOrder(order);
+      }
+
       setLoading(false);
     } catch (err) {
       console.error('[Settings] Error loading config:', err);
@@ -73,6 +83,50 @@ const Settings: React.FC = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error deleting tokens');
     }
+  };
+
+  const handleDragStart = (source: string) => {
+    setDraggedSource(source);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetSource: string) => {
+    if (!draggedSource || draggedSource === targetSource) return;
+
+    const newOrder = [...sourceOrder];
+    const draggedIndex = newOrder.indexOf(draggedSource);
+    const targetIndex = newOrder.indexOf(targetSource);
+
+    [newOrder[draggedIndex], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[draggedIndex]];
+
+    setSourceOrder(newOrder);
+    setDraggedSource(null);
+  };
+
+  const handleSaveSourceOrder = async () => {
+    try {
+      const success = await IPCService.setSourceOrder(sourceOrder);
+      if (success) {
+        setSaved(true);
+        console.log('[Settings] Source order saved:', sourceOrder);
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        setError('Failed to save source order');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error saving source order');
+    }
+  };
+
+  const sourceLabels: Record<string, { name: string; emoji: string }> = {
+    spotify: { name: 'Spotify', emoji: '🎵' },
+    appleMusic: { name: 'Apple Music', emoji: '🎶' },
+    zoom: { name: 'Zoom', emoji: '📹' },
+    teams: { name: 'Microsoft Teams', emoji: '👥' },
+    huddle: { name: 'Slack Huddle', emoji: '🎧' },
   };
 
   if (loading) {
@@ -144,48 +198,30 @@ const Settings: React.FC = () => {
       </div>
 
       <div className="settings-card">
-        <h2>🎵 Sources</h2>
-        <div className="settings-list">
-          <div className="setting-item">
-            <div className="setting-header">
-              <label>Spotify Integration</label>
+        <h2>🎵 Source Priority (Drag to Reorder)</h2>
+        <p className="priority-info">
+          When multiple sources are active, the one appearing first in this list will be displayed. 
+          Drag and drop to set your priority.
+        </p>
+        <div className="source-priority-list">
+          {sourceOrder.map((source) => (
+            <div
+              key={source}
+              className={`priority-item ${draggedSource === source ? 'dragging' : ''}`}
+              draggable
+              onDragStart={() => handleDragStart(source)}
+              onDragOver={handleDragOver}
+              onDrop={() => handleDrop(source)}
+            >
+              <span className="drag-handle">⋮⋮</span>
+              <span className="source-emoji">{sourceLabels[source]?.emoji}</span>
+              <span className="source-name">{sourceLabels[source]?.name}</span>
             </div>
-            <small>🎵 Track your currently playing Spotify song</small>
-            <p className="setting-note">Requires Spotify app running on macOS</p>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-header">
-              <label>Apple Music Integration</label>
-            </div>
-            <small>🎶 Track your currently playing Apple Music song</small>
-            <p className="setting-note">Requires Music app on macOS</p>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-header">
-              <label>Zoom Detection</label>
-            </div>
-            <small>📹 Auto-detect and update status during Zoom calls</small>
-            <p className="setting-note">Works on macOS and Windows</p>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-header">
-              <label>Microsoft Teams Detection</label>
-            </div>
-            <small>👥 Auto-detect and update status during Teams calls</small>
-            <p className="setting-note">Works on macOS and Windows</p>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-header">
-              <label>Slack Huddle Detection</label>
-            </div>
-            <small>🎧 Auto-detect and update status during Slack huddles</small>
-            <p className="setting-note">Works on macOS and Windows</p>
-          </div>
+          ))}
         </div>
+        <button className="save-btn" onClick={handleSaveSourceOrder}>
+          💾 Save Priority
+        </button>
       </div>
 
       <div className="settings-card">

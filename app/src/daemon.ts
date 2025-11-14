@@ -23,6 +23,7 @@ export class SlackStatusBotDaemon {
   private running: boolean = false;
   private intervals: NodeJS.Timeout[] = [];
   private configDir: string;
+  private sourceOrder: string[] = ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'];
 
   constructor(config: DaemonConfig) {
     this.slackService = new SlackService(config.slackTokens);
@@ -155,148 +156,146 @@ export class SlackStatusBotDaemon {
     this.saveConfig();
   }
 
+  /**
+   * Update source priority order at runtime
+   */
+  async setSourceOrder(newOrder: string[]): Promise<void> {
+    this.sourceOrder = newOrder;
+    console.log('[Daemon] Source order updated at runtime:', this.sourceOrder);
+    
+    // Re-evaluate current status based on new priority order
+    try {
+      const sourceStatuses = await this.getSourceStatuses();
+      const activeStatuses: Record<string, boolean> = {
+        spotify: sourceStatuses.spotify.isActive && this.spotify.isEnabled(),
+        appleMusic: sourceStatuses.appleMusic.isActive && this.appleMusic.isEnabled(),
+        zoom: sourceStatuses.zoom.isActive && this.zoom.isEnabled(),
+        teams: sourceStatuses.teams.isActive && this.teams.isEnabled(),
+        huddle: sourceStatuses.huddle.isActive && this.huddle.isEnabled(),
+      };
+
+      // Find the first active source in new priority order
+      const highestPrioritySource = this.sourceOrder.find(s => activeStatuses[s]);
+
+      if (highestPrioritySource) {
+        const status = sourceStatuses[highestPrioritySource as keyof typeof sourceStatuses];
+        if (status && status.message) {
+          console.log(`[Daemon] Re-evaluating status with new priority: switching to ${highestPrioritySource}`);
+          const canChange = await this.statusManager.isStatusClean();
+          if (canChange) {
+            await this.slackService.setProfile(status.emoji!, status.message!);
+          }
+        }
+      } else {
+        // No active source, reset
+        console.log(`[Daemon] No active source with new priority, resetting status`);
+        await this.statusManager.reset();
+      }
+    } catch (error) {
+      console.error('[Daemon] Error re-evaluating status after priority change:', error);
+    }
+  }
+
   // Private helpers
 
   private startSourcePolling(): void {
-    let wasSpotifyActive = false;
-    let wasAppleMusicActive = false;
-    let wasZoomActive = false;
-    let wasTeamsActive = false;
-    let wasHuddleActive = false;
-    
-    // Track last message for each source to avoid API calls when message hasn't changed
-    let lastSpotifyMessage = '';
-    let lastAppleMusicMessage = '';
-    let lastZoomMessage = '';
-    let lastTeamsMessage = '';
-    let lastHuddleMessage = '';
+    // Track state for each source
+    const sourceState: Record<string, { wasActive: boolean; lastMessage: string }> = {
+      spotify: { wasActive: false, lastMessage: '' },
+      appleMusic: { wasActive: false, lastMessage: '' },
+      zoom: { wasActive: false, lastMessage: '' },
+      teams: { wasActive: false, lastMessage: '' },
+      huddle: { wasActive: false, lastMessage: '' },
+    };
 
     // Poll all sources every second
     const interval = setInterval(async () => {
       try {
         const sourceStatuses = await this.getSourceStatuses();
 
-        // Check if any source became active or inactive
-        const isSpotifyActive = sourceStatuses.spotify.isActive && this.spotify.isEnabled();
-        const isAppleMusicActive = sourceStatuses.appleMusic.isActive && this.appleMusic.isEnabled();
-        const isZoomActive = sourceStatuses.zoom.isActive && this.zoom.isEnabled();
-        const isTeamsActive = sourceStatuses.teams.isActive && this.teams.isEnabled();
-        const isHuddleActive = sourceStatuses.huddle.isActive && this.huddle.isEnabled();
+        // Get current active status for each source
+        const activeStatuses: Record<string, boolean> = {
+          spotify: sourceStatuses.spotify.isActive && this.spotify.isEnabled(),
+          appleMusic: sourceStatuses.appleMusic.isActive && this.appleMusic.isEnabled(),
+          zoom: sourceStatuses.zoom.isActive && this.zoom.isEnabled(),
+          teams: sourceStatuses.teams.isActive && this.teams.isEnabled(),
+          huddle: sourceStatuses.huddle.isActive && this.huddle.isEnabled(),
+        };
 
-        // Spotify: nur bei Message-Änderung prüfen ob wir setzen dürfen
-        if (isSpotifyActive && sourceStatuses.spotify.message !== lastSpotifyMessage) {
-          const canChange = await this.statusManager.isStatusClean();
-          if (canChange) {
-            lastSpotifyMessage = sourceStatuses.spotify.message!;
-            await this.slackService.setProfile(
-              sourceStatuses.spotify.emoji!,
-              sourceStatuses.spotify.message!
-            );
+        // Track which status was set (last active source in priority order wins)
+        let statusWasSet = false;
+        let currentActiveSource: string | null = null;
+
+        // Process sources in priority order (sourceOrder defines the priority)
+        for (const sourceName of this.sourceOrder) {
+          const isActive = activeStatuses[sourceName];
+          const wasActive = sourceState[sourceName].wasActive;
+          const status = sourceStatuses[sourceName as keyof typeof sourceStatuses];
+
+          if (!status) continue;
+
+          // Handle source becoming active
+          if (isActive && !statusWasSet) {
+            currentActiveSource = sourceName;
+            // Only set status if message changed
+            if (status.message !== sourceState[sourceName].lastMessage) {
+              const canChange = await this.statusManager.isStatusClean();
+              if (canChange) {
+                sourceState[sourceName].lastMessage = status.message || '';
+                await this.slackService.setProfile(status.emoji!, status.message!);
+                statusWasSet = true;
+              }
+            }
+
+            // Handle DND for meetings
+            if ((sourceName === 'zoom' || sourceName === 'teams' || sourceName === 'huddle') && !wasActive) {
+              console.log(`[polling] ${sourceName} meeting started, enabling DND...`);
+              await this.slackService.enableDND();
+            }
           }
-        } else if (!isSpotifyActive && wasSpotifyActive) {
-          await this.statusManager.reset();
-          lastSpotifyMessage = '';
-        }
+          // Handle source becoming inactive
+          else if (!isActive && wasActive) {
+            sourceState[sourceName].lastMessage = '';
+            console.log(`[polling] ${sourceName} became inactive`);
 
-        // Apple Music
-        if (isAppleMusicActive && sourceStatuses.appleMusic.message !== lastAppleMusicMessage) {
-          console.log('[polling] Apple Music message changed:', { 
-            new: sourceStatuses.appleMusic.message,
-            old: lastAppleMusicMessage 
-          });
-          const canChange = await this.statusManager.isStatusClean();
-          console.log('[polling] Apple Music can change:', canChange);
-          if (canChange) {
-            lastAppleMusicMessage = sourceStatuses.appleMusic.message!;
-            await this.slackService.setProfile(
-              sourceStatuses.appleMusic.emoji!,
-              sourceStatuses.appleMusic.message!
+            // Handle DND for meetings
+            if (sourceName === 'zoom' || sourceName === 'teams' || sourceName === 'huddle') {
+              console.log(`[polling] ${sourceName} meeting ended, disabling DND...`);
+              await this.slackService.disableDND();
+            }
+
+            // Check if another source is still active
+            const nextActiveSource = this.sourceOrder.find(
+              s => activeStatuses[s] && sourceState[s].wasActive !== false
             );
-            console.log('[polling] Apple Music status set');
+
+            if (nextActiveSource && nextActiveSource !== sourceName) {
+              // Switch to next active source in priority order
+              const nextStatus = sourceStatuses[nextActiveSource as keyof typeof sourceStatuses];
+              if (nextStatus && nextStatus.message) {
+                console.log(`[polling] Switching status from ${sourceName} to ${nextActiveSource}`);
+                const canChange = await this.statusManager.isStatusClean();
+                if (canChange) {
+                  sourceState[nextActiveSource].lastMessage = nextStatus.message;
+                  await this.slackService.setProfile(nextStatus.emoji!, nextStatus.message!);
+                }
+              }
+            } else {
+              // No other source is active, reset status
+              console.log(`[polling] No other source active, resetting status`);
+              await this.statusManager.reset();
+            }
           }
-        } else if (!isAppleMusicActive && wasAppleMusicActive) {
-          await this.statusManager.reset();
-          lastAppleMusicMessage = '';
+
+          sourceState[sourceName].wasActive = isActive;
         }
 
-        // Zoom
-        if (isZoomActive && sourceStatuses.zoom.message !== lastZoomMessage) {
-          const canChange = await this.statusManager.isStatusClean();
-          if (canChange) {
-            lastZoomMessage = sourceStatuses.zoom.message!;
-            await this.slackService.setProfile(
-              sourceStatuses.zoom.emoji!,
-              sourceStatuses.zoom.message!
-            );
-          }
+        // If no source is active but one was before, reset status
+        const anyActive = Object.values(activeStatuses).some(v => v);
+        const anyWasActive = Object.values(sourceState).some(s => s.wasActive);
+        if (!anyActive && anyWasActive) {
+          // This is handled above when each source transitions to inactive
         }
-        // Activate DND when meeting starts
-        if (isZoomActive && !wasZoomActive) {
-          console.log('[polling] Zoom meeting started, enabling DND...');
-          await this.slackService.enableDND();
-        }
-        // Deactivate DND and reset when meeting ends
-        if (!isZoomActive && wasZoomActive) {
-          console.log('[polling] Zoom meeting ended, resetting status and disabling DND...');
-          await this.slackService.disableDND();
-          await this.statusManager.reset();
-          lastZoomMessage = '';
-        }
-
-        // Teams
-        if (isTeamsActive && sourceStatuses.teams.message !== lastTeamsMessage) {
-          const canChange = await this.statusManager.isStatusClean();
-          if (canChange) {
-            lastTeamsMessage = sourceStatuses.teams.message!;
-            await this.slackService.setProfile(
-              sourceStatuses.teams.emoji!,
-              sourceStatuses.teams.message!
-            );
-          }
-        }
-        // Activate DND when meeting starts
-        if (isTeamsActive && !wasTeamsActive) {
-          console.log('[polling] Teams meeting started, enabling DND...');
-          await this.slackService.enableDND();
-        }
-        // Deactivate DND and reset when meeting ends
-        if (!isTeamsActive && wasTeamsActive) {
-          console.log('[polling] Teams meeting ended, resetting status and disabling DND...');
-          await this.slackService.disableDND();
-          await this.statusManager.reset();
-          lastTeamsMessage = '';
-        }
-
-        // Huddle
-        if (isHuddleActive && sourceStatuses.huddle.message !== lastHuddleMessage) {
-          const canChange = await this.statusManager.isStatusClean();
-          if (canChange) {
-            lastHuddleMessage = sourceStatuses.huddle.message!;
-            await this.slackService.setProfile(
-              sourceStatuses.huddle.emoji!,
-              sourceStatuses.huddle.message!
-            );
-          }
-        }
-        // Activate DND when meeting starts
-        if (isHuddleActive && !wasHuddleActive) {
-          console.log('[polling] Huddle started, enabling DND...');
-          await this.slackService.enableDND();
-        }
-        // Deactivate DND and reset when meeting ends
-        if (!isHuddleActive && wasHuddleActive) {
-          console.log('[polling] Huddle ended, resetting status and disabling DND...');
-          await this.slackService.disableDND();
-          await this.statusManager.reset();
-          lastHuddleMessage = '';
-        }
-
-        // Update state
-        wasSpotifyActive = isSpotifyActive;
-        wasAppleMusicActive = isAppleMusicActive;
-        wasZoomActive = isZoomActive;
-        wasTeamsActive = isTeamsActive;
-        wasHuddleActive = isHuddleActive;
       } catch (error) {
         console.error('Error polling sources:', error);
       }
@@ -352,6 +351,11 @@ export class SlackStatusBotDaemon {
           this.teams.setEnabled(config.sources.teams !== false);
           this.huddle.setEnabled(config.sources.huddle !== false);
         }
+
+        // Load source order
+        if (config.sourceOrder && Array.isArray(config.sourceOrder)) {
+          this.sourceOrder = config.sourceOrder;
+        }
       } catch (error) {
         console.error('Error loading config:', error);
       }
@@ -361,7 +365,7 @@ export class SlackStatusBotDaemon {
   private saveConfig(): void {
     const configFile = this.getConfigFilePath();
     
-    // Read existing config to preserve slackTokens
+    // Read existing config to preserve slackTokens and sourceOrder
     let existingConfig: any = {};
     try {
       if (fs.existsSync(configFile)) {
@@ -372,7 +376,7 @@ export class SlackStatusBotDaemon {
     }
 
     const config = {
-      ...existingConfig, // Keep existing fields like slackTokens
+      ...existingConfig, // Keep existing fields like slackTokens and sourceOrder
       sources: {
         spotify: this.spotify.isEnabled(),
         appleMusic: this.appleMusic.isEnabled(),
@@ -380,6 +384,7 @@ export class SlackStatusBotDaemon {
         teams: this.teams.isEnabled(),
         huddle: this.huddle.isEnabled(),
       },
+      sourceOrder: existingConfig.sourceOrder || ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'],
       lastUpdated: new Date().toISOString(),
     };
 
