@@ -118,7 +118,7 @@ describe('SlackStatusBotDaemon', () => {
         await daemon.goOnline();
         expect(true).toBe(true);
       } catch (e) {
-        fail('goOnline should not throw');
+        throw new Error('goOnline should not throw');
       }
     });
 
@@ -130,7 +130,7 @@ describe('SlackStatusBotDaemon', () => {
         await daemon.goAway();
         expect(true).toBe(true);
       } catch (e) {
-        fail('goAway should not throw');
+        throw new Error('goAway should not throw');
       }
     });
 
@@ -142,7 +142,7 @@ describe('SlackStatusBotDaemon', () => {
         await daemon.setStatus(':rocket:', 'Launching!');
         expect(true).toBe(true);
       } catch (e) {
-        fail('setStatus should not throw');
+        throw new Error('setStatus should not throw');
       }
     });
   });
@@ -245,7 +245,7 @@ describe('SlackStatusBotDaemon', () => {
         await daemon.setSourceOrder(invalidOrder);
         expect(true).toBe(true);
       } catch (e) {
-        fail('setSourceOrder should handle invalid orders gracefully');
+        throw new Error('setSourceOrder should handle invalid orders gracefully');
       }
     });
 
@@ -291,7 +291,7 @@ describe('SlackStatusBotDaemon', () => {
         await daemon.setSourceOrder(newOrder);
         expect(true).toBe(true);
       } catch (e) {
-        fail('Config save should not throw');
+        throw new Error('Config save should not throw');
       }
     });
 
@@ -506,7 +506,7 @@ describe('SlackStatusBotDaemon', () => {
     });
 
     it('should handle many concurrent status checks', async () => {
-      const promises = [];
+      const promises: Array<Promise<any>> = [];
       
       for (let i = 0; i < 10; i++) {
         promises.push(daemon.getSourceStatuses());
