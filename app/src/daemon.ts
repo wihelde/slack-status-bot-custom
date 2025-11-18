@@ -174,11 +174,11 @@ export class SlackStatusBotDaemon {
     try {
       const sourceStatuses = await this.getSourceStatuses();
       const activeStatuses: Record<string, boolean> = {
-        spotify: sourceStatuses.spotify.isActive && this.spotify.isEnabled(),
-        appleMusic: sourceStatuses.appleMusic.isActive && this.appleMusic.isEnabled(),
-        zoom: sourceStatuses.zoom.isActive && this.zoom.isEnabled(),
-        teams: sourceStatuses.teams.isActive && this.teams.isEnabled(),
-        huddle: sourceStatuses.huddle.isActive && this.huddle.isEnabled(),
+        spotify: sourceStatuses?.spotify?.isActive && this.spotify.isEnabled(),
+        appleMusic: sourceStatuses?.appleMusic?.isActive && this.appleMusic.isEnabled(),
+        zoom: sourceStatuses?.zoom?.isActive && this.zoom.isEnabled(),
+        teams: sourceStatuses?.teams?.isActive && this.teams.isEnabled(),
+        huddle: sourceStatuses?.huddle?.isActive && this.huddle.isEnabled(),
       };
 
       // Find the first active source in new priority order

@@ -12,6 +12,15 @@ describe('SlackStatusBotDaemon', () => {
   let daemon: SlackStatusBotDaemon;
   let mockSlackService: any;
 
+  // Helper function to create complete mock source statuses with all 5 sources
+  const createCompleteSourceStatusesMock = () => ({
+    spotify: { isActive: false, message: '' },
+    appleMusic: { isActive: false, message: '' },
+    zoom: { isActive: false, message: '' },
+    teams: { isActive: false, message: '' },
+    huddle: { isActive: false, message: '' },
+  });
+
   beforeEach(() => {
     mockSlackService = new SlackService('test-token') as any;
     mockSlackService.getProfile = vi.fn().mockResolvedValue({
@@ -22,6 +31,11 @@ describe('SlackStatusBotDaemon', () => {
     mockSlackService.setPresence = vi.fn().mockResolvedValue(true);
     mockSlackService.enableDND = vi.fn().mockResolvedValue(true);
     mockSlackService.disableDND = vi.fn().mockResolvedValue(true);
+    
+    // Mock getSourceStatuses with all 5 sources using helper function
+    mockSlackService.getSourceStatuses = vi.fn().mockResolvedValue(
+      createCompleteSourceStatusesMock()
+    );
 
     daemon = new SlackStatusBotDaemon({
       slackTokens: 'test-token',
@@ -208,6 +222,11 @@ describe('SlackStatusBotDaemon', () => {
     });
 
     it('should update source order via setSourceOrder', async () => {
+      // Ensure mock is reset to complete state before test
+      mockSlackService.getSourceStatuses.mockResolvedValueOnce(
+        createCompleteSourceStatusesMock()
+      );
+      
       const newOrder = ['teams', 'zoom', 'spotify', 'huddle', 'appleMusic'];
       await daemon.setSourceOrder(newOrder);
       
@@ -215,6 +234,11 @@ describe('SlackStatusBotDaemon', () => {
     });
 
     it('should handle invalid source order gracefully', async () => {
+      // Ensure mock is reset to complete state before test
+      mockSlackService.getSourceStatuses.mockResolvedValueOnce(
+        createCompleteSourceStatusesMock()
+      );
+      
       const invalidOrder = ['invalid', 'sources'];
       // Should not throw, but may not update
       try {
@@ -226,6 +250,11 @@ describe('SlackStatusBotDaemon', () => {
     });
 
     it('should persist source order changes in config', async () => {
+      // Ensure mock is reset to complete state before test
+      mockSlackService.getSourceStatuses.mockResolvedValueOnce(
+        createCompleteSourceStatusesMock()
+      );
+      
       const newOrder = ['spotify', 'teams', 'zoom', 'appleMusic', 'huddle'];
       await daemon.setSourceOrder(newOrder);
       
@@ -250,6 +279,11 @@ describe('SlackStatusBotDaemon', () => {
     });
 
     it('should save config when updating source order', async () => {
+      // Ensure mock is reset to complete state before test
+      mockSlackService.getSourceStatuses.mockResolvedValueOnce(
+        createCompleteSourceStatusesMock()
+      );
+      
       const newOrder = ['zoom', 'teams', 'spotify', 'appleMusic', 'huddle'];
       
       // Should not throw
