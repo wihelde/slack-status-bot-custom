@@ -1,26 +1,27 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { StatusManager } from '../statusManager';
 import { SlackService } from '../slack';
 import { STATUS_MESSAGES } from '../../config/statusConfig';
 
 // Mock SlackService
-jest.mock('../slack');
+vi.mock('../slack');
 
 describe('StatusManager', () => {
   let statusManager: StatusManager;
-  let mockSlackService: jest.Mocked<SlackService>;
+  let mockSlackService: vi.Mocked<SlackService>;
 
   beforeEach(() => {
-    mockSlackService = new SlackService('test-token') as jest.Mocked<SlackService>;
+    mockSlackService = new SlackService('test-token') as vi.Mocked<SlackService>;
     
     // Mock all SlackService methods
-    mockSlackService.getProfile = jest.fn().mockResolvedValue({
+    mockSlackService.getProfile = vi.fn().mockResolvedValue({
       status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
       status_text: 'Playing Spotify',
     });
-    mockSlackService.setProfile = jest.fn().mockResolvedValue(true);
-    mockSlackService.setPresence = jest.fn().mockResolvedValue(true);
-    mockSlackService.enableDND = jest.fn().mockResolvedValue(true);
-    mockSlackService.disableDND = jest.fn().mockResolvedValue(true);
+    mockSlackService.setProfile = vi.fn().mockResolvedValue(true);
+    mockSlackService.setPresence = vi.fn().mockResolvedValue(true);
+    mockSlackService.enableDND = vi.fn().mockResolvedValue(true);
+    mockSlackService.disableDND = vi.fn().mockResolvedValue(true);
 
     statusManager = new StatusManager(mockSlackService);
   });
@@ -118,7 +119,7 @@ describe('StatusManager', () => {
 
   describe('reset()', () => {
     it('should check isStatusClean before resetting', async () => {
-      mockSlackService.getProfile = jest.fn().mockResolvedValue({
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
         status_emoji: ':custom_emoji:',
         status_text: 'Custom status',
       });
@@ -131,7 +132,7 @@ describe('StatusManager', () => {
     });
 
     it('should set presence to auto', async () => {
-      mockSlackService.getProfile = jest.fn().mockResolvedValue({
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
         status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
         status_text: 'Playing Spotify',
       });
@@ -142,7 +143,7 @@ describe('StatusManager', () => {
     });
 
     it('should disable DND', async () => {
-      mockSlackService.getProfile = jest.fn().mockResolvedValue({
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
         status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
         status_text: 'Playing Spotify',
       });
@@ -155,7 +156,7 @@ describe('StatusManager', () => {
 
   describe('isStatusClean()', () => {
     it('should allow resetting if current status is a managed emoji', async () => {
-      mockSlackService.getProfile = jest.fn().mockResolvedValue({
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
         status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
         status_text: 'Playing Spotify',
       });
@@ -166,7 +167,7 @@ describe('StatusManager', () => {
     });
 
     it('should block resetting if current status is custom and not managed', async () => {
-      mockSlackService.getProfile = jest.fn().mockResolvedValue({
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
         status_emoji: ':custom_emoji:',
         status_text: 'Custom status',
       });
@@ -177,7 +178,7 @@ describe('StatusManager', () => {
     });
 
     it('should allow resetting if status is empty', async () => {
-      mockSlackService.getProfile = jest.fn().mockResolvedValue({
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
         status_emoji: '',
         status_text: '',
       });

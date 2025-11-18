@@ -157,6 +157,13 @@ export class SlackStatusBotDaemon {
   }
 
   /**
+   * Get current source priority order
+   */
+  getSourceOrder(): string[] {
+    return this.sourceOrder;
+  }
+
+  /**
    * Update source priority order at runtime
    */
   async setSourceOrder(newOrder: string[]): Promise<void> {

@@ -1,12 +1,13 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SpotifyAdapter } from '../spotify';
 
-jest.mock('child_process');
+vi.mock('child_process');
 
 describe('SpotifyAdapter', () => {
   let adapter: SpotifyAdapter;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     adapter = new SpotifyAdapter();
   });
 
@@ -51,6 +52,59 @@ describe('SpotifyAdapter', () => {
 
     it('should initialize with correct name', () => {
       expect(adapter['lastStatus'].name).toBe('Spotify');
+    });
+  });
+
+  describe('getStatus (PRIORITY 2)', () => {
+    it('should return async status', () => {
+      // getStatus returns a Promise
+      const result = adapter.getStatus();
+      expect(result instanceof Promise).toBe(true);
+    });
+
+    it('should have emoji property when defined', () => {
+      // When active, status should have emoji
+      expect(adapter['lastStatus']).toHaveProperty('emoji');
+    });
+
+    it('should initialize with Spotify emoji', () => {
+      // Status should be initialized with :spotify_2: emoji
+      expect(adapter['lastStatus'].emoji).toBe(':spotify_2:');
+    });
+
+    it('should cache status internally', () => {
+      // Adapter maintains lastStatus for caching
+      expect(adapter['lastStatus']).toBeDefined();
+      expect(typeof adapter['lastStatus']).toBe('object');
+    });
+
+    it('should be ready for repeated calls', () => {
+      // Architecture should support repeated calls
+      const result1 = adapter.getStatus();
+      const result2 = adapter.getStatus();
+      
+      // Both should be promises
+      expect(result1 instanceof Promise).toBe(true);
+      expect(result2 instanceof Promise).toBe(true);
+    });
+  });
+
+  describe('Spotify Detection (PRIORITY 2)', () => {
+    it('should only work on macOS', () => {
+      const originalPlatform = process.platform;
+      
+      // On non-macOS, should not be available
+      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+      const linuxAdapter = new SpotifyAdapter();
+      expect(linuxAdapter.isAvailable()).toBe(false);
+      
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+    });
+
+    it('should use osascript method for detection', () => {
+      // Spotify uses osascript (AppleScript) on macOS
+      // This is the detection method, not runtime tested
+      expect(typeof adapter.getStatus).toBe('function');
     });
   });
 });

@@ -15,6 +15,7 @@ export class SpotifyAdapter implements ISourceAdapter {
   private lastStatus: SourceStatus = {
     name: 'Spotify',
     isActive: false,
+    emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
   };
 
   async getStatus(): Promise<SourceStatus> {
