@@ -4,6 +4,7 @@ import { SpotifyAdapter } from './services/sources/spotify';
 import { AppleMusicAdapter } from './services/sources/appleMusic';
 import { ZoomAdapter, TeamsAdapter, HuddleAdapter } from './services/sources/meetings';
 import { POLL_INTERVALS } from './config/statusConfig';
+import { logger } from './utils/logger';
 import fs from 'fs';
 import path from 'path';
 
@@ -229,6 +230,14 @@ export class SlackStatusBotDaemon {
           huddle: sourceStatuses.huddle.isActive && this.huddle.isEnabled(),
         };
 
+        // Debug: Log active statuses
+        const activeSourcesDebug = Object.entries(activeStatuses)
+          .filter(([_, isActive]) => isActive)
+          .map(([name]) => name);
+        if (activeSourcesDebug.length > 0) {
+          logger.debug(`[polling] Active sources: ${activeSourcesDebug.join(', ')}`);
+        }
+
         // Track which status was set (last active source in priority order wins)
         let statusWasSet = false;
         let currentActiveSource: string | null = null;
@@ -241,6 +250,20 @@ export class SlackStatusBotDaemon {
 
           if (!status) continue;
 
+          // Only process state transitions, not every cycle
+          if (isActive === wasActive) {
+            continue; // No state change for this source
+          }
+
+          // Debug: Log state transitions
+          logger.debug(`[polling] ${sourceName} state changed: ${wasActive} → ${isActive}`, {
+            lastMessage: sourceState[sourceName].lastMessage,
+            newMessage: status.message,
+          });
+
+          // Update state IMMEDIATELY to prevent race conditions
+          sourceState[sourceName].wasActive = isActive;
+
           // Handle source becoming active
           if (isActive && !statusWasSet) {
             currentActiveSource = sourceName;
@@ -249,8 +272,11 @@ export class SlackStatusBotDaemon {
               const canChange = await this.statusManager.isStatusClean();
               if (canChange) {
                 sourceState[sourceName].lastMessage = status.message || '';
+                logger.info(`[polling] ${sourceName} became active, setting status`, { emoji: status.emoji, message: status.message });
                 await this.slackService.setProfile(status.emoji!, status.message!);
                 statusWasSet = true;
+              } else {
+                logger.warn(`[polling] ${sourceName} became active but status is not clean, skipping status change`);
               }
             }
 
@@ -273,7 +299,7 @@ export class SlackStatusBotDaemon {
 
             // Check if another source is still active
             const nextActiveSource = this.sourceOrder.find(
-              s => activeStatuses[s] && sourceState[s].wasActive !== false
+              s => activeStatuses[s] && s !== sourceName
             );
 
             if (nextActiveSource && nextActiveSource !== sourceName) {
@@ -289,17 +315,30 @@ export class SlackStatusBotDaemon {
               }
             } else {
               // No other source is active, reset status
-              console.log(`[polling] No other source active, resetting status`);
-              await this.statusManager.reset();
+              logger.info(`[polling] ${sourceName} became inactive, no other source active - attempting reset`);
+              const resetSuccess = await this.statusManager.reset();
+              if (resetSuccess) {
+                logger.info(`[polling] Status reset successful after ${sourceName} deactivation`);
+              } else {
+                logger.warn(`[polling] Status reset failed after ${sourceName} deactivation (likely blocked by isStatusClean)`);
+              }
             }
           }
-
-          sourceState[sourceName].wasActive = isActive;
         }
 
         // If no source is active but one was before, reset status
         const anyActive = Object.values(activeStatuses).some(v => v);
         const anyWasActive = Object.values(sourceState).some(s => s.wasActive);
+        
+        logger.debug(`[polling] Polling cycle end`, {
+          anyActive,
+          anyWasActive,
+          currentState: Object.entries(sourceState).reduce(
+            (acc, [name, state]) => ({ ...acc, [name]: state.wasActive }),
+            {}
+          ),
+        });
+        
         if (!anyActive && anyWasActive) {
           // This is handled above when each source transitions to inactive
         }

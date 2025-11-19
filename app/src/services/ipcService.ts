@@ -42,6 +42,9 @@ declare global {
       onDaemonStatusChange: (callback: (data: any) => void) => void;
       onSourceStatusChange: (callback: (data: any) => void) => void;
       onSlackStatusChange: (callback: (data: any) => void) => void;
+      getLogs: (lines?: number) => Promise<{ success: boolean; data?: string; error?: string }>;
+      setLogLevel: (level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR') => Promise<{ success: boolean; logLevel?: string; error?: string }>;
+      getLogLevel: () => Promise<{ success: boolean; logLevel?: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'; error?: string }>;
     };
   }
 }
@@ -306,5 +309,61 @@ export class IPCService {
       return;
     }
     window.electronAPI.onSlackStatusChange(callback);
+  }
+
+  /**
+   * Get recent logs
+   */
+  static async getLogs(lines: number = 200): Promise<string> {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return '(Not running in Electron)';
+    }
+    try {
+      const result = await window.electronAPI.getLogs(lines);
+      if (result.success && result.data) {
+        return result.data;
+      } else {
+        return `(Error: ${result.error || 'Unknown error'})`;
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('Error fetching logs:', error);
+      return `(Error fetching logs: ${errorMsg})`;
+    }
+  }
+
+  /**
+   * Set log level
+   */
+  static async setLogLevel(level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR') {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return null;
+    }
+    try {
+      const result = await window.electronAPI.setLogLevel(level);
+      return result.success ? result : null;
+    } catch (error) {
+      console.error('Error setting log level:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get current log level
+   */
+  static async getLogLevel() {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return null;
+    }
+    try {
+      const result = await window.electronAPI.getLogLevel();
+      return result.success ? result : null;
+    } catch (error) {
+      console.error('Error getting log level:', error);
+      return null;
+    }
   }
 }

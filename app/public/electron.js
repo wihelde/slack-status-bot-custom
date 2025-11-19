@@ -461,3 +461,39 @@ ipcMain.handle('get-daemon-status', async (event) => {
   }
 });
 
+/**
+ * Get recent logs
+ */
+ipcMain.handle('get-logs', async (event, lines = 200) => {
+  try {
+    const { logger } = require('../dist/utils/logger');
+    const logs = logger.getRecentLogs(lines);
+    return { success: true, data: logs };
+  } catch (error) {
+    console.error('Error getting logs:', error);
+    return { success: false, error: error.message, data: '(Error reading logs)' };
+  }
+});
+
+ipcMain.handle('set-log-level', async (event, level) => {
+  try {
+    const { logger } = require('../dist/utils/logger');
+    logger.setLogLevel(level);
+    return { success: true, logLevel: level };
+  } catch (error) {
+    console.error('Error setting log level:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-log-level', async (event) => {
+  try {
+    const { logger } = require('../dist/utils/logger');
+    const logLevel = logger.getLogLevel();
+    return { success: true, logLevel };
+  } catch (error) {
+    console.error('Error getting log level:', error);
+    return { success: false, error: error.message };
+  }
+});
+

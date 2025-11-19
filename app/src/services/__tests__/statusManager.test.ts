@@ -106,10 +106,10 @@ describe('StatusManager', () => {
       expect(mockSlackService.disableDND).toHaveBeenCalled();
     });
 
-    it('should set statusCheckState to "not working"', async () => {
+    it('should set statusCheckState to "not working" for sick status', async () => {
       await statusManager.setCustomStatus(
-        STATUS_MESSAGES.FOCUS_EMOJI,
-        'Focusing'
+        STATUS_MESSAGES.SICK_EMOJI,
+        'Out sick'
       );
       
       const state = statusManager.getStatusCheckState();

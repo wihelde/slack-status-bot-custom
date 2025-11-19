@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { logger } from '../utils/logger';
 
 export interface SlackProfile {
   status_emoji: string;
@@ -69,6 +70,8 @@ export class SlackService {
       status_expiration: statusExpiration,
     };
 
+    logger.info(`[slack] setProfile called`, { emoji: statusEmoji, text: statusText, tokenCount: this.tokens.length });
+
     try {
       // Set for all configured tokens
       const results = await Promise.all(
@@ -88,12 +91,14 @@ export class SlackService {
         const errors = results
           .filter(r => !r.data.ok)
           .map(r => r.data.error);
-        console.error('Slack API errors:', errors);
+        logger.error(`[slack] setProfile API errors`, { errors });
+      } else {
+        logger.info(`[slack] setProfile successful`);
       }
 
       return allOk;
     } catch (error) {
-      console.error('Failed to set Slack profile:', error);
+      logger.error(`[slack] setProfile failed`, { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -105,6 +110,8 @@ export class SlackService {
     if (this.tokens.length === 0) {
       throw new Error('No Slack tokens configured');
     }
+
+    logger.info(`[slack] setPresence called`, { presence, tokenCount: this.tokens.length });
 
     try {
       const results = await Promise.all(
@@ -118,9 +125,15 @@ export class SlackService {
         )
       );
 
-      return results.every(r => r.data.ok);
+      const allOk = results.every(r => r.data.ok);
+      if (allOk) {
+        logger.info(`[slack] setPresence successful`);
+      } else {
+        logger.warn(`[slack] setPresence failed for some tokens`);
+      }
+      return allOk;
     } catch (error) {
-      console.error('Failed to set presence:', error);
+      logger.error(`[slack] setPresence failed`, { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }

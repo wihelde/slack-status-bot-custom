@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/Settings.css';
 import { IPCService } from '../services/ipcService';
+import LogViewer from '../components/LogViewer';
 
 const Settings: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'config' | 'logs'>('config');
   const [slackToken, setSlackToken] = useState('');
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
@@ -11,6 +13,8 @@ const Settings: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [sourceOrder, setSourceOrder] = useState<string[]>(['spotify', 'appleMusic', 'zoom', 'teams', 'huddle']);
   const [draggedSource, setDraggedSource] = useState<string | null>(null);
+  const [logLevel, setLogLevelState] = useState<'DEBUG' | 'INFO' | 'WARN' | 'ERROR'>('ERROR');
+  const [logLevelSaving, setLogLevelSaving] = useState(false);
 
   useEffect(() => {
     loadConfig();
@@ -31,6 +35,13 @@ const Settings: React.FC = () => {
       if (order) {
         console.log('[Settings] Source order loaded:', order);
         setSourceOrder(order);
+      }
+
+      // Load log level
+      const levelResult = await IPCService.getLogLevel();
+      if (levelResult?.success && levelResult?.logLevel) {
+        console.log('[Settings] Log level loaded:', levelResult.logLevel);
+        setLogLevelState(levelResult.logLevel);
       }
 
       setLoading(false);
@@ -121,6 +132,23 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleLogLevelChange = async (newLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR') => {
+    try {
+      setLogLevelSaving(true);
+      const result = await IPCService.setLogLevel(newLevel);
+      if (result?.success) {
+        setLogLevelState(newLevel);
+        console.log('[Settings] Log level changed to:', newLevel);
+      } else {
+        setError('Failed to change log level');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error changing log level');
+    } finally {
+      setLogLevelSaving(false);
+    }
+  };
+
   const sourceLabels: Record<string, { name: string; emoji: string }> = {
     spotify: { name: 'Spotify', emoji: '🎵' },
     appleMusic: { name: 'Apple Music', emoji: '🎶' },
@@ -137,8 +165,24 @@ const Settings: React.FC = () => {
     <div className="settings">
       <div className="settings-header">
         <h1>Settings</h1>
+        <div className="settings-tabs">
+          <button 
+            className={`tab-btn ${activeTab === 'config' ? 'active' : ''}`}
+            onClick={() => setActiveTab('config')}
+          >
+            ⚙️ Configuration
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
+            onClick={() => setActiveTab('logs')}
+          >
+            📋 Logs
+          </button>
+        </div>
       </div>
 
+      {activeTab === 'config' && (
+      <>
       <div className="settings-card">
         <h2>🔑 Slack Configuration</h2>
         
@@ -184,7 +228,7 @@ const Settings: React.FC = () => {
           />
           <small className="help-text">
             📖 Get your token from{' '}
-            <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer">
+            <a href="https://open-source.pages.gitlab.esome.info/slack-token-service/" target="_blank" rel="noopener noreferrer">
               Slack App Settings
             </a>
             . You can add multiple tokens separated by commas.
@@ -236,16 +280,65 @@ const Settings: React.FC = () => {
             <li>⏰ Auto-correction: Resumes normal status when activities end</li>
           </ul>
           <p>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer">
-              GitHub
-            </a>
-            {' '} | {' '}
-            <a href="mailto:support@example.com">
+            <a href="https://example.invalid/private-slack-link">
               Support
             </a>
           </p>
         </div>
       </div>
+      </>
+      )}
+
+      {activeTab === 'logs' && (
+        <>
+        <div className="settings-card">
+          <h2>🔍 Log Level</h2>
+          <p className="log-level-info">
+            Choose what level of detail to display in logs:
+          </p>
+          <div className="log-level-selector">
+            <div className="log-levels">
+              <button 
+                className={`log-level-btn ${logLevel === 'DEBUG' ? 'active' : ''}`}
+                onClick={() => handleLogLevelChange('DEBUG')}
+                disabled={logLevelSaving}
+              >
+                🔧 DEBUG
+                <small>Show all messages</small>
+              </button>
+              <button 
+                className={`log-level-btn ${logLevel === 'INFO' ? 'active' : ''}`}
+                onClick={() => handleLogLevelChange('INFO')}
+                disabled={logLevelSaving}
+              >
+                ℹ️ INFO
+                <small>Normal operations</small>
+              </button>
+              <button 
+                className={`log-level-btn ${logLevel === 'WARN' ? 'active' : ''}`}
+                onClick={() => handleLogLevelChange('WARN')}
+                disabled={logLevelSaving}
+              >
+                ⚠️ WARN
+                <small>Warnings & errors only</small>
+              </button>
+              <button 
+                className={`log-level-btn ${logLevel === 'ERROR' ? 'active' : ''}`}
+                onClick={() => handleLogLevelChange('ERROR')}
+                disabled={logLevelSaving}
+              >
+                ❌ ERROR
+                <small>Errors only (default)</small>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="settings-card logs-card">
+          <LogViewer />
+        </div>
+        </>
+      )}
     </div>
   );
 };

@@ -83,4 +83,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onSlackStatusChange: (callback) => {
     ipcRenderer.on('slack-status-changed', (event, data) => callback(data));
   },
+
+  /**
+   * Get recent logs
+   */
+  getLogs: (lines = 200) => ipcRenderer.invoke('get-logs', lines),
+
+  /**
+   * Set log level
+   */
+  setLogLevel: (level) => ipcRenderer.invoke('set-log-level', level),
+
+  /**
+   * Get current log level
+   */
+  getLogLevel: () => ipcRenderer.invoke('get-log-level'),
 });
