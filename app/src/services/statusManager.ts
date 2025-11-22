@@ -3,7 +3,7 @@ import { STATUS_MESSAGES, DayOfWeek } from '../config/statusConfig';
 import { logger } from '../utils/logger';
 
 export interface StatusCheckState {
-  value: 'weekday' | 'monday' | 'friday' | 'weekend' | 'not working' | '';
+  value: 'weekday' | 'monday' | 'friday' | 'not working' | '';
   activeSource?: string; // Track which source is currently active (e.g. 'zoom', 'teams', 'huddle')
 }
 

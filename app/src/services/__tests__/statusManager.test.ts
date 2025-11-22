@@ -40,7 +40,7 @@ describe('StatusManager', () => {
       await statusManager.goOnline();
       
       const state = statusManager.getStatusCheckState();
-      expect(state.value).toMatch(/weekday|monday|friday|weekend/);
+      expect(state.value).toMatch(/weekday|monday|friday|not working/);
     });
   });
 
@@ -186,6 +186,134 @@ describe('StatusManager', () => {
       const result = await statusManager.isStatusClean();
       
       expect(result).toBe(true);
+    });
+  });
+
+  describe('correctStatus()', () => {
+    it('should skip correction if a source is actively running', async () => {
+      const state = { value: 'weekday' as const, activeSource: 'zoom' };
+      statusManager.setStatusCheckState(state);
+
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: ':custom_emoji:',
+        status_text: 'Custom',
+      });
+
+      await statusManager.correctStatus();
+
+      // Should not attempt to set profile
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should skip correction if user has set a custom status', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: ':palm_tree:',
+        status_text: 'Vacationing',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      await statusManager.correctStatus();
+
+      // Should not attempt to reset
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should correct status if it is a managed emoji with wrong state', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
+        status_text: 'Playing',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      // We're on Friday, so should set TGIF status
+      // Mock the date to be Friday
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-21')); // Friday
+      
+      await statusManager.correctStatus();
+      
+      vi.useRealTimers();
+
+      // Should have attempted to reset/correct
+      expect(mockSlackService.setProfile).toHaveBeenCalled();
+    });
+  });
+
+  describe('reset() with blocked status', () => {
+    it('should return false if blocked and user has custom status', async () => {
+      // User has set a custom (non-managed) status
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: ':palm_tree:',
+        status_text: 'Vacationing',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      // Mock the date to be Saturday (daemon would want to set OFF_EMOJI)
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-22')); // Saturday
+      
+      const result = await statusManager.reset();
+      
+      vi.useRealTimers();
+
+      // Should return false because custom status blocks the change
+      expect(result).toBe(false);
+      // State should not change
+      const state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('');
+      // setProfile should not be called (blocked by isStatusClean)
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should succeed if status is a managed emoji and matches weekday', async () => {
+      // Current status is a managed emoji (allowed to change)
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
+        status_text: 'Playing Spotify',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      // Mock the date to be Monday
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-24')); // Monday
+      
+      const result = await statusManager.reset();
+      
+      vi.useRealTimers();
+
+      // Should succeed because managed emoji is allowed to change
+      expect(result).toBe(true);
+      // setProfile should have been called
+      expect(mockSlackService.setProfile).toHaveBeenCalled();
+      // State should be updated to monday
+      const state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('monday');
+    });
+  });
+
+  describe('StatusCheckState with activeSource', () => {
+    it('should track activeSource in statusCheckState', () => {
+      const state = { value: 'weekday' as const, activeSource: 'zoom' };
+      statusManager.setStatusCheckState(state);
+
+      const retrieved = statusManager.getStatusCheckState();
+      expect(retrieved.value).toBe('weekday');
+      expect(retrieved.activeSource).toBe('zoom');
+    });
+
+    it('should allow clearing activeSource', () => {
+      let state = { value: 'weekday' as const, activeSource: 'zoom' };
+      statusManager.setStatusCheckState(state);
+
+      state = { value: 'weekday' as const };
+      statusManager.setStatusCheckState(state);
+
+      const retrieved = statusManager.getStatusCheckState();
+      expect(retrieved.activeSource).toBeUndefined();
     });
   });
 });
