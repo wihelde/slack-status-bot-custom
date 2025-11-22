@@ -101,7 +101,7 @@ export class TeamsAdapter implements ISourceAdapter {
         // macOS: exact regex from bash version with proper escaping for Node.js
         // grep returns exit code 1 if no match found, so we use || true to ignore that
         const { stdout } = await execAsync(
-          'lsof -i -P -n 2>&1 | grep MSTeams | grep UDP | grep -E "([0-9]{1,3}[\\\.]){3}[0-9]{1,3}[\\\:](500[0-9]{2})$" || true'
+          'lsof -i -P -n 2>&1 | grep MSTeams | grep UDP | grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}[\:](500[0-9]{2})$" || true'
         );
         return !!stdout.trim();
       } else if (process.platform === 'win32') {
@@ -151,10 +151,11 @@ export class HuddleAdapter implements ISourceAdapter {
   private async isInHuddle(): Promise<boolean> {
     try {
       if (process.platform === 'darwin') {
-        // macOS: detect Slack Huddle by finding UDP connections WITHOUT arrows (local ports only)
-        // grep returns exit code 1 if no match found, so we use || true to ignore that
+        // macOS: detect Slack Huddle by finding UDP connections with 5-digit port numbers
+        // This matches the bash version: lsof -i -P -n 2>&1 | grep Slack | grep UDP | grep -E "([0-9]{5})$"
+        // 5-digit ports are specific to Huddle, reducing false positives
         const { stdout } = await execAsync(
-          'lsof -i -P -n 2>&1 | grep Slack | grep UDP | grep -v "\\->" || true'
+          'lsof -i -P -n 2>&1 | grep Slack | grep UDP | grep -E "([0-9]{5})$" || true'
         );
         return !!stdout.trim();
       } else if (process.platform === 'win32') {

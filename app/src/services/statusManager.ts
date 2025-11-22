@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 
 export interface StatusCheckState {
   value: 'weekday' | 'monday' | 'friday' | 'weekend' | 'not working' | '';
+  activeSource?: string; // Track which source is currently active (e.g. 'zoom', 'teams', 'huddle')
 }
 
 /**
@@ -164,7 +165,17 @@ export class StatusManager {
 
     // Check if we can change status (same as Bash version)
     if (!await this.isStatusClean()) {
-      logger.warn(`[statusManager] reset() blocked by isStatusClean`);
+      // If status is blocked, check if the current status already matches the target emoji
+      const profile = await this.getCachedProfile();
+      if (profile && profile.status_emoji === emoji) {
+        // Current status already matches the target, just sync the statusCheckState
+        logger.info(`[statusManager] reset() blocked but current status already matches target, syncing state`, { stateValue, emoji });
+        this.statusCheckState.value = stateValue;
+        this.finalStatus = message;
+        return true;
+      }
+      
+      logger.warn(`[statusManager] reset() blocked by isStatusClean and current status doesn't match target`, { currentEmoji: profile?.status_emoji, targetEmoji: emoji });
       return false;
     }
 
@@ -237,12 +248,26 @@ export class StatusManager {
    * Correct status based on day of week if needed
    */
   async correctStatus(): Promise<void> {
+    // Don't correct status if a source is actively running
+    // (e.g., if user is in a meeting, we shouldn't try to set the day-based status)
+    if (this.statusCheckState.activeSource) {
+      logger.debug(`[statusManager] correctStatus: Skipping because source is active`, { activeSource: this.statusCheckState.activeSource });
+      return;
+    }
+
     const dayOfWeek = this.getDayOfWeek();
     const profile = await this.slackService.getProfile();
 
     if (!profile) return;
 
     const { status_emoji: emoji } = profile;
+
+    // Don't correct status if user has set a custom (non-managed) status
+    // Custom statuses like vacation, sick leave, etc. should not be overridden by auto-correction
+    if (emoji && !this.isCurrentStatusManaged(emoji)) {
+      logger.debug(`[statusManager] correctStatus: Skipping because user has set a custom status`, { emoji });
+      return;
+    }
 
     // Check if we need to update based on day
     if (dayOfWeek === DayOfWeek.MONDAY && this.statusCheckState.value !== 'monday' && this.statusCheckState.value !== 'not working') {
@@ -386,6 +411,30 @@ export class StatusManager {
   }
 
   // Private helper methods
+
+  /**
+   * Check if the current emoji is one of our managed emojis
+   * (i.e., set by the daemon, not by the user manually)
+   */
+  private isCurrentStatusManaged(emoji: string): boolean {
+    const managedEmojis = [
+      STATUS_MESSAGES.SPOTIFY_EMOJI,
+      STATUS_MESSAGES.ZOOM_EMOJI,
+      STATUS_MESSAGES.APPLE_MUSIC_EMOJI,
+      STATUS_MESSAGES.MEETING_EMOJI,
+      STATUS_MESSAGES.MONDAY_EMOJI,
+      STATUS_MESSAGES.TGIF_EMOJI,
+      STATUS_MESSAGES.DISCORD_EMOJI,
+      STATUS_MESSAGES.TEAMS_EMOJI,
+      STATUS_MESSAGES.SKYPE_EMOJI,
+      STATUS_MESSAGES.REMEET_EMOJI,
+      STATUS_MESSAGES.OFF_EMOJI,
+      STATUS_MESSAGES.HUDDLE_EMOJI,
+    ];
+    
+    // Also check the allowedEmojis set (ON_STATUS_PAIRS)
+    return managedEmojis.includes(emoji) || this.allowedEmojis.has(emoji);
+  }
 
   private getDayOfWeek(): DayOfWeek {
     const day = new Date().getDay();

@@ -25,6 +25,8 @@ export class SlackStatusBotDaemon {
   private intervals: NodeJS.Timeout[] = [];
   private configDir: string;
   private sourceOrder: string[] = ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'];
+  private lastResetBlockedTime: number = 0; // Track when reset was last blocked
+  private readonly RESET_BLOCKED_COOLDOWN = 30000; // Don't retry reset for 30 seconds if blocked
 
   constructor(config: DaemonConfig) {
     this.slackService = new SlackService(config.slackTokens);
@@ -267,6 +269,13 @@ export class SlackStatusBotDaemon {
           // Handle source becoming active
           if (isActive && !statusWasSet) {
             currentActiveSource = sourceName;
+            
+            // Update statusCheckState to track active source
+            // This prevents correctStatus() from trying to reset to day-based status while a source is active
+            const currentState = this.statusManager.getStatusCheckState();
+            this.statusManager.setStatusCheckState({ ...currentState, activeSource: sourceName });
+            logger.debug(`[polling] Marked source as active in statusCheckState`, { activeSource: sourceName });
+            
             // Only set status if message changed
             if (status.message !== sourceState[sourceName].lastMessage) {
               const canChange = await this.statusManager.isStatusClean();
@@ -280,10 +289,15 @@ export class SlackStatusBotDaemon {
               }
             }
 
-            // Handle DND for meetings
+            // Handle DND for meetings - only if status is clean
             if ((sourceName === 'zoom' || sourceName === 'teams' || sourceName === 'huddle') && !wasActive) {
-              console.log(`[polling] ${sourceName} meeting started, enabling DND...`);
-              await this.slackService.enableDND();
+              const canChange = await this.statusManager.isStatusClean();
+              if (canChange) {
+                console.log(`[polling] ${sourceName} meeting started, enabling DND...`);
+                await this.slackService.enableDND();
+              } else {
+                logger.warn(`[polling] ${sourceName} meeting started but status is not clean, skipping DND activation`);
+              }
             }
           }
           // Handle source becoming inactive
@@ -291,10 +305,22 @@ export class SlackStatusBotDaemon {
             sourceState[sourceName].lastMessage = '';
             console.log(`[polling] ${sourceName} became inactive`);
 
-            // Handle DND for meetings
+            // Clear activeSource from statusCheckState
+            const currentState = this.statusManager.getStatusCheckState();
+            if (currentState.activeSource === sourceName) {
+              this.statusManager.setStatusCheckState({ ...currentState, activeSource: undefined });
+              logger.debug(`[polling] Cleared activeSource from statusCheckState`, { wasActive: sourceName });
+            }
+
+            // Handle DND for meetings - only if status is clean
             if (sourceName === 'zoom' || sourceName === 'teams' || sourceName === 'huddle') {
-              console.log(`[polling] ${sourceName} meeting ended, disabling DND...`);
-              await this.slackService.disableDND();
+              const canChange = await this.statusManager.isStatusClean();
+              if (canChange) {
+                console.log(`[polling] ${sourceName} meeting ended, disabling DND...`);
+                await this.slackService.disableDND();
+              } else {
+                logger.warn(`[polling] ${sourceName} meeting ended but status is not clean, skipping DND deactivation`);
+              }
             }
 
             // Check if another source is still active
@@ -315,12 +341,23 @@ export class SlackStatusBotDaemon {
               }
             } else {
               // No other source is active, reset status
-              logger.info(`[polling] ${sourceName} became inactive, no other source active - attempting reset`);
-              const resetSuccess = await this.statusManager.reset();
-              if (resetSuccess) {
-                logger.info(`[polling] Status reset successful after ${sourceName} deactivation`);
+              const now = Date.now();
+              const timeSinceLastBlock = now - this.lastResetBlockedTime;
+              
+              // Only attempt reset if enough time has passed since last block
+              if (timeSinceLastBlock >= this.RESET_BLOCKED_COOLDOWN) {
+                logger.info(`[polling] ${sourceName} became inactive, no other source active - attempting reset`);
+                const resetSuccess = await this.statusManager.reset();
+                if (resetSuccess) {
+                  logger.info(`[polling] Status reset successful after ${sourceName} deactivation`);
+                  this.lastResetBlockedTime = 0; // Reset cooldown on success
+                } else {
+                  logger.warn(`[polling] Status reset failed after ${sourceName} deactivation (likely blocked by isStatusClean)`);
+                  this.lastResetBlockedTime = now; // Start cooldown
+                }
               } else {
-                logger.warn(`[polling] Status reset failed after ${sourceName} deactivation (likely blocked by isStatusClean)`);
+                const remainingCooldown = Math.ceil((this.RESET_BLOCKED_COOLDOWN - timeSinceLastBlock) / 1000);
+                logger.debug(`[polling] Reset is blocked, cooldown active (${remainingCooldown}s remaining)`);
               }
             }
           }
