@@ -45,6 +45,7 @@ declare global {
       getLogs: (lines?: number) => Promise<{ success: boolean; data?: string; error?: string }>;
       setLogLevel: (level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR') => Promise<{ success: boolean; logLevel?: string; error?: string }>;
       getLogLevel: () => Promise<{ success: boolean; logLevel?: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'; error?: string }>;
+      setHoliday: (returnDate: string) => Promise<{ success: boolean; data?: boolean; error?: string }>;
     };
   }
 }
@@ -364,6 +365,23 @@ export class IPCService {
     } catch (error) {
       console.error('Error getting log level:', error);
       return null;
+    }
+  }
+
+  /**
+   * Set holiday status with return date
+   */
+  static async setHoliday(returnDate: string): Promise<boolean> {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return false;
+    }
+    try {
+      const result = await window.electronAPI.setHoliday(returnDate);
+      return result.success && result.data ? true : false;
+    } catch (error) {
+      console.error('Error setting holiday:', error);
+      return false;
     }
   }
 }

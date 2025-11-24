@@ -316,4 +316,98 @@ describe('StatusManager', () => {
       expect(retrieved.activeSource).toBeUndefined();
     });
   });
+
+  describe('reset() on weekends', () => {
+    it('should skip reset on Saturday and return false', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
+        status_text: 'Playing',
+      });
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-22')); // Saturday
+
+      const result = await statusManager.reset();
+
+      vi.useRealTimers();
+
+      // Should return false because it's weekend
+      expect(result).toBe(false);
+      // setProfile should NOT be called
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should skip reset on Sunday and return false', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
+        status_text: 'Playing',
+      });
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-23')); // Sunday
+
+      const result = await statusManager.reset();
+
+      vi.useRealTimers();
+
+      // Should return false because it's weekend
+      expect(result).toBe(false);
+      // setProfile should NOT be called
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('setHoliday()', () => {
+    it('should set holiday status with correct back date and expiration', async () => {
+      const result = await statusManager.setHoliday('21.11.2025'); // Friday
+      
+      expect(result).toBe(true);
+      // Should call setProfile with vacation message and back date
+      expect(mockSlackService.setProfile).toHaveBeenCalled();
+      const call = mockSlackService.setProfile.mock.calls[0];
+      expect(call[0]).toBe(STATUS_MESSAGES.HOLIDAY_EMOJI);
+      expect(call[1]).toContain('strong vacationing');
+      expect(call[1]).toContain('24.11.2025'); // Monday (Fri + 3 days)
+      // Should have expiration timestamp
+      expect(typeof call[2]).toBe('number');
+      expect(call[2]).toBeGreaterThan(0);
+    });
+
+    it('should set holiday with +1 day for non-Friday return date', async () => {
+      const result = await statusManager.setHoliday('24.11.2025'); // Monday
+      
+      expect(result).toBe(true);
+      const call = mockSlackService.setProfile.mock.calls[0];
+      expect(call[1]).toContain('25.11.2025'); // Next day
+    });
+
+    it('should reject invalid date format', async () => {
+      const result = await statusManager.setHoliday('invalid-date');
+      
+      expect(result).toBe(false);
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should set away presence for holiday', async () => {
+      await statusManager.setHoliday('21.11.2025');
+      
+      expect(mockSlackService.setPresence).toHaveBeenCalledWith('away');
+    });
+  });
+
+  describe('OFF_EMOJI not in managed list', () => {
+    it('should block resetting if user manually set OFF_EMOJI', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.OFF_EMOJI,
+        status_text: 'Custom away message',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      const result = await statusManager.isStatusClean();
+
+      // Should be false because OFF_EMOJI is not in managed list
+      expect(result).toBe(false);
+    });
+  });
 });

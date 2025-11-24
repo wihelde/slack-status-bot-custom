@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../styles/Dashboard.css';
 import { IPCService } from '../services/ipcService';
 import { STATUS_MESSAGES } from '../config/statusConfig';
+import HolidayModal from '../components/HolidayModal';
 
 interface SourceStatus {
   name: string;
@@ -22,10 +23,11 @@ const Dashboard: React.FC = () => {
   const [currentStatus, setCurrentStatus] = useState({ emoji: '', text: '' });
   const [daemonRunning, setDaemonRunning] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showHolidayModal, setShowHolidayModal] = useState(false);
 
   useEffect(() => {
     loadStatus();
-    const interval = setInterval(loadStatus, 2000);
+    const interval = setInterval(loadStatus, 60000); // Update every 60 seconds
     return () => clearInterval(interval);
   }, []);
 
@@ -99,6 +101,11 @@ const Dashboard: React.FC = () => {
 
   const handleSetStatus = async (emoji: string, message: string) => {
     await IPCService.setStatus(emoji, message);
+    loadStatus();
+  };
+
+  const handleSetHoliday = async (returnDate: string) => {
+    await IPCService.setHoliday(returnDate);
     loadStatus();
   };
 
@@ -224,7 +231,7 @@ const Dashboard: React.FC = () => {
           </button>
           <button
             className="action-btn holiday"
-            onClick={() => handleSetStatus(STATUS_MESSAGES.HOLIDAY_EMOJI, STATUS_MESSAGES.VACATION_MESSAGE)}
+            onClick={() => setShowHolidayModal(true)}
             title="On holiday"
           >
             🏖️ Holiday
@@ -245,6 +252,12 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
       </div>
+
+      <HolidayModal
+        isOpen={showHolidayModal}
+        onClose={() => setShowHolidayModal(false)}
+        onSetHoliday={handleSetHoliday}
+      />
     </div>
   );
 };

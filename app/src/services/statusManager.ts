@@ -35,8 +35,8 @@ export class StatusManager {
       STATUS_MESSAGES.TEAMS_EMOJI,
       STATUS_MESSAGES.SKYPE_EMOJI,
       STATUS_MESSAGES.REMEET_EMOJI,
-      STATUS_MESSAGES.OFF_EMOJI,
       STATUS_MESSAGES.HUDDLE_EMOJI,
+      // Note: OFF_EMOJI (:mobile_phone_off:) is intentionally NOT included - it should only be set manually via UI
     ];
     this.allowedEmojis = new Set([...onEmojis, ...managedEmojis]);
   }
@@ -83,7 +83,8 @@ export class StatusManager {
       return true;
     }
 
-    // Managed emojis
+    // Managed emojis (that the daemon can automatically set)
+    // Note: OFF_EMOJI (:mobile_phone_off:) is intentionally NOT included - it should only be set manually via UI
     const managedEmojis = [
       STATUS_MESSAGES.SPOTIFY_EMOJI,
       STATUS_MESSAGES.ZOOM_EMOJI,
@@ -95,7 +96,6 @@ export class StatusManager {
       STATUS_MESSAGES.TEAMS_EMOJI,
       STATUS_MESSAGES.SKYPE_EMOJI,
       STATUS_MESSAGES.REMEET_EMOJI,
-      STATUS_MESSAGES.OFF_EMOJI,
       STATUS_MESSAGES.HUDDLE_EMOJI,
     ];
 
@@ -141,6 +141,12 @@ export class StatusManager {
     let message: string;
     let stateValue: StatusCheckState['value'];
 
+    // On weekends, don't automatically set a status - respect user's settings
+    if (dayOfWeek === DayOfWeek.SATURDAY || dayOfWeek === DayOfWeek.SUNDAY) {
+      logger.info(`[statusManager] reset() skipped on weekend - respecting user's current status`);
+      return false;
+    }
+
     if (dayOfWeek === DayOfWeek.MONDAY) {
       emoji = STATUS_MESSAGES.MONDAY_EMOJI;
       message = STATUS_MESSAGES.MONDAY_MESSAGE;
@@ -149,10 +155,6 @@ export class StatusManager {
       emoji = STATUS_MESSAGES.TGIF_EMOJI;
       message = STATUS_MESSAGES.TGIF_MESSAGE;
       stateValue = 'friday';
-    } else if (dayOfWeek === DayOfWeek.SATURDAY || dayOfWeek === DayOfWeek.SUNDAY) {
-      emoji = STATUS_MESSAGES.OFF_EMOJI;
-      message = this.getRandomOfflineMessage();
-      stateValue = 'not working';
     } else {
       // Weekday (Tue-Thu) - use pair to keep emoji and message together
       const pair = this.getRandomOnPair();
@@ -280,12 +282,6 @@ export class StatusManager {
       await this.reset();
     } else if (dayOfWeek === DayOfWeek.FRIDAY && this.statusCheckState.value !== 'friday' && this.statusCheckState.value !== 'not working') {
       await this.reset();
-    } else if (
-      (dayOfWeek === DayOfWeek.SATURDAY || dayOfWeek === DayOfWeek.SUNDAY) &&
-      this.statusCheckState.value !== 'weekend' &&
-      this.statusCheckState.value !== 'not working'
-    ) {
-      await this.reset();
     }
 
     // Check if source-specific status should be reset
@@ -325,6 +321,66 @@ export class StatusManager {
     }
 
     return success;
+  }
+
+  /**
+   * Set holiday status with automatic expiration
+   * Parses DD.MM.YYYY date, adds 1 day (3 days if Friday)
+   */
+  async setHoliday(returnDateString: string): Promise<boolean> {
+    try {
+      // Parse DD.MM.YYYY format
+      const [day, month, year] = returnDateString.split('.').map(Number);
+      
+      if (!day || !month || !year || day < 1 || day > 31 || month < 1 || month > 12) {
+        logger.error(`[statusManager] Invalid date format: ${returnDateString}`);
+        return false;
+      }
+
+      const returnDate = new Date(year, month - 1, day);
+      const dayOfWeek = returnDate.getDay();
+      
+      // Check if it's Friday (5)
+      const addDays = dayOfWeek === 5 ? 3 : 1;
+      
+      // Calculate expiration date (back on date)
+      const backDate = new Date(returnDate);
+      backDate.setDate(backDate.getDate() + addDays);
+      
+      // Format back date as DD.MM.YYYY
+      const backDateStr = backDate.toLocaleDateString('de-DE', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric' 
+      });
+      
+      // Create message with vacation message and back date
+      const message = `${STATUS_MESSAGES.VACATION_MESSAGE} (back on ${backDateStr})`;
+      
+      // Calculate expiration timestamp (end of the day BEFORE the back date)
+      // This matches the Bash version: TIMESTAMP=$(date -j -v +"$((ADD_DAYS - 1))"d ...)
+      const expirationDate = new Date(backDate);
+      expirationDate.setDate(expirationDate.getDate() - 1); // Go back one day
+      expirationDate.setHours(23, 59, 59, 999);
+      const expirationTimestamp = Math.floor(expirationDate.getTime() / 1000);
+      
+      logger.info(`[statusManager] setHoliday: Setting holiday status`, { 
+        returnDate: returnDateString, 
+        backDate: backDateStr, 
+        expiration: expirationTimestamp,
+        message 
+      });
+      
+      // Set the custom status with expiration
+      return await this.setCustomStatus(
+        STATUS_MESSAGES.HOLIDAY_EMOJI,
+        message,
+        expirationTimestamp
+      );
+    } catch (error) {
+      logger.error(`[statusManager] setHoliday failed`, { error: error instanceof Error ? error.message : String(error) });
+      return false;
+    }
   }
 
   /**

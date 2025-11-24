@@ -497,3 +497,20 @@ ipcMain.handle('get-log-level', async (event) => {
   }
 });
 
+/**
+ * Set holiday status with return date
+ */
+ipcMain.handle('set-holiday', async (event, returnDate) => {
+  try {
+    if (!daemon) {
+      return { success: false, error: 'Daemon not initialized' };
+    }
+    console.log('[IPC] set-holiday called with date:', returnDate);
+    const success = await daemon.setHoliday(returnDate);
+    return { success, data: success };
+  } catch (error) {
+    console.error('Error setting holiday:', error);
+    return { success: false, error: error.message };
+  }
+});
+

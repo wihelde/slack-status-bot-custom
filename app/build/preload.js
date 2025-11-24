@@ -98,4 +98,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * Get current log level
    */
   getLogLevel: () => ipcRenderer.invoke('get-log-level'),
+
+  /**
+   * Set holiday status with return date
+   */
+  setHoliday: (returnDate) => ipcRenderer.invoke('set-holiday', returnDate),
 });

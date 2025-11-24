@@ -136,6 +136,13 @@ export class SlackStatusBotDaemon {
   }
 
   /**
+   * Set holiday status with return date
+   */
+  async setHoliday(returnDate: string): Promise<boolean> {
+    return this.statusManager.setHoliday(returnDate);
+  }
+
+  /**
    * Toggle source enable/disable
    */
   toggleSource(source: 'spotify' | 'appleMusic' | 'zoom' | 'teams' | 'huddle', enabled: boolean): void {
