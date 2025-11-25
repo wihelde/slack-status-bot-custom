@@ -12,12 +12,12 @@ create_release:
     - PROJECT_ID="22692225"
     - >-
       curl -X POST
-      -H "JOB-TOKEN: $CI_JOB_TOKEN"
+      -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN"
       -d "name=Release $VERSION&tag_name=$VERSION"
       "https://gitlab.com/api/v4/projects/$PROJECT_ID/releases"
     - >-
       curl -X POST
-      -H "JOB-TOKEN: $CI_JOB_TOKEN"
+      -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN"
       -F "name=Slack Status Bot macOS"
       -F "url=$ASSET_URL"
       "https://gitlab.com/api/v4/projects/$PROJECT_ID/releases/$VERSION/assets/links"
