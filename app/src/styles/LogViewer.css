@@ -16,7 +16,8 @@
 }
 
 .refresh-btn,
-.copy-btn {
+.copy-btn,
+.clear-btn {
   padding: 0.5rem 1rem;
   background-color: #0066cc;
   color: white;
@@ -30,6 +31,14 @@
 .refresh-btn:hover:not(:disabled),
 .copy-btn:hover {
   background-color: #0052a3;
+}
+
+.clear-btn {
+  background-color: #d32f2f;
+}
+
+.clear-btn:hover {
+  background-color: #b71c1c;
 }
 
 .refresh-btn:disabled {

@@ -90,6 +90,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLogs: (lines = 200) => ipcRenderer.invoke('get-logs', lines),
 
   /**
+   * Clear logs
+   */
+  clearLogs: () => ipcRenderer.invoke('clear-logs'),
+
+  /**
    * Set log level
    */
   setLogLevel: (level) => ipcRenderer.invoke('set-log-level', level),
@@ -103,4 +108,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * Set holiday status with return date
    */
   setHoliday: (returnDate) => ipcRenderer.invoke('set-holiday', returnDate),
+
+  /**
+   * Listen for status changes from daemon
+   */
+  onStatusChanged: (callback) => {
+    ipcRenderer.on('status-changed', (event, statusData) => callback(statusData));
+  },
 });

@@ -11,6 +11,7 @@ import path from 'path';
 export interface DaemonConfig {
   slackTokens: string | string[];
   configDir?: string;
+  onStatusChanged?: (statusData: any) => void; // Callback for status changes
 }
 
 export class SlackStatusBotDaemon {
@@ -27,10 +28,12 @@ export class SlackStatusBotDaemon {
   private sourceOrder: string[] = ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'];
   private lastResetBlockedTime: number = 0; // Track when reset was last blocked
   private readonly RESET_BLOCKED_COOLDOWN = 30000; // Don't retry reset for 30 seconds if blocked
+  private onStatusChanged?: (statusData: any) => void; // Callback for status changes (IPC)
 
   constructor(config: DaemonConfig) {
     this.slackService = new SlackService(config.slackTokens);
     this.statusManager = new StatusManager(this.slackService);
+    this.onStatusChanged = config.onStatusChanged;
     
     this.spotify = new SpotifyAdapter();
     this.appleMusic = new AppleMusicAdapter();
@@ -41,6 +44,14 @@ export class SlackStatusBotDaemon {
     this.configDir = config.configDir || this.getDefaultConfigDir();
     this.ensureConfigDir();
     this.loadConfig();
+    
+    // Listen for status changes from StatusManager and forward them via IPC callback
+    this.statusManager.on('statusChanged', (statusData) => {
+      logger.info(`[daemon] Status changed event`, statusData);
+      if (this.onStatusChanged) {
+        this.onStatusChanged(statusData);
+      }
+    });
   }
 
   /**
@@ -290,6 +301,13 @@ export class SlackStatusBotDaemon {
                 sourceState[sourceName].lastMessage = status.message || '';
                 logger.info(`[polling] ${sourceName} became active, setting status`, { emoji: status.emoji, message: status.message });
                 await this.slackService.setProfile(status.emoji!, status.message!);
+                
+                // Emit status changed event for UI update
+                this.statusManager.emit('statusChanged', { 
+                  emoji: status.emoji, 
+                  message: status.message,
+                  stateValue: 'activeSource'
+                });
                 statusWasSet = true;
               } else {
                 logger.warn(`[polling] ${sourceName} became active but status is not clean, skipping status change`);

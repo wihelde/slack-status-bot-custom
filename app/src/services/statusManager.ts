@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events';
 import { SlackService, SlackProfile } from './slack';
 import { STATUS_MESSAGES, DayOfWeek } from '../config/statusConfig';
 import { logger } from '../utils/logger';
@@ -10,8 +11,9 @@ export interface StatusCheckState {
 /**
  * Status Manager
  * Handles status logic: reset, isStatusClean, day-based status updates
+ * Emits events when status changes
  */
-export class StatusManager {
+export class StatusManager extends EventEmitter {
   private slackService: SlackService;
   private statusCheckState: StatusCheckState = { value: '' };
   private finalStatus: string = '';
@@ -21,6 +23,7 @@ export class StatusManager {
   private readonly PROFILE_CACHE_TTL = 5000; // Cache profile for 5 seconds
 
   constructor(slackService: SlackService) {
+    super(); // Call EventEmitter constructor
     this.slackService = slackService;
     // Build set of all valid emojis (from ON_STATUS_PAIRS, managed statuses, and offline messages)
     const onEmojis = STATUS_MESSAGES.ON_STATUS_PAIRS.map(pair => pair.emoji);
@@ -194,6 +197,9 @@ export class StatusManager {
       // Set presence to auto and deactivate DND when resetting
       await this.slackService.setPresence('auto');
       await this.slackService.disableDND();
+      
+      // Emit event for status change
+      this.emit('statusChanged', { emoji, message, stateValue });
     } else {
       logger.error(`[statusManager] reset() failed to set profile`);
     }
@@ -241,6 +247,9 @@ export class StatusManager {
       // Set presence to auto and deactivate DND
       await this.slackService.setPresence('auto');
       await this.slackService.disableDND();
+      
+      // Emit event for status change
+      this.emit('statusChanged', { emoji, message, stateValue });
     }
 
     return success;
@@ -308,9 +317,10 @@ export class StatusManager {
    */
   async goAway(): Promise<boolean> {
     // Direct set without isStatusClean check (manual action)
+    const message = this.getRandomOfflineMessage();
     const success = await this.slackService.setProfile(
       STATUS_MESSAGES.OFF_EMOJI,
-      this.getRandomOfflineMessage()
+      message
     );
 
     if (success) {
@@ -318,6 +328,13 @@ export class StatusManager {
       this.invalidateProfileCache();
       // Set presence to away
       await this.slackService.setPresence('away');
+      
+      // Emit event for status change
+      this.emit('statusChanged', { 
+        emoji: STATUS_MESSAGES.OFF_EMOJI, 
+        message,
+        stateValue: 'not working' 
+      });
     }
 
     return success;
@@ -447,6 +464,9 @@ export class StatusManager {
       } else if (awayEmojis.includes(emoji)) {
         await this.slackService.setPresence('away');
       }
+      
+      // Emit event for status change
+      this.emit('statusChanged', { emoji, message, stateValue: this.statusCheckState.value });
     }
 
     return success;

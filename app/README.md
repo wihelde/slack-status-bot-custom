@@ -8,45 +8,38 @@ Cross-platform desktop application for automating your Slack status based on mus
 - Spotify & Apple Music playback tracking
 - Zoom & Microsoft Teams meeting detection
 - Slack Huddle detection
-- Custom status messages
+- Custom status messages & Holiday status
+- Do Not Disturb (DND) integration
 
-🎨 **Beautiful UI**
+🎨 **Intelligent UI**
+- Real-time status updates (event-based, not polling)
 - Modern, responsive design
-- Dark mode ready
-- Quick action buttons
-- Tray icon integration
+- Quick action buttons (Online, Away, Break, Meeting, Focus, Holiday, etc.)
+- Source priority management
+- Log viewer for debugging
 
 ⚙️ **Easy Configuration**
-- Slack API token setup
+- Slack API token setup (supports multiple tokens)
 - Per-source enable/disable
+- Customizable source priority order
 - System preferences
 - Auto-start on login
 
 ## Installation
 
-### macOS
-```bash
-brew install slack-status-bot
-```
-Or download from [Releases](https://github.com/yourusername/slack-status-bot/releases)
+### macOS (Currently Supported)
+Download the latest `.dmg` installer from [Releases](https://github.com/yourusername/slack-status-bot/releases)
 
-### Windows
-Download the installer from [Releases](https://github.com/yourusername/slack-status-bot/releases)
+**Requirements:** macOS 10.13+ (Intel & Apple Silicon)
 
-### Linux
-```bash
-# AppImage
-./slack-status-bot-x.x.x.AppImage
-
-# Or via .deb
-sudo apt install ./slack-status-bot_x.x.x_amd64.deb
-```
+### Windows & Linux
+Support coming in future releases.
 
 ## Development
 
 ### Prerequisites
-- Node.js 16+ and npm
-- macOS 10.13+, Windows 7+, or Ubuntu 18.04+
+- Node.js 18+ and npm
+- macOS 10.13+ (for development)
 
 ### Setup
 ```bash
@@ -58,7 +51,7 @@ npm install
 ```bash
 npm run dev
 ```
-Runs React development server (port 3000) and Electron in watch mode.
+Runs React development server + Electron in watch mode with hot reload.
 
 ### Build
 ```bash
@@ -73,47 +66,57 @@ npm test
 
 ## Configuration
 
-Settings are stored in `~/.config/slack-status-bot/config.json`
+Settings are stored in:
+- **macOS:** `~/Library/Application Support/slack-status-bot/config.json`
 
-### Example Config
+### Config Structure
 ```json
 {
-  "slackToken": "xoxb-...",
-  "enableSpotify": true,
-  "enableAppleMusic": true,
-  "enableZoom": true,
-  "enableMicrosoftTeams": true,
-  "enableSlackHuddle": true,
-  "enableFocusSwitch": true,
-  "autoStart": true
+  "slackTokens": ["xoxb-...", "xoxb-..."],
+  "sourceOrder": ["spotify", "appleMusic", "zoom", "teams", "huddle"],
+  "enabledSources": {
+    "spotify": true,
+    "appleMusic": true,
+    "zoom": true,
+    "teams": true,
+    "huddle": true
+  }
 }
 ```
 
-## Tray Icon
+## Usage
 
-Right-click the tray icon for quick access to:
-- Toggle app window
-- Quick status changes
-- Quick actions (Break, Meeting, Focus, etc.)
-- Quit
+### Quick Actions
+- **Online** - Set online status
+- **Away** - Set away status (presence: away)
+- **Break** - On break (presence: away)
+- **Meeting** - In a meeting (DND enabled)
+- **Focus** - Focusing (DND enabled)
+- **Holiday** - Vacation mode with return date
+- **Remeet** - Back from meeting
 
-## Architecture
+### Source Priority
+Sources are checked in priority order. The first active source's status is displayed:
+1. Spotify / Apple Music
+2. Zoom meetings
+3. Microsoft Teams meetings
+4. Slack Huddles
 
-See [docs/app-architecture.md](../docs/app-architecture.md) for detailed architecture documentation.
+You can reorder these in Settings.
 
 ## Troubleshooting
 
 ### App won't start
-- Check that Node.js is installed: `node --version`
-- Clear cache: `rm -rf node_modules package-lock.json && npm install`
+- Clear cache: `rm -rf node_modules && npm install`
+- Check console for errors (Settings → Logs tab)
 
-### Slack API errors
-- Verify token in Settings page
-- Check token has required scopes in Slack workspace
+### Status not updating
+- Check Slack token in Settings
+- Verify source app is running (Spotify, Teams, etc.)
+- Check daemon status in Dashboard
 
-### Source detection not working
-- Ensure source app is running (Spotify, Teams, etc.)
-- Check system permissions for app to access running processes
+### Logs
+Access debug logs in Settings → Logs tab. Use log level dropdown to adjust verbosity.
 
 ## Contributing
 
@@ -122,6 +125,10 @@ Issues and pull requests welcome!
 ## License
 
 MIT
+
+## Release Notes
+
+See [CHANGELOG.md](./CHANGELOG.md) for version history and updates.
 
 
 

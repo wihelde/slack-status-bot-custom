@@ -26,9 +26,18 @@ const Dashboard: React.FC = () => {
   const [showHolidayModal, setShowHolidayModal] = useState(false);
 
   useEffect(() => {
+    // Initial load
     loadStatus();
-    const interval = setInterval(loadStatus, 60000); // Update every 60 seconds
-    return () => clearInterval(interval);
+    
+    // Listen for status changes from daemon (event-based, not polling)
+    IPCService.onStatusChanged((statusData) => {
+      console.log('[Dashboard] Status changed event received:', statusData);
+      // Update current status with the new data
+      setCurrentStatus({ 
+        emoji: statusData.emoji || '', 
+        text: statusData.message || '' 
+      });
+    });
   }, []);
 
   const loadStatus = async () => {

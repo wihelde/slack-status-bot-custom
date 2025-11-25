@@ -43,9 +43,11 @@ declare global {
       onSourceStatusChange: (callback: (data: any) => void) => void;
       onSlackStatusChange: (callback: (data: any) => void) => void;
       getLogs: (lines?: number) => Promise<{ success: boolean; data?: string; error?: string }>;
+      clearLogs: () => Promise<{ success: boolean; error?: string }>;
       setLogLevel: (level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR') => Promise<{ success: boolean; logLevel?: string; error?: string }>;
       getLogLevel: () => Promise<{ success: boolean; logLevel?: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'; error?: string }>;
       setHoliday: (returnDate: string) => Promise<{ success: boolean; data?: boolean; error?: string }>;
+      onStatusChanged: (callback: (statusData: any) => void) => void;
     };
   }
 }
@@ -335,6 +337,23 @@ export class IPCService {
   }
 
   /**
+   * Clear logs
+   */
+  static async clearLogs(): Promise<boolean> {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return false;
+    }
+    try {
+      const result = await window.electronAPI.clearLogs();
+      return result.success;
+    } catch (error) {
+      console.error('Error clearing logs:', error);
+      return false;
+    }
+  }
+
+  /**
    * Set log level
    */
   static async setLogLevel(level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR') {
@@ -383,5 +402,16 @@ export class IPCService {
       console.error('Error setting holiday:', error);
       return false;
     }
+  }
+
+  /**
+   * Listen for status changes from daemon
+   */
+  static onStatusChanged(callback: (statusData: any) => void): void {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return;
+    }
+    window.electronAPI.onStatusChanged(callback);
   }
 }

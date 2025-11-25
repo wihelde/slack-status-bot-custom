@@ -202,7 +202,15 @@ app.whenReady().then(() => {
     
     if (config.slackTokens && Array.isArray(config.slackTokens) && config.slackTokens.length > 0) {
       console.log('[Daemon] Starting daemon with stored tokens:', config.slackTokens.length);
-      daemon = createDaemon({ slackTokens: config.slackTokens });
+      daemon = createDaemon({ 
+        slackTokens: config.slackTokens,
+        onStatusChanged: (statusData) => {
+          console.log('[Daemon] Status changed, sending to UI:', statusData);
+          if (mainWindow && mainWindow.webContents) {
+            mainWindow.webContents.send('status-changed', statusData);
+          }
+        }
+      });
       daemon.start().catch(err => console.error('Error starting daemon:', err));
     } else {
       console.log('[Daemon] No tokens configured, daemon will start after tokens are saved');
@@ -280,7 +288,15 @@ ipcMain.handle('save-tokens', async (event, tokens) => {
     }
     
     if (createDaemon) {
-      daemon = createDaemon({ slackTokens: tokens });
+      daemon = createDaemon({ 
+        slackTokens: tokens,
+        onStatusChanged: (statusData) => {
+          console.log('[Daemon] Status changed, sending to UI:', statusData);
+          if (mainWindow && mainWindow.webContents) {
+            mainWindow.webContents.send('status-changed', statusData);
+          }
+        }
+      });
       await daemon.start();
       console.log('[IPC] Daemon started with new tokens');
     }
@@ -472,6 +488,18 @@ ipcMain.handle('get-logs', async (event, lines = 200) => {
   } catch (error) {
     console.error('Error getting logs:', error);
     return { success: false, error: error.message, data: '(Error reading logs)' };
+  }
+});
+
+ipcMain.handle('clear-logs', async (event) => {
+  try {
+    const { logger } = require('../dist/utils/logger');
+    logger.clearLogs();
+    console.log('[IPC] Logs cleared');
+    return { success: true };
+  } catch (error) {
+    console.error('Error clearing logs:', error);
+    return { success: false, error: error.message };
   }
 });
 

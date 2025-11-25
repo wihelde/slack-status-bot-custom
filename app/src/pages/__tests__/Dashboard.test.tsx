@@ -27,9 +27,11 @@ describe('Dashboard', () => {
       teams: { isActive: false },
       huddle: { isActive: false },
     });
+    // Mock the onStatusChanged listener (event-based, not polling)
+    mockIPCService.onStatusChanged = vi.fn();
   });
 
-  describe('Status Update Interval', () => {
+  describe('Status Update Events', () => {
     it('should load status on mount', async () => {
       render(<Dashboard />);
       
@@ -38,22 +40,35 @@ describe('Dashboard', () => {
       });
     });
 
-    it('should update status every 60 seconds', async () => {
-      vi.useFakeTimers();
+    it('should register event listener for status changes', async () => {
+      render(<Dashboard />);
+      
+      await waitFor(() => {
+        expect(IPCService.onStatusChanged).toHaveBeenCalled();
+      });
+    });
+
+    it('should update status when event is received', async () => {
+      const mockIPCService = IPCService as any;
+      let eventCallback: ((statusData: any) => void) | null = null;
+      
+      mockIPCService.onStatusChanged = vi.fn((callback) => {
+        eventCallback = callback;
+      });
       
       render(<Dashboard />);
       
-      // Initial load
-      expect(IPCService.getSlackStatus).toHaveBeenCalledTimes(1);
-      
-      // Advance 60 seconds
-      vi.advanceTimersByTime(60000);
+      // Simulate status change event
+      if (eventCallback) {
+        eventCallback({ 
+          emoji: ':palm_tree:', 
+          message: 'strong vacationing (back on 24.11.2025)' 
+        });
+      }
       
       await waitFor(() => {
-        expect(IPCService.getSlackStatus).toHaveBeenCalledTimes(2);
+        expect(IPCService.onStatusChanged).toHaveBeenCalled();
       });
-      
-      vi.useRealTimers();
     });
 
     it('should display current status', async () => {
@@ -106,6 +121,7 @@ describe('Dashboard', () => {
     });
   });
 });
+
 
 
 

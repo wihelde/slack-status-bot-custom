@@ -176,6 +176,28 @@ class Logger {
       return `(Error reading logs: ${error})`;
     }
   }
+
+  /**
+   * Clear all logs
+   */
+  clearLogs(): void {
+    try {
+      if (fs.existsSync(this.logFile)) {
+        fs.unlinkSync(this.logFile);
+        console.log('[Logger] Logs cleared');
+      }
+      
+      // Also clear backup files
+      for (let i = 1; i <= this.maxBackups + 10; i++) {
+        const backupFile = path.join(this.logDir, `app.log.${i}`);
+        if (fs.existsSync(backupFile)) {
+          fs.unlinkSync(backupFile);
+        }
+      }
+    } catch (error) {
+      console.error('Error clearing logs:', error);
+    }
+  }
 }
 
 // Export singleton instance

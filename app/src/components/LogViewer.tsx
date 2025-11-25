@@ -43,8 +43,19 @@ const LogViewer: React.FC = () => {
     alert('Logs copied to clipboard!');
   };
 
-  const handleClearLogs = () => {
-    setLogs('');
+  const handleClearLogs = async () => {
+    const confirmed = window.confirm('Are you sure you want to clear all logs? This cannot be undone.');
+    if (confirmed) {
+      const success = await IPCService.clearLogs();
+      if (success) {
+        setLogs('(Logs cleared)');
+        setTimeout(() => {
+          setLogs('');
+        }, 1500);
+      } else {
+        alert('Error clearing logs');
+      }
+    }
   };
 
   return (
@@ -70,6 +81,12 @@ const LogViewer: React.FC = () => {
           onClick={handleCopyLogs}
         >
           📋 Copy Logs
+        </button>
+        <button 
+          className="clear-btn" 
+          onClick={handleClearLogs}
+        >
+          🗑️ Clear Logs
         </button>
       </div>
 
