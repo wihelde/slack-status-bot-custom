@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+# Minimal curl mock for tests
+# - Logs all invocations to $MOCK_CURL_LOG
+# - Emits canned JSON for Slack API endpoints
+
+LOG="${MOCK_CURL_LOG:-/tmp/mock_curl_calls.log}"
+echo "curl $*" >> "${LOG}"
+
+full_args="$*"
+
+case "${full_args}" in
+  *"https://slack.com/api/users.profile.get"* )
+    # Return JSON with mocked values from environment
+    emoji="${MOCK_JQ_STATUS_EMOJI:-}"
+    text="${MOCK_JQ_STATUS_TEXT:-}"
+    printf '{"ok":true,"profile":{"status_text":"%s","status_emoji":"%s"}}\n' "$text" "$emoji"
+    ;;
+  *"https://slack.com/api/users.profile.set"* )
+    echo '{"ok":true}'
+    ;;
+  *"https://slack.com/api/users.setPresence"* )
+    echo '{"ok":true}'
+    ;;
+  *"https://slack.com/api/users.getPresence"* )
+    # Return presence; jq mock will output MOCK_JQ_PRESENCE anyway
+    presence="${MOCK_JQ_PRESENCE:-active}"
+    printf '{"ok":true,"presence":"%s"}\n' "$presence"
+    ;;
+  *"https://slack.com/api/dnd.setSnooze"* )
+    echo '{"ok":true}'
+    ;;
+  *"https://slack.com/api/dnd.endDnd"* )
+    echo '{"ok":true}'
+    ;;
+  * )
+    echo '{"ok":true}'
+    ;;
+esac
+
+

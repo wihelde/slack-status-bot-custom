@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# jq mock that uses real JSON parsing (via python)
+# Falls back to ENV vars if python not available
+
+filter="$1"
+input=$(cat)
+
+# Try to use python for JSON parsing (more reliable)
+if command -v python3 &>/dev/null; then
+  case "${filter}" in
+    .profile.status_emoji )
+      echo "$input" | python3 -c "import json, sys; print(json.load(sys.stdin).get('profile', {}).get('status_emoji', ''))" 2>/dev/null || printf '"%s"\n' "${MOCK_JQ_STATUS_EMOJI}"
+      ;;
+    .profile.status_text )
+      echo "$input" | python3 -c "import json, sys; print(json.load(sys.stdin).get('profile', {}).get('status_text', ''))" 2>/dev/null || printf '"%s"\n' "${MOCK_JQ_STATUS_TEXT}"
+      ;;
+    .presence )
+      echo "$input" | python3 -c "import json, sys; print(json.load(sys.stdin).get('presence', 'active'))" 2>/dev/null || printf '"%s"\n' "${MOCK_JQ_PRESENCE:-active}"
+      ;;
+    * )
+      echo "$input"
+      ;;
+  esac
+else
+  # Fallback: use sed/grep for basic JSON extraction
+  case "${filter}" in
+    .profile.status_emoji )
+      echo "$input" | grep -oP '"status_emoji":"?\K[^"]*' || printf '"%s"\n' "${MOCK_JQ_STATUS_EMOJI}"
+      ;;
+    .profile.status_text )
+      echo "$input" | grep -oP '"status_text":"?\K[^"]*' || printf '"%s"\n' "${MOCK_JQ_STATUS_TEXT}"
+      ;;
+    .presence )
+      echo "$input" | grep -oP '"presence":"?\K[^"]*' || printf '"%s"\n' "${MOCK_JQ_PRESENCE:-active}"
+      ;;
+    * )
+      echo "$input"
+      ;;
+  esac
+fi
+
+
