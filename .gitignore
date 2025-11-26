@@ -8,9 +8,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Dist
-dist/
-# Exception for release DMG files
-!dist/*.dmg
+app/dist/*
 
 # Runtime data
 pids
@@ -69,3 +67,6 @@ typings/
 .*
 # Exception for GitLab CI/CD
 !.gitlab-ci.yml
+!.gitignore
+# Exception for release DMG files
+!**/dist/*.dmg
