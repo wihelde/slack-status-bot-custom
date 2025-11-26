@@ -128,7 +128,4 @@ MIT
 
 ## Release Notes
 
-See [CHANGELOG.md](./CHANGELOG.md) for version history and updates.
-
-
-
+See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
