@@ -19,20 +19,30 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
     try {
       const [day, month, year] = returnDate.split('.').map(Number);
       const date = new Date(year, month - 1, day);
-      const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
       
-      // Check if it's Friday
-      if (dayOfWeek === 'Friday') {
-        const backDate = new Date(date);
-        backDate.setDate(backDate.getDate() + 3); // +3 days for Monday
-        const backDateStr = backDate.toLocaleDateString('en-GB').split('/').reverse().join('.');
-        return `On vacation (back on ${backDateStr})`;
-      } else {
-        const backDate = new Date(date);
-        backDate.setDate(backDate.getDate() + 1);
-        const backDateStr = backDate.toLocaleDateString('en-GB').split('/').reverse().join('.');
-        return `On vacation (back on ${backDateStr})`;
+      // Get day of week (0 = Sunday, 5 = Friday, 6 = Saturday)
+      const dayOfWeekNum = date.getDay();
+      
+      let addDays = 1;
+      // Check if it's Friday (5), Saturday (6), or Sunday (0)
+      if (dayOfWeekNum === 5) { // Friday
+        addDays = 3; // Monday
+      } else if (dayOfWeekNum === 6) { // Saturday
+        addDays = 2; // Monday
+      } else if (dayOfWeekNum === 0) { // Sunday
+        addDays = 1; // Monday
       }
+      
+      const backDate = new Date(date);
+      backDate.setDate(backDate.getDate() + addDays);
+      
+      // Format date as DD.MM.YYYY
+      const backDay = String(backDate.getDate()).padStart(2, '0');
+      const backMonth = String(backDate.getMonth() + 1).padStart(2, '0');
+      const backYear = backDate.getFullYear();
+      const backDateStr = `${backDay}.${backMonth}.${backYear}`;
+      
+      return `On vacation (back on ${backDateStr})`;
     } catch (err) {
       return '';
     }

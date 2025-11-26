@@ -2,10 +2,10 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    environment: 'node',
+    environment: 'jsdom',
     globals: true,
     root: 'src',
-    include: ['**/__tests__/**/*.test.ts'],
+    include: ['**/__tests__/**/*.test.{ts,tsx}'],
     testTimeout: 10000,
     coverage: {
       provider: 'v8',

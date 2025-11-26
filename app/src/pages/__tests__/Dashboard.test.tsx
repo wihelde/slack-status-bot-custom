@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import Dashboard from '../Dashboard';
 import { IPCService } from '../../services/ipcService';
 
@@ -27,8 +28,10 @@ describe('Dashboard', () => {
       teams: { isActive: false },
       huddle: { isActive: false },
     });
-    // Mock the onStatusChanged listener (event-based, not polling)
-    mockIPCService.onStatusChanged = vi.fn();
+    // Mock the event listeners (event-based, not polling)
+    mockIPCService.onStatusChanged = vi.fn(() => () => {});
+    mockIPCService.onSourceStatusChange = vi.fn(() => () => {});
+    mockIPCService.onDaemonStatusChange = vi.fn(() => () => {});
   });
 
   describe('Status Update Events', () => {
@@ -54,15 +57,18 @@ describe('Dashboard', () => {
       
       mockIPCService.onStatusChanged = vi.fn((callback) => {
         eventCallback = callback;
+        return () => {}; // Return unsubscribe function
       });
       
       render(<Dashboard />);
       
-      // Simulate status change event
+      // Simulate status change event wrapped in act
       if (eventCallback) {
-        eventCallback({ 
-          emoji: ':palm_tree:', 
-          message: 'strong vacationing (back on 24.11.2025)' 
+        await act(async () => {
+          eventCallback({ 
+            emoji: ':palm_tree:', 
+            message: 'strong vacationing (back on 24.11.2025)' 
+          });
         });
       }
       
@@ -95,19 +101,26 @@ describe('Dashboard', () => {
     it('should have Holiday quick action', async () => {
       render(<Dashboard />);
       
+      // Wait for loading to complete
       await waitFor(() => {
-        const holidayBtn = screen.getByRole('button', { name: /holiday/i });
-        expect(holidayBtn).toBeInTheDocument();
+        expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
       });
+      
+      // Find by title or role with text
+      const holidayBtn = screen.getByRole('button', { name: /🏖️|holiday/i });
+      expect(holidayBtn).toBeInTheDocument();
     });
 
     it('should have Online and Away buttons', async () => {
       render(<Dashboard />);
       
+      // Wait for loading to complete
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /online/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /away/i })).toBeInTheDocument();
+        expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
       });
+      
+      expect(screen.getByRole('button', { name: /🟢|online/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /🟡|away/i })).toBeInTheDocument();
     });
   });
 
@@ -115,9 +128,13 @@ describe('Dashboard', () => {
     it('should show daemon running status', async () => {
       render(<Dashboard />);
       
+      // Wait for the loading to be done
       await waitFor(() => {
-        expect(screen.getByText(/running/i)).toBeInTheDocument();
+        expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
       });
+      
+      // Then check for running status
+      expect(screen.getByText(/🟢 Running/)).toBeInTheDocument();
     });
   });
 });

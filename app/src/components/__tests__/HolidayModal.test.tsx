@@ -1,5 +1,7 @@
+import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import HolidayModal from '../HolidayModal';
 
 describe('HolidayModal', () => {
@@ -230,7 +232,7 @@ describe('HolidayModal', () => {
       const input = screen.getByPlaceholderText(/e.g., 28.11.2025/i) as HTMLInputElement;
       fireEvent.change(input, { target: { value: 'invalid' } });
 
-      const setBtn = screen.getByRole('button', { name: /Set Holiday/i });
+      const setBtn = screen.getByRole('button', { name: /Set Holiday/i }) as HTMLButtonElement;
       
       await waitFor(() => {
         if (setBtn && !setBtn.disabled) {
