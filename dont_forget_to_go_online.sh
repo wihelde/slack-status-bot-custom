@@ -12,15 +12,6 @@ source ./includes/helper/misc.sh
 source ./includes/helper/custom_status_messages.sh
 source ./includes/functions/DND.sh
 
-function GatherOffline() {
-  osascript -e 'try' -e 'if application "Gather" is running then' -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "u" using command down' -e 'end tell' -e 'end if' -e 'end try'
-}
-
-function GatherOnline() {
-  #osascript -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'key code 53' -e 'end tell'
-  osascript -e 'try' -e 'if application "Gather" is running then' -e 'tell application "Gather" to activate' -e 'delay 0.1' -e 'tell application "System Events"' -e 'keystroke "i" using command down' -e 'end tell' -e 'end if' -e 'end try'
-}
-
 # check if status is clean to be changed
 function isStatusClean() {
   echo "Calling https://slack.com/api/users.profile.get ..."
