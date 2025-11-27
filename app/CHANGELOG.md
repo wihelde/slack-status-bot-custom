@@ -36,3 +36,5 @@
 - Initial release of Slack Status Bot app based on previous bash-version
 - bash-version is still in place and can be used as fallback
 - additionally you can use shell-commands for time-based events or manual changes, e.g. by pressing a button on your stream deck
+
+

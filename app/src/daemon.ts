@@ -369,6 +369,16 @@ export class SlackStatusBotDaemon {
               const now = Date.now();
               const timeSinceLastBlock = now - this.lastResetBlockedTime;
               
+              // Emit status changed event to update UI about source deactivation
+              const currentStatus = await this.slackService.getProfile();
+              if (currentStatus) {
+                this.statusManager.emit('statusChanged', {
+                  emoji: currentStatus.status_emoji,
+                  message: currentStatus.status_text,
+                  stateValue: 'sourceInactive'
+                });
+              }
+              
               // Only attempt reset if enough time has passed since last block
               if (timeSinceLastBlock >= this.RESET_BLOCKED_COOLDOWN) {
                 logger.info(`[polling] ${sourceName} became inactive, no other source active - attempting reset`);

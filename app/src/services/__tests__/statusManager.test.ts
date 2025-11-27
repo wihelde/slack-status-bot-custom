@@ -8,10 +8,10 @@ vi.mock('../slack');
 
 describe('StatusManager', () => {
   let statusManager: StatusManager;
-  let mockSlackService: vi.Mocked<SlackService>;
+  let mockSlackService: any;
 
   beforeEach(() => {
-    mockSlackService = new SlackService('test-token') as vi.Mocked<SlackService>;
+    mockSlackService = new SlackService('test-token') as any;
     
     // Mock all SlackService methods
     mockSlackService.getProfile = vi.fn().mockResolvedValue({
@@ -306,10 +306,10 @@ describe('StatusManager', () => {
     });
 
     it('should allow clearing activeSource', () => {
-      let state = { value: 'weekday' as const, activeSource: 'zoom' };
+      let state: { value: 'weekday' | 'monday' | 'friday' | 'not working' | ''; activeSource?: string } = { value: 'weekday' as const, activeSource: 'zoom' };
       statusManager.setStatusCheckState(state);
 
-      state = { value: 'weekday' as const };
+      state = { value: 'weekday' as const, activeSource: undefined };
       statusManager.setStatusCheckState(state);
 
       const retrieved = statusManager.getStatusCheckState();

@@ -25,8 +25,8 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     
-    /* Jest */
-    "types": ["jest", "@types/node"]
+    /* Testing */
+    "types": ["vitest/globals", "@types/node"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]

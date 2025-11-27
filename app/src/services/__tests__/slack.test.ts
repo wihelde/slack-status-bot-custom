@@ -3,7 +3,7 @@ import { SlackService } from '../slack';
 import axios from 'axios';
 
 vi.mock('axios');
-const mockedAxios = axios as vi.Mocked<typeof axios>;
+const mockedAxios = axios as any;
 
 describe('SlackService', () => {
   let slackService: SlackService;

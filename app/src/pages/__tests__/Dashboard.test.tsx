@@ -53,9 +53,9 @@ describe('Dashboard', () => {
 
     it('should update status when event is received', async () => {
       const mockIPCService = IPCService as any;
-      let eventCallback: ((statusData: any) => void) | null = null;
+      let eventCallback: any = null;
       
-      mockIPCService.onStatusChanged = vi.fn((callback) => {
+      mockIPCService.onStatusChanged = vi.fn((callback: any) => {
         eventCallback = callback;
         return () => {}; // Return unsubscribe function
       });

@@ -37,6 +37,45 @@ const Dashboard: React.FC = () => {
         emoji: statusData.emoji || '', 
         text: statusData.message || '' 
       });
+      
+      // If the change is due to an active/inactive source, reload source statuses
+      if (statusData.stateValue === 'activeSource' || statusData.stateValue === 'sourceInactive') {
+        console.log('[Dashboard] Source status changed, reloading source statuses', { stateValue: statusData.stateValue });
+        (async () => {
+          const sourceStatuses = await IPCService.getSourceStatuses();
+          if (sourceStatuses) {
+            setSources([
+              {
+                name: 'spotify',
+                enabled: true,
+                isActive: sourceStatuses.spotify?.isActive || false,
+                message: sourceStatuses.spotify?.message,
+              },
+              {
+                name: 'appleMusic',
+                enabled: true,
+                isActive: sourceStatuses.appleMusic?.isActive || false,
+                message: sourceStatuses.appleMusic?.message,
+              },
+              {
+                name: 'zoom',
+                enabled: true,
+                isActive: sourceStatuses.zoom?.isActive || false,
+              },
+              {
+                name: 'teams',
+                enabled: true,
+                isActive: sourceStatuses.teams?.isActive || false,
+              },
+              {
+                name: 'huddle',
+                enabled: true,
+                isActive: sourceStatuses.huddle?.isActive || false,
+              },
+            ]);
+          }
+        })();
+      }
     });
   }, []);
 
