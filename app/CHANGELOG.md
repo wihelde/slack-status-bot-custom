@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.1] - 2025-11-27
+
+### Fixed
+- Sources in the UI where not updated when they became active (and later inactive again)
+
 ## [1.2.0] - 2025-11-25
 
 ### Added
