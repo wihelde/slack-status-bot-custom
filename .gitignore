@@ -62,6 +62,9 @@ typings/
 # dotenv environment variables file
 .env
 
+# RELEASE
+RELEASE_GUIDE.md
+
 #custom
 .idea
 .*
