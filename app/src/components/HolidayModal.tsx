@@ -42,7 +42,7 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
       const backYear = backDate.getFullYear();
       const backDateStr = `${backDay}.${backMonth}.${backYear}`;
       
-      return `On vacation (back on ${backDateStr})`;
+      return `strong vacationing (back on ${backDateStr})`;
     } catch (err) {
       return '';
     }
@@ -81,7 +81,7 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="returnDate">Return Date (DD.MM.YYYY)</label>
+            <label htmlFor="returnDate">Last holiday date (DD.MM.YYYY)</label>
             <input
               id="returnDate"
               type="text"
@@ -93,7 +93,7 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
               disabled={loading}
             />
             <small className="help-text">
-              Enter the date when you'll be back. If it's a Friday, the status will expire on Monday.
+              Enter the last day of your holiday. The bot takes care of showing the correct day when you are back, e.g. if it's a Friday, the status will expire on Monday.
             </small>
           </div>
 
