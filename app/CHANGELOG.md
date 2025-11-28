@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.2] - 2025-11-28
+
+### Changed
+- Preview for setting holiday was showing misleading information
+
 ## [1.2.1] - 2025-11-27
 
 ### Fixed
@@ -41,5 +46,3 @@
 - Initial release of Slack Status Bot app based on previous bash-version
 - bash-version is still in place and can be used as fallback
 - additionally you can use shell-commands for time-based events or manual changes, e.g. by pressing a button on your stream deck
-
-
