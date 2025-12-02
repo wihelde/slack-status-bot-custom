@@ -6,6 +6,7 @@
 export interface SourceStatus {
   name: string;
   isActive: boolean;
+  enabled?: boolean;
   title?: string;
   emoji?: string;
   message?: string;

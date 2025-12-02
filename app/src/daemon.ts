@@ -105,11 +105,26 @@ export class SlackStatusBotDaemon {
    */
   async getSourceStatuses() {
     return {
-      spotify: await this.spotify.getStatus(),
-      appleMusic: await this.appleMusic.getStatus(),
-      zoom: await this.zoom.getStatus(),
-      teams: await this.teams.getStatus(),
-      huddle: await this.huddle.getStatus(),
+      spotify: {
+        ...await this.spotify.getStatus(),
+        enabled: this.spotify.isEnabled(),
+      },
+      appleMusic: {
+        ...await this.appleMusic.getStatus(),
+        enabled: this.appleMusic.isEnabled(),
+      },
+      zoom: {
+        ...await this.zoom.getStatus(),
+        enabled: this.zoom.isEnabled(),
+      },
+      teams: {
+        ...await this.teams.getStatus(),
+        enabled: this.teams.isEnabled(),
+      },
+      huddle: {
+        ...await this.huddle.getStatus(),
+        enabled: this.huddle.isEnabled(),
+      },
     };
   }
 
@@ -314,15 +329,11 @@ export class SlackStatusBotDaemon {
               }
             }
 
-            // Handle DND for meetings - only if status is clean
+            // Handle DND for meetings - ALWAYS enable when a meeting starts
+            // DND is independent of status text and should work even with custom statuses
             if ((sourceName === 'zoom' || sourceName === 'teams' || sourceName === 'huddle') && !wasActive) {
-              const canChange = await this.statusManager.isStatusClean();
-              if (canChange) {
-                console.log(`[polling] ${sourceName} meeting started, enabling DND...`);
-                await this.slackService.enableDND();
-              } else {
-                logger.warn(`[polling] ${sourceName} meeting started but status is not clean, skipping DND activation`);
-              }
+              logger.info(`[polling] ${sourceName} meeting started, ensuring DND is enabled...`);
+              await this.slackService.enableDND();
             }
           }
           // Handle source becoming inactive
@@ -337,14 +348,22 @@ export class SlackStatusBotDaemon {
               logger.debug(`[polling] Cleared activeSource from statusCheckState`, { wasActive: sourceName });
             }
 
-            // Handle DND for meetings - only if status is clean
+            // Handle DND for meetings - only disable if NO other meeting is active
             if (sourceName === 'zoom' || sourceName === 'teams' || sourceName === 'huddle') {
-              const canChange = await this.statusManager.isStatusClean();
-              if (canChange) {
-                console.log(`[polling] ${sourceName} meeting ended, disabling DND...`);
-                await this.slackService.disableDND();
+              // Check if ANY other meeting source is still active
+              const otherMeetingActive = 
+                (sourceName !== 'zoom' && activeStatuses['zoom']) ||
+                (sourceName !== 'teams' && activeStatuses['teams']) ||
+                (sourceName !== 'huddle' && activeStatuses['huddle']);
+              
+              if (otherMeetingActive) {
+                const activeMeetings = ['zoom', 'teams', 'huddle']
+                  .filter(s => s !== sourceName && activeStatuses[s])
+                  .join(', ');
+                logger.info(`[polling] ${sourceName} meeting ended, but another meeting is active (${activeMeetings}), keeping DND enabled`);
               } else {
-                logger.warn(`[polling] ${sourceName} meeting ended but status is not clean, skipping DND deactivation`);
+                logger.info(`[polling] ${sourceName} meeting ended and no other meetings active, disabling DND...`);
+                await this.slackService.disableDND();
               }
             }
 

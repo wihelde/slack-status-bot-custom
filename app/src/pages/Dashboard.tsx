@@ -47,29 +47,29 @@ const Dashboard: React.FC = () => {
             setSources([
               {
                 name: 'spotify',
-                enabled: true,
+                enabled: sourceStatuses.spotify?.enabled ?? true,
                 isActive: sourceStatuses.spotify?.isActive || false,
                 message: sourceStatuses.spotify?.message,
               },
               {
                 name: 'appleMusic',
-                enabled: true,
+                enabled: sourceStatuses.appleMusic?.enabled ?? true,
                 isActive: sourceStatuses.appleMusic?.isActive || false,
                 message: sourceStatuses.appleMusic?.message,
               },
               {
                 name: 'zoom',
-                enabled: true,
+                enabled: sourceStatuses.zoom?.enabled ?? true,
                 isActive: sourceStatuses.zoom?.isActive || false,
               },
               {
                 name: 'teams',
-                enabled: true,
+                enabled: sourceStatuses.teams?.enabled ?? true,
                 isActive: sourceStatuses.teams?.isActive || false,
               },
               {
                 name: 'huddle',
-                enabled: true,
+                enabled: sourceStatuses.huddle?.enabled ?? true,
                 isActive: sourceStatuses.huddle?.isActive || false,
               },
             ]);
@@ -96,29 +96,29 @@ const Dashboard: React.FC = () => {
         setSources([
           {
             name: 'spotify',
-            enabled: true,
+            enabled: sourceStatuses.spotify?.enabled ?? true,
             isActive: sourceStatuses.spotify?.isActive || false,
             message: sourceStatuses.spotify?.message,
           },
           {
             name: 'appleMusic',
-            enabled: true,
+            enabled: sourceStatuses.appleMusic?.enabled ?? true,
             isActive: sourceStatuses.appleMusic?.isActive || false,
             message: sourceStatuses.appleMusic?.message,
           },
           {
             name: 'zoom',
-            enabled: true,
+            enabled: sourceStatuses.zoom?.enabled ?? true,
             isActive: sourceStatuses.zoom?.isActive || false,
           },
           {
             name: 'teams',
-            enabled: true,
+            enabled: sourceStatuses.teams?.enabled ?? true,
             isActive: sourceStatuses.teams?.isActive || false,
           },
           {
             name: 'huddle',
-            enabled: true,
+            enabled: sourceStatuses.huddle?.enabled ?? true,
             isActive: sourceStatuses.huddle?.isActive || false,
           },
         ]);
