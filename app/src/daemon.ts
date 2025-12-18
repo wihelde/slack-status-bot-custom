@@ -285,21 +285,34 @@ export class SlackStatusBotDaemon {
 
           if (!status) continue;
 
-          // Only process state transitions, not every cycle
-          if (isActive === wasActive) {
-            continue; // No state change for this source
+          // Check if this is a state transition (active <-> inactive)
+          const isStateTransition = isActive !== wasActive;
+          
+          // Check if message changed while source is still active (e.g., song changed)
+          const messageChanged = isActive && wasActive && status.message && status.message !== sourceState[sourceName].lastMessage;
+
+          // Skip if no state change AND no message change
+          if (!isStateTransition && !messageChanged) {
+            continue;
           }
 
-          // Debug: Log state transitions
-          logger.debug(`[polling] ${sourceName} state changed: ${wasActive} → ${isActive}`, {
-            lastMessage: sourceState[sourceName].lastMessage,
-            newMessage: status.message,
-          });
+          // Debug: Log state transitions or message changes
+          if (isStateTransition) {
+            logger.debug(`[polling] ${sourceName} state changed: ${wasActive} → ${isActive}`, {
+              lastMessage: sourceState[sourceName].lastMessage,
+              newMessage: status.message,
+            });
+          } else if (messageChanged) {
+            logger.debug(`[polling] ${sourceName} message changed while active`, {
+              lastMessage: sourceState[sourceName].lastMessage,
+              newMessage: status.message,
+            });
+          }
 
           // Update state IMMEDIATELY to prevent race conditions
           sourceState[sourceName].wasActive = isActive;
 
-          // Handle source becoming active
+          // Handle source becoming active OR message changed while active
           if (isActive && !statusWasSet) {
             currentActiveSource = sourceName;
             
@@ -309,12 +322,13 @@ export class SlackStatusBotDaemon {
             this.statusManager.setStatusCheckState({ ...currentState, activeSource: sourceName });
             logger.debug(`[polling] Marked source as active in statusCheckState`, { activeSource: sourceName });
             
-            // Only set status if message changed
+            // Only set status if message changed (covers both new activation and song changes)
             if (status.message !== sourceState[sourceName].lastMessage) {
               const canChange = await this.statusManager.isStatusClean();
               if (canChange) {
                 sourceState[sourceName].lastMessage = status.message || '';
-                logger.info(`[polling] ${sourceName} became active, setting status`, { emoji: status.emoji, message: status.message });
+                const logReason = isStateTransition ? 'became active' : 'message changed';
+                logger.info(`[polling] ${sourceName} ${logReason}, setting status`, { emoji: status.emoji, message: status.message });
                 await this.slackService.setProfile(status.emoji!, status.message!);
                 
                 // Emit status changed event for UI update

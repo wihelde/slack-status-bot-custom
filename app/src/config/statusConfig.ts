@@ -64,7 +64,7 @@ export const STATUS_MESSAGES = {
     { emoji: ':exploding_head:', message: 'The best thoughts originate in the head.' },
     { emoji: ':bulb:', message: 'The best thoughts originate in the head.' },
     { emoji: ':sunglasses:', message: 'There are two types of mistakes you can make in life. Avoid both.' },
-    { emoji: ':couch_and_lamp:', message: 'Why go outside when the sun can shine on your bed?' },
+    { emoji: ':sunglasses:', message: 'Why go outside when the sun can shine on your bed?' },
     { emoji: ':older_adult:', message: 'I\'m at an age now where the next day your body whispers in your ear: never do that again.' },
     { emoji: ':potato:', message: 'Some people react confused when a sentence doesn\'t end the way they want it to potato salad.' },
     { emoji: ':panda_face:', message: 'These are not dark circles under the eyes, these are shadows of great actions!' },
@@ -128,6 +128,3 @@ export const POLL_INTERVALS = {
   STATUS_CORRECTION: 60000,  // Correct status every 60 seconds
   PRESENCE: 540000,     // Check presence every 9 minutes
 };
-
-
-
