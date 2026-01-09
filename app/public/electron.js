@@ -542,3 +542,53 @@ ipcMain.handle('set-holiday', async (event, returnDate) => {
   }
 });
 
+/**
+ * Get status configuration
+ */
+ipcMain.handle('get-status-configuration', async (event) => {
+  try {
+    if (!daemon) {
+      return { success: false, error: 'Daemon not initialized' };
+    }
+    const config = daemon.getStatusConfiguration();
+    return { success: true, data: config };
+  } catch (error) {
+    console.error('Error getting status configuration:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Update status configuration
+ */
+ipcMain.handle('update-status-configuration', async (event, statusConfig) => {
+  try {
+    if (!daemon) {
+      return { success: false, error: 'Daemon not initialized' };
+    }
+    const success = await daemon.updateStatusConfiguration(statusConfig);
+    if (success && daemon.statusManager?.setCustomStatuses) {
+      daemon.statusManager.setCustomStatuses(statusConfig);
+    }
+    return { success };
+  } catch (error) {
+    console.error('Error updating status configuration:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Reset status configuration to defaults
+ */
+ipcMain.handle('reset-status-configuration', async (event) => {
+  try {
+    if (!daemon) {
+      return { success: false, error: 'Daemon not initialized' };
+    }
+    const success = await daemon.resetStatusConfiguration();
+    return { success };
+  } catch (error) {
+    console.error('Error resetting status configuration:', error);
+    return { success: false, error: error.message };
+  }
+});

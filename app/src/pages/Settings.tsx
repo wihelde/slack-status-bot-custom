@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../styles/Settings.css';
 import { IPCService } from '../services/ipcService';
 import LogViewer from '../components/LogViewer';
+import { StatusConfigEditor } from '../components/StatusConfigEditor';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'config' | 'logs'>('config');
@@ -266,6 +267,14 @@ const Settings: React.FC = () => {
         <button className="save-btn" onClick={handleSaveSourceOrder}>
           💾 Save Priority
         </button>
+      </div>
+
+      <div className="settings-card">
+        <h2>📝 Status Configuration</h2>
+        <p className="settings-description">
+          Configure your custom status messages, emojis, and when they should be automatically set.
+        </p>
+        <StatusConfigEditor />
       </div>
 
       <div className="settings-card">

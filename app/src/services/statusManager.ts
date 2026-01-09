@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { SlackService, SlackProfile } from './slack';
-import { STATUS_MESSAGES, DayOfWeek } from '../config/statusConfig';
+import { STATUS_MESSAGES, DayOfWeek, CustomStatusConfig, getDefaultStatusConfiguration } from '../config/statusConfig';
 import { logger } from '../utils/logger';
 
 export interface StatusCheckState {
@@ -18,30 +18,30 @@ export class StatusManager extends EventEmitter {
   private statusCheckState: StatusCheckState = { value: '' };
   private finalStatus: string = '';
   private allowedEmojis: Set<string>;
+  private customStatuses: CustomStatusConfig[];
   private profileCache: SlackProfile | null = null;
   private profileCacheTime: number = 0;
   private readonly PROFILE_CACHE_TTL = 5000; // Cache profile for 5 seconds
 
-  constructor(slackService: SlackService) {
+  constructor(slackService: SlackService, customStatuses?: CustomStatusConfig[]) {
     super(); // Call EventEmitter constructor
     this.slackService = slackService;
-    // Build set of all valid emojis (from ON_STATUS_PAIRS, managed statuses, and offline messages)
-    const onEmojis = STATUS_MESSAGES.ON_STATUS_PAIRS.map(pair => pair.emoji);
-    const managedEmojis = [
+    this.customStatuses = customStatuses || getDefaultStatusConfiguration();
+    
+    // Build set of all valid emojis from custom statuses
+    const statusEmojis = this.customStatuses.map(s => s.emoji);
+    // Add source-specific emojis that are always managed
+    const sourceEmojis = [
       STATUS_MESSAGES.SPOTIFY_EMOJI,
       STATUS_MESSAGES.ZOOM_EMOJI,
       STATUS_MESSAGES.APPLE_MUSIC_EMOJI,
-      STATUS_MESSAGES.MEETING_EMOJI,
-      STATUS_MESSAGES.MONDAY_EMOJI,
-      STATUS_MESSAGES.TGIF_EMOJI,
       STATUS_MESSAGES.DISCORD_EMOJI,
       STATUS_MESSAGES.TEAMS_EMOJI,
       STATUS_MESSAGES.SKYPE_EMOJI,
-      STATUS_MESSAGES.REMEET_EMOJI,
       STATUS_MESSAGES.HUDDLE_EMOJI,
       // Note: OFF_EMOJI (:mobile_phone_off:) is intentionally NOT included - it should only be set manually via UI
     ];
-    this.allowedEmojis = new Set([...onEmojis, ...managedEmojis]);
+    this.allowedEmojis = new Set([...statusEmojis, ...sourceEmojis]);
   }
 
   /**
@@ -136,13 +136,22 @@ export class StatusManager extends EventEmitter {
   }
 
   /**
+   * Get status for a specific day from custom configuration
+   * Returns null if no status is configured for that day
+   * If multiple statuses are configured for the day, returns a random one
+   */
+  private getStatusForDay(day: DayOfWeek): CustomStatusConfig | null {
+    const dayStatuses = this.customStatuses.filter(s => s.days.includes(day));
+    if (dayStatuses.length === 0) return null;
+    // Return random one if multiple exist
+    return dayStatuses[Math.floor(Math.random() * dayStatuses.length)];
+  }
+
+  /**
    * Reset status to default based on day of week
    */
   async reset(): Promise<boolean> {
     const dayOfWeek = this.getDayOfWeek();
-    let emoji: string;
-    let message: string;
-    let stateValue: StatusCheckState['value'];
 
     // On weekends, don't automatically set a status - respect user's settings
     if (dayOfWeek === DayOfWeek.SATURDAY || dayOfWeek === DayOfWeek.SUNDAY) {
@@ -150,21 +159,25 @@ export class StatusManager extends EventEmitter {
       return false;
     }
 
-    if (dayOfWeek === DayOfWeek.MONDAY) {
-      emoji = STATUS_MESSAGES.MONDAY_EMOJI;
-      message = STATUS_MESSAGES.MONDAY_MESSAGE;
-      stateValue = 'monday';
-    } else if (dayOfWeek === DayOfWeek.FRIDAY) {
-      emoji = STATUS_MESSAGES.TGIF_EMOJI;
-      message = STATUS_MESSAGES.TGIF_MESSAGE;
-      stateValue = 'friday';
-    } else {
-      // Weekday (Tue-Thu) - use pair to keep emoji and message together
-      const pair = this.getRandomOnPair();
-      emoji = pair.emoji;
-      message = pair.message;
-      stateValue = 'weekday';
+    // Get status from configuration for this day
+    const status = this.getStatusForDay(dayOfWeek);
+
+    if (!status) {
+      // No status configured for this day - set empty status
+      logger.info(`[statusManager] No status configured for ${DayOfWeek[dayOfWeek]}, setting empty status`);
+      const success = await this.slackService.setProfile('', '');
+      if (success) {
+        this.statusCheckState.value = '';
+        this.finalStatus = '';
+        this.invalidateProfileCache();
+        this.emit('statusChanged', { emoji: '', message: '', stateValue: '' });
+      }
+      return success;
     }
+
+    const emoji = status.emoji;
+    const message = status.message;
+    const stateValue: StatusCheckState['value'] = dayOfWeek === DayOfWeek.MONDAY ? 'monday' : dayOfWeek === DayOfWeek.FRIDAY ? 'friday' : 'weekday';
 
     logger.info(`[statusManager] reset() called`, { stateValue, emoji, currentState: this.statusCheckState.value });
 
@@ -194,9 +207,13 @@ export class StatusManager extends EventEmitter {
       
       logger.info(`[statusManager] reset() successful`, { newState: stateValue, emoji });
       
-      // Set presence to auto and deactivate DND when resetting
-      await this.slackService.setPresence('auto');
-      await this.slackService.disableDND();
+      // Handle presence and DND based on config
+      await this.slackService.setPresence(status.presence);
+      if (status.enableDND) {
+        await this.slackService.enableDND();
+      } else {
+        await this.slackService.disableDND();
+      }
       
       // Emit event for status change
       this.emit('statusChanged', { emoji, message, stateValue });
@@ -215,25 +232,38 @@ export class StatusManager extends EventEmitter {
     let emoji: string;
     let message: string;
     let stateValue: StatusCheckState['value'];
+    let presence: 'auto' | 'away' = 'auto';
+    let enableDND: boolean = false;
 
-    if (dayOfWeek === DayOfWeek.MONDAY) {
-      emoji = STATUS_MESSAGES.MONDAY_EMOJI;
-      message = STATUS_MESSAGES.MONDAY_MESSAGE;
-      stateValue = 'monday';
-    } else if (dayOfWeek === DayOfWeek.FRIDAY) {
-      emoji = STATUS_MESSAGES.TGIF_EMOJI;
-      message = STATUS_MESSAGES.TGIF_MESSAGE;
-      stateValue = 'friday';
-    } else if (dayOfWeek === DayOfWeek.SATURDAY || dayOfWeek === DayOfWeek.SUNDAY) {
+    if (dayOfWeek === DayOfWeek.SATURDAY || dayOfWeek === DayOfWeek.SUNDAY) {
       emoji = STATUS_MESSAGES.OFF_EMOJI;
       message = this.getRandomOfflineMessage();
       stateValue = 'not working';
+      presence = 'away';
     } else {
-      // Weekday (Tue-Thu) - use pair to keep emoji and message together
-      const pair = this.getRandomOnPair();
-      emoji = pair.emoji;
-      message = pair.message;
-      stateValue = 'weekday';
+      // Weekday - get from config
+      const status = this.getStatusForDay(dayOfWeek);
+      if (status) {
+        emoji = status.emoji;
+        message = status.message;
+        presence = status.presence;
+        enableDND = status.enableDND;
+      } else {
+        // Fallback: empty status
+        emoji = '';
+        message = '';
+        stateValue = '';
+        presence = 'auto';
+        enableDND = false;
+      }
+      
+      if (dayOfWeek === DayOfWeek.MONDAY) {
+        stateValue = 'monday';
+      } else if (dayOfWeek === DayOfWeek.FRIDAY) {
+        stateValue = 'friday';
+      } else {
+        stateValue = 'weekday';
+      }
     }
 
     // Set the new status WITHOUT checking isStatusClean()
@@ -244,9 +274,13 @@ export class StatusManager extends EventEmitter {
       this.finalStatus = message;
       this.invalidateProfileCache();
       
-      // Set presence to auto and deactivate DND
-      await this.slackService.setPresence('auto');
-      await this.slackService.disableDND();
+      // Set presence and DND based on config
+      await this.slackService.setPresence(presence);
+      if (enableDND) {
+        await this.slackService.enableDND();
+      } else {
+        await this.slackService.disableDND();
+      }
       
       // Emit event for status change
       this.emit('statusChanged', { emoji, message, stateValue });
@@ -484,6 +518,28 @@ export class StatusManager extends EventEmitter {
    */
   setStatusCheckState(state: StatusCheckState): void {
     this.statusCheckState = state;
+  }
+
+  /**
+   * Update custom statuses at runtime (called when user updates config in UI)
+   */
+  setCustomStatuses(statuses: CustomStatusConfig[]): void {
+    this.customStatuses = statuses;
+    
+    // Rebuild allowedEmojis set
+    const statusEmojis = this.customStatuses.map(s => s.emoji);
+    const sourceEmojis = [
+      STATUS_MESSAGES.SPOTIFY_EMOJI,
+      STATUS_MESSAGES.ZOOM_EMOJI,
+      STATUS_MESSAGES.APPLE_MUSIC_EMOJI,
+      STATUS_MESSAGES.DISCORD_EMOJI,
+      STATUS_MESSAGES.TEAMS_EMOJI,
+      STATUS_MESSAGES.SKYPE_EMOJI,
+      STATUS_MESSAGES.HUDDLE_EMOJI,
+    ];
+    this.allowedEmojis = new Set([...statusEmojis, ...sourceEmojis]);
+    
+    logger.info('[statusManager] Custom statuses updated', { count: statuses.length });
   }
 
   // Private helper methods

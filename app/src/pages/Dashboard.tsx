@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/Dashboard.css';
 import { IPCService } from '../services/ipcService';
-import { STATUS_MESSAGES } from '../config/statusConfig';
+import { STATUS_MESSAGES, CustomStatusConfig, getDefaultStatusConfiguration } from '../config/statusConfig';
 import HolidayModal from '../components/HolidayModal';
 
 interface SourceStatus {
@@ -24,10 +24,12 @@ const Dashboard: React.FC = () => {
   const [daemonRunning, setDaemonRunning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showHolidayModal, setShowHolidayModal] = useState(false);
+  const [statusConfig, setStatusConfig] = useState<CustomStatusConfig[]>([]);
 
   useEffect(() => {
     // Initial load
     loadStatus();
+    loadStatusConfiguration();
     
     // Listen for status changes from daemon (event-based, not polling)
     IPCService.onStatusChanged((statusData) => {
@@ -78,6 +80,29 @@ const Dashboard: React.FC = () => {
       }
     });
   }, []);
+
+  const loadStatusConfiguration = async () => {
+    try {
+      const config = await IPCService.getStatusConfiguration();
+      if (config) {
+        setStatusConfig(config);
+      } else {
+        setStatusConfig(getDefaultStatusConfiguration());
+      }
+    } catch (error) {
+      console.error('Error loading status configuration:', error);
+      setStatusConfig(getDefaultStatusConfiguration());
+    }
+  };
+
+  const getStatusById = (id: string): CustomStatusConfig | undefined => {
+    const found = statusConfig.find(s => s.id === id);
+    if (!found) {
+      const defaults = getDefaultStatusConfiguration();
+      return defaults.find(s => s.id === id);
+    }
+    return found;
+  };
 
   const loadStatus = async () => {
     try {
@@ -242,41 +267,66 @@ const Dashboard: React.FC = () => {
       <div className="dashboard-card">
         <h2>Quick Actions</h2>
         <div className="actions-grid">
-          <button
-            className="action-btn break"
-            onClick={() => handleSetStatus(STATUS_MESSAGES.BREAK_EMOJI, STATUS_MESSAGES.BREAK_MESSAGE)}
-            title="Take a break"
-          >
-            ☕ Break
-          </button>
-          <button
-            className="action-btn meeting"
-            onClick={() => handleSetStatus(STATUS_MESSAGES.MEETING_EMOJI, STATUS_MESSAGES.MEETING_MESSAGE)}
-            title="In a meeting"
-          >
-            📞 Meeting
-          </button>
-          <button
-            className="action-btn focus"
-            onClick={() => handleSetStatus(STATUS_MESSAGES.FOCUS_EMOJI, STATUS_MESSAGES.FOCUS_MESSAGE)}
-            title="Focus mode"
-          >
-            🎯 Focus
-          </button>
-          <button
-            className="action-btn travel"
-            onClick={() => handleSetStatus(STATUS_MESSAGES.TRAVEL_EMOJI, STATUS_MESSAGES.TRAVEL_MESSAGE)}
-            title="Traveling"
-          >
-            ✈️ Travel
-          </button>
-          <button
-            className="action-btn sick"
-            onClick={() => handleSetStatus(STATUS_MESSAGES.SICK_EMOJI, STATUS_MESSAGES.SICK_MESSAGE)}
-            title="Out sick"
-          >
-            🤒 Sick
-          </button>
+          {(() => {
+            const breakStatus = getStatusById('break');
+            return (
+              <button
+                className="action-btn break"
+                onClick={() => breakStatus && handleSetStatus(breakStatus.emoji, breakStatus.message)}
+                title="Take a break"
+              >
+                ☕ Break
+              </button>
+            );
+          })()}
+          {(() => {
+            const meetingStatus = getStatusById('meeting');
+            return (
+              <button
+                className="action-btn meeting"
+                onClick={() => meetingStatus && handleSetStatus(meetingStatus.emoji, meetingStatus.message)}
+                title="In a meeting"
+              >
+                📞 Meeting
+              </button>
+            );
+          })()}
+          {(() => {
+            const focusStatus = getStatusById('focus');
+            return (
+              <button
+                className="action-btn focus"
+                onClick={() => focusStatus && handleSetStatus(focusStatus.emoji, focusStatus.message)}
+                title="Focus mode"
+              >
+                🎯 Focus
+              </button>
+            );
+          })()}
+          {(() => {
+            const travelStatus = getStatusById('travel');
+            return (
+              <button
+                className="action-btn travel"
+                onClick={() => travelStatus && handleSetStatus(travelStatus.emoji, travelStatus.message)}
+                title="Traveling"
+              >
+                ✈️ Travel
+              </button>
+            );
+          })()}
+          {(() => {
+            const sickStatus = getStatusById('sick');
+            return (
+              <button
+                className="action-btn sick"
+                onClick={() => sickStatus && handleSetStatus(sickStatus.emoji, sickStatus.message)}
+                title="Out sick"
+              >
+                🤒 Sick
+              </button>
+            );
+          })()}
           <button
             className="action-btn holiday"
             onClick={() => setShowHolidayModal(true)}
@@ -284,20 +334,30 @@ const Dashboard: React.FC = () => {
           >
             🏖️ Holiday
           </button>
-          <button
-            className="action-btn remeet"
-            onClick={() => handleSetStatus(STATUS_MESSAGES.REMEET_EMOJI, STATUS_MESSAGES.REMEET_MESSAGE)}
-            title="Remeet"
-          >
-            🔄 Remeet
-          </button>
-          <button
-            className="action-btn dog"
-            onClick={() => handleSetStatus(STATUS_MESSAGES.DOG_EMOJI, STATUS_MESSAGES.DOG_MESSAGE)}
-            title="With dog"
-          >
-            🐕 Dog
-          </button>
+          {(() => {
+            const remeetStatus = getStatusById('remeet');
+            return (
+              <button
+                className="action-btn remeet"
+                onClick={() => remeetStatus && handleSetStatus(remeetStatus.emoji, remeetStatus.message)}
+                title="Remeet"
+              >
+                🔄 Remeet
+              </button>
+            );
+          })()}
+          {(() => {
+            const dogStatus = getStatusById('dog');
+            return (
+              <button
+                className="action-btn dog"
+                onClick={() => dogStatus && handleSetStatus(dogStatus.emoji, dogStatus.message)}
+                title="With dog"
+              >
+                🐕 Dog
+              </button>
+            );
+          })()}
         </div>
       </div>
 

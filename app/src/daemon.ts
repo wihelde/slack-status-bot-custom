@@ -3,7 +3,7 @@ import { StatusManager } from './services/statusManager';
 import { SpotifyAdapter } from './services/sources/spotify';
 import { AppleMusicAdapter } from './services/sources/appleMusic';
 import { ZoomAdapter, TeamsAdapter, HuddleAdapter } from './services/sources/meetings';
-import { POLL_INTERVALS } from './config/statusConfig';
+import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration } from './config/statusConfig';
 import { logger } from './utils/logger';
 import fs from 'fs';
 import path from 'path';
@@ -26,6 +26,7 @@ export class SlackStatusBotDaemon {
   private intervals: NodeJS.Timeout[] = [];
   private configDir: string;
   private sourceOrder: string[] = ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'];
+  private statusConfiguration: CustomStatusConfig[] = [];
   private lastResetBlockedTime: number = 0; // Track when reset was last blocked
   private readonly RESET_BLOCKED_COOLDOWN = 30000; // Don't retry reset for 30 seconds if blocked
   private onStatusChanged?: (statusData: any) => void; // Callback for status changes (IPC)
@@ -166,6 +167,51 @@ export class SlackStatusBotDaemon {
    */
   async setHoliday(returnDate: string): Promise<boolean> {
     return this.statusManager.setHoliday(returnDate);
+  }
+
+  /**
+   * Get current status configuration
+   */
+  getStatusConfiguration(): CustomStatusConfig[] {
+    return this.statusConfiguration;
+  }
+
+  /**
+   * Update status configuration and persist to file
+   */
+  async updateStatusConfiguration(config: CustomStatusConfig[]): Promise<boolean> {
+    try {
+      this.statusConfiguration = config;
+      this.saveConfig();
+      
+      // Update StatusManager with new custom statuses so allowedEmojis is refreshed
+      this.statusManager.setCustomStatuses(config);
+      
+      logger.info('[daemon] Status configuration updated', { count: config.length });
+      return true;
+    } catch (error) {
+      logger.error('[daemon] Failed to update status configuration', { error: error instanceof Error ? error.message : String(error) });
+      return false;
+    }
+  }
+
+  /**
+   * Reset status configuration to defaults
+   */
+  async resetStatusConfiguration(): Promise<boolean> {
+    try {
+      this.statusConfiguration = getDefaultStatusConfiguration();
+      this.saveConfig();
+      
+      // Update StatusManager with default statuses so allowedEmojis is refreshed
+      this.statusManager.setCustomStatuses(this.statusConfiguration);
+      
+      logger.info('[daemon] Status configuration reset to defaults');
+      return true;
+    } catch (error) {
+      logger.error('[daemon] Failed to reset status configuration', { error: error instanceof Error ? error.message : String(error) });
+      return false;
+    }
   }
 
   /**
@@ -507,16 +553,63 @@ export class SlackStatusBotDaemon {
         if (config.sourceOrder && Array.isArray(config.sourceOrder)) {
           this.sourceOrder = config.sourceOrder;
         }
+
+        // Load status configuration or use defaults
+        if (config.statusConfiguration && Array.isArray(config.statusConfiguration.customStatuses)) {
+          // Merge loaded configuration with defaults to ensure new quick actions are available
+          const loadedStatuses = config.statusConfiguration.customStatuses;
+          const defaultStatuses = getDefaultStatusConfiguration();
+          
+          // Create a map of loaded statuses by ID
+          const loadedMap = new Map<string, CustomStatusConfig>();
+          for (const status of loadedStatuses) {
+            loadedMap.set(status.id, status);
+          }
+          
+          // Start with default statuses, but replace with loaded versions if they exist
+          const mergedStatuses: CustomStatusConfig[] = [];
+          for (const defaultStatus of defaultStatuses) {
+            const loadedStatus = loadedMap.get(defaultStatus.id);
+            // If status exists in loaded config, use it (preserves user changes)
+            // Otherwise use the default (ensures new quick actions are available)
+            mergedStatuses.push(loadedStatus || defaultStatus);
+          }
+          
+          // Also add any custom day-based statuses that were created by the user
+          // (those that don't exist in defaults)
+          const defaultIds = new Set<string>();
+          for (const s of defaultStatuses) {
+            defaultIds.add(s.id);
+          }
+          for (const status of loadedStatuses) {
+            if (!defaultIds.has(status.id)) {
+              mergedStatuses.push(status);
+            }
+          }
+          
+          this.statusConfiguration = mergedStatuses;
+        } else {
+          // Initialize with defaults if not found
+          this.statusConfiguration = getDefaultStatusConfiguration();
+        }
       } catch (error) {
         console.error('Error loading config:', error);
+        // Initialize with defaults on error
+        this.statusConfiguration = getDefaultStatusConfiguration();
       }
+      
+      // Update StatusManager with loaded configuration so allowedEmojis includes user-defined emojis
+      this.statusManager.setCustomStatuses(this.statusConfiguration);
+    } else {
+      // Initialize with defaults if config file doesn't exist
+      this.statusConfiguration = getDefaultStatusConfiguration();
     }
   }
 
   private saveConfig(): void {
     const configFile = this.getConfigFilePath();
     
-    // Read existing config to preserve slackTokens and sourceOrder
+    // Read existing config to preserve slackTokens
     let existingConfig: any = {};
     try {
       if (fs.existsSync(configFile)) {
@@ -527,7 +620,7 @@ export class SlackStatusBotDaemon {
     }
 
     const config = {
-      ...existingConfig, // Keep existing fields like slackTokens and sourceOrder
+      ...existingConfig, // Keep existing fields like slackTokens
       sources: {
         spotify: this.spotify.isEnabled(),
         appleMusic: this.appleMusic.isEnabled(),
@@ -535,7 +628,10 @@ export class SlackStatusBotDaemon {
         teams: this.teams.isEnabled(),
         huddle: this.huddle.isEnabled(),
       },
-      sourceOrder: existingConfig.sourceOrder || ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'],
+      sourceOrder: this.sourceOrder,
+      statusConfiguration: {
+        customStatuses: this.statusConfiguration,
+      },
       lastUpdated: new Date().toISOString(),
     };
 

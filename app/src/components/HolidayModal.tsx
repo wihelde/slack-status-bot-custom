@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import '../styles/HolidayModal.css';
+import { CustomStatusConfig } from '../config/statusConfig';
+import { IPCService } from '../services/ipcService';
 
 interface HolidayModalProps {
   isOpen: boolean;
@@ -11,6 +13,26 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
   const [returnDate, setReturnDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [holidayConfig, setHolidayConfig] = useState<CustomStatusConfig | null>(null);
+
+  // Load the holiday configuration on component mount
+  useEffect(() => {
+    const loadHolidayConfig = async () => {
+      try {
+        const config = await IPCService.getStatusConfiguration();
+        if (config) {
+          const holiday = config.find((s: CustomStatusConfig) => s.id === 'holiday');
+          setHolidayConfig(holiday || null);
+        }
+      } catch (err) {
+        console.error('Failed to load holiday config:', err);
+      }
+    };
+
+    if (isOpen) {
+      loadHolidayConfig();
+    }
+  }, [isOpen]);
 
   // Calculate preview text showing when they'll be back
   const previewText = useMemo(() => {
@@ -42,11 +64,13 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
       const backYear = backDate.getFullYear();
       const backDateStr = `${backDay}.${backMonth}.${backYear}`;
       
-      return `strong vacationing (back on ${backDateStr})`;
+      // Use the configured holiday message or default
+      const holidayMessage = holidayConfig?.message || 'strong vacationing';
+      return `${holidayMessage} (back on ${backDateStr})`;
     } catch (err) {
       return '';
     }
-  }, [returnDate]);
+  }, [returnDate, holidayConfig]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
