@@ -105,6 +105,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLogLevel: () => ipcRenderer.invoke('get-log-level'),
 
   /**
+   * Get status configuration
+   */
+  getStatusConfiguration: () => ipcRenderer.invoke('get-status-configuration'),
+
+  /**
+   * Update status configuration
+   */
+  updateStatusConfiguration: (config) => ipcRenderer.invoke('update-status-configuration', config),
+
+  /**
+   * Reset status configuration to defaults
+   */
+  resetStatusConfiguration: () => ipcRenderer.invoke('reset-status-configuration'),
+
+  /**
    * Set holiday status with return date
    */
   setHoliday: (returnDate) => ipcRenderer.invoke('set-holiday', returnDate),

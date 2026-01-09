@@ -3,6 +3,8 @@
  * Provides type-safe communication between React UI and Electron Main Process
  */
 
+import { CustomStatusConfig } from '../config/statusConfig';
+
 declare global {
   interface Window {
     electronAPI: {
@@ -46,6 +48,9 @@ declare global {
       clearLogs: () => Promise<{ success: boolean; error?: string }>;
       setLogLevel: (level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR') => Promise<{ success: boolean; logLevel?: string; error?: string }>;
       getLogLevel: () => Promise<{ success: boolean; logLevel?: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'; error?: string }>;
+      getStatusConfiguration: () => Promise<{ success: boolean; data?: CustomStatusConfig[]; error?: string }>;
+      updateStatusConfiguration: (config: CustomStatusConfig[]) => Promise<{ success: boolean; error?: string }>;
+      resetStatusConfiguration: () => Promise<{ success: boolean; error?: string }>;
       setHoliday: (returnDate: string) => Promise<{ success: boolean; data?: boolean; error?: string }>;
       onStatusChanged: (callback: (statusData: any) => void) => void;
     };
@@ -400,6 +405,54 @@ export class IPCService {
       return result.success && result.data ? true : false;
     } catch (error) {
       console.error('Error setting holiday:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get status configuration
+   */
+  static async getStatusConfiguration(): Promise<CustomStatusConfig[] | null> {
+    if (!this.isElectron()) {
+      return null;
+    }
+    try {
+      const result = await window.electronAPI.getStatusConfiguration();
+      return result.success ? result.data || [] : null;
+    } catch (error) {
+      console.error('Error getting status configuration:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Update status configuration
+   */
+  static async updateStatusConfiguration(config: CustomStatusConfig[]): Promise<boolean> {
+    if (!this.isElectron()) {
+      return false;
+    }
+    try {
+      const result = await window.electronAPI.updateStatusConfiguration(config);
+      return result.success;
+    } catch (error) {
+      console.error('Error updating status configuration:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Reset status configuration to defaults
+   */
+  static async resetStatusConfiguration(): Promise<boolean> {
+    if (!this.isElectron()) {
+      return false;
+    }
+    try {
+      const result = await window.electronAPI.resetStatusConfiguration();
+      return result.success;
+    } catch (error) {
+      console.error('Error resetting status configuration:', error);
       return false;
     }
   }

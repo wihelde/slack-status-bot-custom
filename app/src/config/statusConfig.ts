@@ -13,12 +13,35 @@ export enum DayOfWeek {
   SATURDAY = 6,
 }
 
+/**
+ * Custom Status Configuration
+ * Defines a configurable status with emoji, message, and when it should be used
+ */
+export interface CustomStatusConfig {
+  id: string; // z.B. 'break', 'meeting', 'monday', 'weekday_1', etc.
+  emoji: string;
+  message: string;
+  days: DayOfWeek[]; // [] für Quick Actions ohne automatische Nutzung
+  enableDND: boolean;
+  presence: 'auto' | 'away';
+  quickActionLabel?: string | null; // null = nicht im Dashboard zeigen
+  category: 'quick_action' | 'day_based'; // für UI-Gruppierung
+}
+
+/**
+ * Overall Status Configuration
+ * Container for all custom statuses
+ */
+export interface StatusConfiguration {
+  customStatuses: CustomStatusConfig[];
+}
+
 export const STATUS_MESSAGES = {
   // Emojis
   APPLE_MUSIC_EMOJI: ':apple_music:',
   BREAK_EMOJI: ':double_vertical_bar:',
   DOG_EMOJI: ':dog2:',
-  FOCUS_EMOJI: ':dart:',
+  FOCUS_EMOJI: ':get-shit-done:',
   HOLIDAY_EMOJI: ':palm_tree:',
   MEETING_EMOJI: ':spiral_calendar_pad:',
   MONDAY_EMOJI: ':monday:',
@@ -64,7 +87,7 @@ export const STATUS_MESSAGES = {
     { emoji: ':exploding_head:', message: 'The best thoughts originate in the head.' },
     { emoji: ':bulb:', message: 'The best thoughts originate in the head.' },
     { emoji: ':sunglasses:', message: 'There are two types of mistakes you can make in life. Avoid both.' },
-    { emoji: ':couch_and_lamp:', message: 'Why go outside when the sun can shine on your bed?' },
+    { emoji: ':sunglasses:', message: 'Why go outside when the sun can shine on your bed?' },
     { emoji: ':older_adult:', message: 'I\'m at an age now where the next day your body whispers in your ear: never do that again.' },
     { emoji: ':potato:', message: 'Some people react confused when a sentence doesn\'t end the way they want it to potato salad.' },
     { emoji: ':panda_face:', message: 'These are not dark circles under the eyes, these are shadows of great actions!' },
@@ -129,5 +152,125 @@ export const POLL_INTERVALS = {
   PRESENCE: 540000,     // Check presence every 9 minutes
 };
 
-
-
+/**
+ * Get default status configuration
+ * Returns the default set of Quick Actions and day-based statuses
+ */
+export function getDefaultStatusConfiguration(): CustomStatusConfig[] {
+  return [
+    // Quick Actions
+    {
+      id: 'break',
+      emoji: STATUS_MESSAGES.BREAK_EMOJI,
+      message: STATUS_MESSAGES.BREAK_MESSAGE,
+      days: [],
+      enableDND: false,
+      presence: 'auto',
+      quickActionLabel: 'Break',
+      category: 'quick_action',
+    },
+    {
+      id: 'meeting',
+      emoji: STATUS_MESSAGES.MEETING_EMOJI,
+      message: STATUS_MESSAGES.MEETING_MESSAGE,
+      days: [],
+      enableDND: true,
+      presence: 'auto',
+      quickActionLabel: 'Meeting',
+      category: 'quick_action',
+    },
+    {
+      id: 'focus',
+      emoji: STATUS_MESSAGES.FOCUS_EMOJI,
+      message: STATUS_MESSAGES.FOCUS_MESSAGE,
+      days: [],
+      enableDND: true,
+      presence: 'auto',
+      quickActionLabel: 'Focus',
+      category: 'quick_action',
+    },
+    {
+      id: 'travel',
+      emoji: STATUS_MESSAGES.TRAVEL_EMOJI,
+      message: STATUS_MESSAGES.TRAVEL_MESSAGE,
+      days: [],
+      enableDND: false,
+      presence: 'auto',
+      quickActionLabel: 'Travel',
+      category: 'quick_action',
+    },
+    {
+      id: 'sick',
+      emoji: STATUS_MESSAGES.SICK_EMOJI,
+      message: STATUS_MESSAGES.SICK_MESSAGE,
+      days: [],
+      enableDND: false,
+      presence: 'away',
+      quickActionLabel: 'Sick',
+      category: 'quick_action',
+    },
+    {
+      id: 'remeet',
+      emoji: STATUS_MESSAGES.REMEET_EMOJI,
+      message: STATUS_MESSAGES.REMEET_MESSAGE,
+      days: [],
+      enableDND: false,
+      presence: 'auto',
+      quickActionLabel: 'Remeet',
+      category: 'quick_action',
+    },
+    {
+      id: 'dog',
+      emoji: STATUS_MESSAGES.DOG_EMOJI,
+      message: STATUS_MESSAGES.DOG_MESSAGE,
+      days: [],
+      enableDND: false,
+      presence: 'auto',
+      quickActionLabel: 'Dog',
+      category: 'quick_action',
+    },
+    {
+      id: 'holiday',
+      emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+      message: STATUS_MESSAGES.VACATION_MESSAGE,
+      days: [],
+      enableDND: false,
+      presence: 'away',
+      quickActionLabel: 'Holiday',
+      category: 'quick_action',
+    },
+    // Day-based: Monday
+    {
+      id: 'monday',
+      emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+      message: STATUS_MESSAGES.MONDAY_MESSAGE,
+      days: [DayOfWeek.MONDAY],
+      enableDND: false,
+      presence: 'auto',
+      quickActionLabel: null,
+      category: 'day_based',
+    },
+    // Day-based: Friday
+    {
+      id: 'friday',
+      emoji: STATUS_MESSAGES.TGIF_EMOJI,
+      message: STATUS_MESSAGES.TGIF_MESSAGE,
+      days: [DayOfWeek.FRIDAY],
+      enableDND: false,
+      presence: 'auto',
+      quickActionLabel: null,
+      category: 'day_based',
+    },
+    // Day-based: Online (Tue-Thu) - all ON_STATUS_PAIRS
+    ...STATUS_MESSAGES.ON_STATUS_PAIRS.map((pair, i) => ({
+      id: `weekday_${i}`,
+      emoji: pair.emoji,
+      message: pair.message,
+      days: [DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY],
+      enableDND: false,
+      presence: 'auto' as const,
+      quickActionLabel: null,
+      category: 'day_based' as const,
+    })),
+  ];
+}

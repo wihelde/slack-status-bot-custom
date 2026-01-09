@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.4] - 
+
+### Fixed
+
+- status was not changed when song was changed, but Spotify and Apple Music just continued playing
+
+## [1.2.3] - 2025-12-02
+
+### Fixed
+- Sources were not de- or activated when clicking the toggle in the UI
+- in rare cases the DND-mode was not activated when switching too quickly between meetings
+
+### Changed
+- adjusted tests
+
 ## [1.2.2] - 2025-11-28
 
 ### Changed

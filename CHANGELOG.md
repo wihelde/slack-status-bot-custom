@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.2.4] - 2026-01-09
+
+### Added
+
+- possibility to define own custom status
+- possibility to change icons and message for quick-actions
+- new tests
+
+## [1.2.3] - 2025-12-02
+
+### Fixed
+
+-Sources were not de- or activated when clicking the toggle in the UI
+- in rare cases the DND-mode was not activated when switching too quickly between meetings
+
+### Changed
+
+- adjusted tests
+
+## [1.2.2] - 2025-11-28
+
+### Changed
+
+- Preview for setting holiday was showing misleading information
+
+## [1.2.1] - 2025-11-27
+
+### Fixed
+
+- Sources in the UI were not updated when they became active (and later inactive again)
+
 ## [1.2.0] - 2025-11-25
 
 ### Added

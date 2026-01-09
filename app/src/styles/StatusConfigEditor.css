@@ -1,0 +1,395 @@
+/* Status Config Editor */
+
+.status-config-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
+    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+.status-config-editor.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: #666;
+  font-size: 16px;
+}
+
+/* Messages */
+.error-message {
+  padding: 12px 16px;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 6px;
+  color: #c33;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.success-message {
+  padding: 12px 16px;
+  background: #efe;
+  border: 1px solid #cfc;
+  border-radius: 6px;
+  color: #3c3;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Editor Container */
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Status Sections */
+.status-section {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.status-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.section-header h3 {
+  margin: 0;
+}
+
+.section-description {
+  margin: 8px 0 16px 0;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.statuses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.no-statuses {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  margin: 0;
+}
+
+/* Status Item */
+.status-item {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px;
+  background: #fafbfc;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.status-item:hover {
+  background: #f5f7fa;
+  border-color: #d0d0d0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.status-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .status-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Form Group */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Special case: checkbox form group should be inline */
+.form-group:has(.checkbox-label) {
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+}
+
+/* Only add margin-top for larger screens where Presence and DND are side-by-side */
+@media (min-width: 1025px) {
+  .form-group:has(.checkbox-label) {
+    margin-top: 26px;
+  }
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-input {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  background: white;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+  background: white;
+}
+
+.form-input:disabled,
+.form-input.readonly {
+  background: #e8e8e8;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.emoji-input {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+}
+
+.message-input {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* Days Checkboxes */
+.days-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.day-checkbox {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  user-select: none;
+}
+
+.day-checkbox input[type='checkbox'] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: #0066cc;
+  flex-shrink: 0;
+  margin-right: 0;
+}
+
+.day-checkbox input[type='checkbox']:hover {
+  opacity: 0.7;
+}
+
+/* Checkbox Label - must override .form-group label specificity */
+.form-group .checkbox-label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  margin: 0;
+  padding: 8px 0;
+  flex-direction: row !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.form-group .checkbox-label input[type='checkbox'] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: #0066cc;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Status Actions */
+.status-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* Buttons */
+.btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #0066cc;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0052a3;
+  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
+}
+
+.btn-secondary {
+  background: #e8e8e8;
+  color: #333;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #d0d0d0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-danger {
+  background: #d9534f;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c9423f;
+  box-shadow: 0 2px 8px rgba(217, 83, 79, 0.3);
+}
+
+.btn-outline-danger {
+  background: transparent;
+  color: #d9534f;
+  border: 1.5px solid #d9534f;
+}
+
+.btn-outline-danger:hover:not(:disabled) {
+  background: #fef5f4;
+  border-color: #c9423f;
+  color: #c9423f;
+}
+
+.btn-small {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+/* Editor Footer */
+.editor-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.footer-left {
+  display: flex;
+  gap: 12px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .status-config-editor {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .status-section {
+    padding: 16px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .section-header h3 {
+    margin: 0;
+  }
+
+  .status-item {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .status-content {
+    grid-template-columns: 1fr;
+  }
+
+  .days-checkboxes {
+    gap: 8px;
+  }
+
+  .editor-footer {
+    flex-direction: column;
+  }
+
+  .footer-left {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .footer-left .btn,
+  .editor-footer > .btn {
+    width: 100%;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .status-actions {
+    flex-direction: row;
+  }
+}
