@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
+import FirstRunDialog from './components/FirstRunDialog';
 import { IPCService } from './services/ipcService';
 
 type Page = 'dashboard' | 'settings';
@@ -9,20 +10,46 @@ type Page = 'dashboard' | 'settings';
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [isOnline, setIsOnline] = useState(true);
+  const [showFirstRun, setShowFirstRun] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial daemon status
-    IPCService.getDaemonStatus().then((status) => {
-      if (status?.running) {
-        setIsOnline(true);
+    const initApp = async () => {
+      // Check if this is first run
+      try {
+        const isFirstRun = await IPCService.isFirstRun();
+        if (isFirstRun) {
+          setShowFirstRun(true);
+        }
+      } catch (err) {
+        console.error('Error checking first run:', err);
+      } finally {
+        setLoading(false);
       }
-    });
 
-    // Listen for daemon status changes
-    IPCService.onDaemonStatusChange((data) => {
-      setIsOnline(data.running || false);
-    });
+      // Get initial daemon status
+      IPCService.getDaemonStatus().then((status) => {
+        if (status?.running) {
+          setIsOnline(true);
+        }
+      });
+
+      // Listen for daemon status changes
+      IPCService.onDaemonStatusChange((data) => {
+        setIsOnline(data.running || false);
+      });
+    };
+
+    initApp();
   }, []);
+
+  if (loading) {
+    return <div className="app-loading">Loading...</div>;
+  }
+
+  if (showFirstRun) {
+    return <FirstRunDialog onComplete={() => setShowFirstRun(false)} />;
+  }
 
   return (
     <div className="app">

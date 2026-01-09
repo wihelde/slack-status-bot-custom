@@ -1,8 +1,20 @@
 console.log('[Electron] Starting up...');
 
-const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+// Logging-Funktion für Debugging
+const logToFile = (message) => {
+  const logPath = path.join(app.getPath('userData'), 'tray-debug.log');
+  const timestamp = new Date().toISOString();
+  try {
+    fs.appendFileSync(logPath, `[${timestamp}] ${message}\n`, 'utf-8');
+  } catch (e) {
+    // Ignore logging errors
+  }
+  console.log(message);
+};
 
 console.log('[Electron] Modules loaded');
 
@@ -17,6 +29,7 @@ let createDaemon;
 
 let mainWindow;
 let tray;
+let buildContextMenu; // Wird in createTray() definiert
 
 // Simple config storage in user app data
 const getConfigPath = () => {
@@ -94,7 +107,11 @@ function createWindow() {
 
   mainWindow.on('minimize', (event) => {
     event.preventDefault();
-    mainWindow.hide();
+    // Nur verstecken, wenn das Tray erfolgreich erstellt wurde
+    if (tray) {
+      mainWindow.hide();
+    }
+    // Sonst: Fenster im Vordergrund lassen, bis Tray funktioniert
   });
 
   mainWindow.on('close', (event) => {
@@ -107,77 +124,198 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
+
+  // Dock-Verhalten: Verstecken beim Minimieren, Anzeigen beim Öffnen
+  mainWindow.on('hide', () => {
+    if (process.platform === 'darwin') {
+      app.dock.hide();
+    }
+  });
+
+  mainWindow.on('show', () => {
+    if (process.platform === 'darwin') {
+      app.dock.show();
+    }
+  });
+}
+
+function updateTrayMenu() {
+  if (tray && buildContextMenu) {
+    tray.setContextMenu(buildContextMenu());
+  }
 }
 
 function createTray() {
-  const trayIconPath = path.join(__dirname, '../assets/icon.png');
+  logToFile('[Tray] Starting tray creation...');
+  logToFile('[Tray] __dirname: ' + __dirname);
   
-  // Skip tray creation if icon doesn't exist
-  if (!fs.existsSync(trayIconPath)) {
-    console.warn('[Tray] Icon not found at:', trayIconPath, '- skipping tray');
+  // Die Icons können an verschiedenen Orten sein, je nachdem ob Dev oder Build
+  // Dev: /app/assets/
+  // Build: /app/dist/mac-arm64/.../Resources/app/assets/ oder /Resources/
+  
+  const trayIconPathPNG = path.join(__dirname, '../assets/tray-icon.png');
+  const trayIconPathICNS = path.join(__dirname, '../assets/icon.icns');
+  const trayIconPathPNGResources = path.join(__dirname, '../../icon.icns'); // /Resources/icon.icns level
+  const trayIconPathAppResources = path.join(app.getAppPath(), 'assets', 'tray-icon.png');
+  const trayIconPathAppResourcesICNS = path.join(app.getAppPath(), 'assets', 'icon.icns');
+  
+  const pathsToTry = [
+    trayIconPathPNG,
+    trayIconPathICNS,
+    trayIconPathAppResources,
+    trayIconPathAppResourcesICNS,
+    trayIconPathPNGResources,
+  ];
+  
+  logToFile('[Tray] Trying these paths:');
+  pathsToTry.forEach(p => logToFile('[Tray]   ' + p + ' exists: ' + fs.existsSync(p)));
+  
+  let trayIconPath;
+  for (const p of pathsToTry) {
+    if (fs.existsSync(p)) {
+      trayIconPath = p;
+      logToFile('[Tray] Found icon at: ' + p);
+      break;
+    }
+  }
+  
+  if (!trayIconPath) {
+    logToFile('[Tray] ERROR: No icon found at any path!');
     return;
   }
 
   try {
-    tray = new Tray(trayIconPath);
-
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Show',
-        click: () => {
-          if (mainWindow) {
-            mainWindow.show();
-            mainWindow.focus();
-          }
-        },
-      },
-      {
-        label: 'Go Online',
-        click: () => {
-          ipcMain.emit('daemon-go-online');
-        },
-      },
-      {
-        label: 'Go Away',
-        click: () => {
-          ipcMain.emit('daemon-go-away');
-        },
-      },
-      {
-        type: 'separator',
-      },
-      {
-        label: 'Quit',
-        click: () => {
-          app.isQuitting = true;
-          app.quit();
-        },
-      },
-    ]);
-
-    tray.setContextMenu(contextMenu);
-
-    tray.on('click', () => {
-      if (mainWindow) {
-        mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
-      }
-    });
+    logToFile('[Tray] Loading icon from: ' + trayIconPath);
     
-    console.log('[Tray] Tray icon created successfully');
+    // Versuche zuerst direkt mit Pfad
+    logToFile('[Tray] Creating Tray with direct path...');
+    tray = new Tray(trayIconPath);
+    logToFile('[Tray] SUCCESS: Tray created with direct path!');
+    
+    // Versuche zu skalieren, falls PNG zu groß ist
+    if (process.platform === 'darwin') {
+      logToFile('[Tray] macOS detected, trying to resize icon...');
+      try {
+        const iconImage = nativeImage.createFromPath(trayIconPath);
+        if (!iconImage.isEmpty()) {
+          const resized = iconImage.resize({ width: 22, height: 22 });
+          tray.setImage(resized);
+          logToFile('[Tray] Icon resized to 22x22');
+        }
+      } catch (e) {
+        logToFile('[Tray] Warning: Could not resize icon: ' + e.message);
+      }
+    }
+
+    // Funktion zum Erstellen des Context-Menüs
+    buildContextMenu = () => {
+      const menuItems = [
+        {
+          label: 'Show',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.show();
+              mainWindow.focus();
+            }
+          },
+        },
+        {
+          label: 'Go Online',
+          click: async () => {
+            if (daemon) {
+              await daemon.goOnline();
+            }
+          },
+        },
+        {
+          label: 'Go Away',
+          click: async () => {
+            if (daemon) {
+              await daemon.goAway();
+            }
+          },
+        },
+      ];
+
+      // Quick Actions Submenu hinzufügen
+      if (daemon) {
+        try {
+          const statusConfig = daemon.getStatusConfiguration();
+          const quickActions = statusConfig.filter(s => s.quickActionLabel);
+          
+          if (quickActions.length > 0) {
+            const quickActionItems = quickActions.map(status => ({
+              label: status.quickActionLabel || `${status.emoji} ${status.message}`,
+              click: async () => {
+                if (status.id === 'holiday') {
+                  // Holiday-Special: Fenster öffnen und Modal triggern
+                  if (mainWindow) {
+                    mainWindow.show();
+                    mainWindow.focus();
+                    // Event an Renderer senden
+                    mainWindow.webContents.send('open-holiday-modal');
+                  }
+                } else {
+                  // Normale Quick Action: Status setzen
+                  if (daemon) {
+                    await daemon.setStatus(status.emoji, status.message);
+                  }
+                }
+              },
+            }));
+
+            menuItems.push({
+              label: 'Quick Actions',
+              submenu: quickActionItems,
+            });
+          }
+        } catch (error) {
+          console.error('[Tray] Error building quick actions menu:', error);
+        }
+      }
+
+      menuItems.push(
+        {
+          type: 'separator',
+        },
+        {
+          label: 'Quit',
+          click: () => {
+            app.isQuitting = true;
+            app.quit();
+          },
+        }
+      );
+
+      return Menu.buildFromTemplate(menuItems);
+    };
+
+    tray.setContextMenu(buildContextMenu());
+
+    // Rechtsklick (oder Ctrl+Klick) zeigt das Menü - kein zusätzlicher Click-Handler nötig
+    // Der Benutzer kann "Show" im Menü anklicken, um die App zu öffnen
+    
+    logToFile('[Tray] Tray icon created successfully');
   } catch (e) {
-    console.warn('[Tray] Failed to create tray:', e.message);
+    logToFile('[Tray] ERROR: Failed to create tray: ' + e.message);
+    logToFile('[Tray] Stack: ' + (e.stack || 'no stack'));
   }
 }
 
 app.whenReady().then(() => {
-  console.log('[App] App is ready!');
+  logToFile('[App] App is ready!');
+  logToFile('[App] Platform: ' + process.platform);
+  logToFile('[App] __dirname: ' + __dirname);
   
   // Load config now that app is ready
   config = loadConfig();
-  console.log('[App] Config loaded:', { hasTokens: !!config.slackTokens });
+  logToFile('[App] Config loaded');
   
+  logToFile('[App] Creating window...');
   createWindow();
+  logToFile('[App] Creating tray...');
   createTray();
+  logToFile('[App] Tray creation attempted');
 
   // Initialize daemon if available
   try {
@@ -212,6 +350,8 @@ app.whenReady().then(() => {
         }
       });
       daemon.start().catch(err => console.error('Error starting daemon:', err));
+      // Tray-Menü aktualisieren, nachdem Daemon initialisiert wurde
+      updateTrayMenu();
     } else {
       console.log('[Daemon] No tokens configured, daemon will start after tokens are saved');
     }
@@ -299,6 +439,8 @@ ipcMain.handle('save-tokens', async (event, tokens) => {
       });
       await daemon.start();
       console.log('[IPC] Daemon started with new tokens');
+      // Tray-Menü aktualisieren, nachdem Daemon gestartet wurde
+      updateTrayMenu();
     }
     
     return { success: true };
@@ -570,6 +712,8 @@ ipcMain.handle('update-status-configuration', async (event, statusConfig) => {
     if (success && daemon.statusManager?.setCustomStatuses) {
       daemon.statusManager.setCustomStatuses(statusConfig);
     }
+    // Tray-Menü aktualisieren, nachdem Status-Konfiguration geändert wurde
+    updateTrayMenu();
     return { success };
   } catch (error) {
     console.error('Error updating status configuration:', error);
@@ -586,9 +730,186 @@ ipcMain.handle('reset-status-configuration', async (event) => {
       return { success: false, error: 'Daemon not initialized' };
     }
     const success = await daemon.resetStatusConfiguration();
+    // Tray-Menü aktualisieren, nachdem Status-Konfiguration zurückgesetzt wurde
+    updateTrayMenu();
     return { success };
   } catch (error) {
     console.error('Error resetting status configuration:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Open holiday modal (triggers event to renderer)
+ */
+ipcMain.handle('open-holiday-modal', async (event) => {
+  try {
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('open-holiday-modal');
+      return { success: true };
+    }
+    return { success: false, error: 'Main window not available' };
+  } catch (error) {
+    console.error('Error opening holiday modal:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Set auto-launch (App beim Hochfahren starten)
+ * Auf macOS erstellen wir einen LaunchAgent statt setLoginItemSettings zu verwenden,
+ * da das nicht auf unsigned apps funktioniert
+ */
+ipcMain.handle('set-auto-launch', async (event, enabled) => {
+  try {
+    console.log('[AutoLaunch] Setting auto-launch to:', enabled);
+    logToFile('[AutoLaunch] Setting auto-launch to: ' + enabled);
+    
+    if (process.platform === 'darwin') {
+      // Auf macOS: erstelle LaunchAgent
+      const launchAgentPath = path.join(
+        process.env.HOME || '',
+        'Library/LaunchAgents/com.slack-status-bot.plist'
+      );
+      
+      let appPath = process.execPath;
+      const appMatch = appPath.match(/^(.+?\.app)/);
+      if (appMatch) {
+        appPath = appMatch[1];
+      }
+      
+      logToFile('[AutoLaunch] LaunchAgent path: ' + launchAgentPath);
+      logToFile('[AutoLaunch] App path: ' + appPath);
+      
+      if (enabled) {
+        // Erstelle LaunchAgent Plist
+        const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.slack-status-bot</string>
+  <key>Program</key>
+  <string>${appPath}/Contents/MacOS/Slack Status Bot</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>${process.env.HOME}/Library/Logs/slack-status-bot.log</string>
+  <key>StandardErrorPath</key>
+  <string>${process.env.HOME}/Library/Logs/slack-status-bot-error.log</string>
+</dict>
+</plist>`;
+        
+        // Erstelle Verzeichnis falls nicht vorhanden
+        const launchAgentDir = path.dirname(launchAgentPath);
+        if (!fs.existsSync(launchAgentDir)) {
+          fs.mkdirSync(launchAgentDir, { recursive: true });
+        }
+        
+        // Schreibe Plist
+        fs.writeFileSync(launchAgentPath, plistContent, 'utf-8');
+        logToFile('[AutoLaunch] LaunchAgent plist written');
+        
+        // Lade den LaunchAgent mit launchctl
+        const { execSync } = require('child_process');
+        try {
+          execSync(`launchctl load "${launchAgentPath}"`, { stdio: 'pipe' });
+          logToFile('[AutoLaunch] LaunchAgent loaded successfully with launchctl');
+        } catch (error) {
+          // Wenn es bereits geladen ist, bekommst du einen Fehler - das ist OK
+          if (error.toString().includes('already loaded')) {
+            logToFile('[AutoLaunch] LaunchAgent was already loaded');
+          } else {
+            logToFile('[AutoLaunch] Error loading with launchctl: ' + error.message);
+            console.log('[AutoLaunch] launchctl error:', error.toString());
+          }
+        }
+      } else {
+        // Unlade und lösche LaunchAgent
+        if (fs.existsSync(launchAgentPath)) {
+          const { execSync } = require('child_process');
+          try {
+            execSync(`launchctl unload "${launchAgentPath}"`, { stdio: 'pipe' });
+            logToFile('[AutoLaunch] LaunchAgent unloaded');
+          } catch (error) {
+            if (!error.toString().includes('not loaded')) {
+              logToFile('[AutoLaunch] Error unloading: ' + error.message);
+            }
+          }
+          
+          // Lösche die Datei
+          fs.unlinkSync(launchAgentPath);
+          logToFile('[AutoLaunch] LaunchAgent plist removed');
+        }
+      }
+      
+      return { success: true, enabled: enabled };
+    } else {
+      // Windows/Linux: nutze setLoginItemSettings wenn verfügbar
+      app.setLoginItemSettings({
+        openAtLogin: enabled,
+        openAsHidden: true,
+      });
+      return { success: true, enabled: enabled };
+    }
+  } catch (error) {
+    console.error('[AutoLaunch] Error:', error);
+    logToFile('[AutoLaunch] Error: ' + error.message);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Get auto-launch status
+ */
+ipcMain.handle('get-auto-launch', async (event) => {
+  try {
+    if (process.platform === 'darwin') {
+      // Auf macOS: prüfe ob LaunchAgent existiert
+      const launchAgentPath = path.join(
+        process.env.HOME || '',
+        'Library/LaunchAgents/com.slack-status-bot.plist'
+      );
+      const enabled = fs.existsSync(launchAgentPath);
+      logToFile('[AutoLaunch] LaunchAgent exists: ' + enabled);
+      return { success: true, enabled: enabled };
+    } else {
+      // Windows/Linux
+      const settings = app.getLoginItemSettings();
+      return { success: true, enabled: settings.openAtLogin };
+    }
+  } catch (error) {
+    console.error('Error getting auto-launch status:', error);
+    logToFile('[AutoLaunch] Error: ' + error.message);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Check if this is the first run (for onboarding)
+ */
+ipcMain.handle('is-first-run', async (event) => {
+  try {
+    const isFirstRun = !config.hasCompletedFirstRun;
+    logToFile('[FirstRun] is-first-run: ' + isFirstRun);
+    return { success: true, isFirstRun };
+  } catch (error) {
+    console.error('Error checking first run:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Mark first run as complete
+ */
+ipcMain.handle('complete-first-run', async (event) => {
+  try {
+    config.hasCompletedFirstRun = true;
+    saveConfig(config);
+    logToFile('[FirstRun] First run marked as complete');
+    return { success: true };
+  } catch (error) {
+    console.error('Error completing first run:', error);
     return { success: false, error: error.message };
   }
 });

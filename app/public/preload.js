@@ -130,4 +130,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onStatusChanged: (callback) => {
     ipcRenderer.on('status-changed', (event, statusData) => callback(statusData));
   },
+
+  /**
+   * Listen for open-holiday-modal event
+   */
+  onOpenHolidayModal: (callback) => {
+    ipcRenderer.on('open-holiday-modal', (event) => callback());
+  },
+
+  /**
+   * Set auto-launch on startup
+   */
+  setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled),
+
+  /**
+   * Get auto-launch status
+   */
+  getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch'),
+
+  /**
+   * Check if this is the first run
+   */
+  isFirstRun: () => ipcRenderer.invoke('is-first-run'),
+
+  /**
+   * Mark first run as complete
+   */
+  completeFirstRun: () => ipcRenderer.invoke('complete-first-run'),
 });

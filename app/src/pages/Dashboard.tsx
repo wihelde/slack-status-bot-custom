@@ -79,6 +79,12 @@ const Dashboard: React.FC = () => {
         })();
       }
     });
+
+    // Listen for open-holiday-modal event from tray menu
+    IPCService.onOpenHolidayModal(() => {
+      console.log('[Dashboard] Received open-holiday-modal event from tray');
+      setShowHolidayModal(true);
+    });
   }, []);
 
   const loadStatusConfiguration = async () => {
