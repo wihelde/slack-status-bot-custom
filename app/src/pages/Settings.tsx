@@ -5,7 +5,7 @@ import LogViewer from '../components/LogViewer';
 import { StatusConfigEditor } from '../components/StatusConfigEditor';
 
 const Settings: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'config' | 'logs'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'logs' | 'system'>('config');
   const [slackToken, setSlackToken] = useState('');
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
@@ -16,6 +16,8 @@ const Settings: React.FC = () => {
   const [draggedSource, setDraggedSource] = useState<string | null>(null);
   const [logLevel, setLogLevelState] = useState<'DEBUG' | 'INFO' | 'WARN' | 'ERROR'>('ERROR');
   const [logLevelSaving, setLogLevelSaving] = useState(false);
+  const [autoLaunch, setAutoLaunch] = useState(false);
+  const [autoLaunchLoading, setAutoLaunchLoading] = useState(false);
 
   useEffect(() => {
     loadConfig();
@@ -43,6 +45,13 @@ const Settings: React.FC = () => {
       if (levelResult?.success && levelResult?.logLevel) {
         console.log('[Settings] Log level loaded:', levelResult.logLevel);
         setLogLevelState(levelResult.logLevel);
+      }
+
+      // Load auto-launch setting
+      const autoLaunchStatus = await IPCService.getAutoLaunch();
+      if (autoLaunchStatus !== null) {
+        console.log('[Settings] Auto-launch status loaded:', autoLaunchStatus);
+        setAutoLaunch(autoLaunchStatus);
       }
 
       setLoading(false);
@@ -150,6 +159,23 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleAutoLaunchChange = async (enabled: boolean) => {
+    setAutoLaunchLoading(true);
+    try {
+      const success = await IPCService.setAutoLaunch(enabled);
+      if (success) {
+        setAutoLaunch(enabled);
+        console.log('[Settings] Auto-launch changed to:', enabled);
+      } else {
+        console.error('[Settings] Failed to set auto-launch');
+      }
+    } catch (err) {
+      console.error('[Settings] Error changing auto-launch:', err);
+    } finally {
+      setAutoLaunchLoading(false);
+    }
+  };
+
   const sourceLabels: Record<string, { name: string; emoji: string }> = {
     spotify: { name: 'Spotify', emoji: '🎵' },
     appleMusic: { name: 'Apple Music', emoji: '🎶' },
@@ -172,6 +198,12 @@ const Settings: React.FC = () => {
             onClick={() => setActiveTab('config')}
           >
             ⚙️ Configuration
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`}
+            onClick={() => setActiveTab('system')}
+          >
+            🖥️ System
           </button>
           <button 
             className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
@@ -296,6 +328,30 @@ const Settings: React.FC = () => {
         </div>
       </div>
       </>
+      )}
+
+      {activeTab === 'system' && (
+        <>
+        <div className="settings-card">
+          <h2>🚀 System Settings</h2>
+          <div className="system-setting">
+            <label htmlFor="auto-launch" className="setting-label">
+              <input 
+                id="auto-launch"
+                type="checkbox"
+                checked={autoLaunch}
+                onChange={(e) => handleAutoLaunchChange(e.target.checked)}
+                disabled={autoLaunchLoading}
+                className="checkbox-input"
+              />
+              <span className="checkbox-text">Start App when computer boots</span>
+            </label>
+            <p className="setting-description">
+              When enabled, the app will automatically start and run in the background when your Mac boots up.
+            </p>
+          </div>
+        </div>
+        </>
       )}
 
       {activeTab === 'logs' && (

@@ -1,0 +1,134 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import App from '../App';
+import { IPCService } from '../services/ipcService';
+
+// Mock IPCService
+vi.mock('../services/ipcService');
+
+// Mock child components to avoid complex setup
+vi.mock('../components/FirstRunDialog', () => ({
+  default: ({ onComplete }: { onComplete: () => void }) => (
+    <div data-testid="first-run-dialog">
+      <button onClick={onComplete}>Complete Setup</button>
+    </div>
+  ),
+}));
+
+vi.mock('../pages/Dashboard', () => ({
+  default: () => <div data-testid="dashboard">Dashboard</div>,
+}));
+
+vi.mock('../pages/Settings', () => ({
+  default: () => <div data-testid="settings">Settings</div>,
+}));
+
+describe('App - First Run Integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should show FirstRunDialog when isFirstRun is true', async () => {
+    const mockIPCService = IPCService as any;
+    mockIPCService.isFirstRun = vi.fn().mockResolvedValue(true);
+    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.onDaemonStatusChange = vi.fn();
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('first-run-dialog')).toBeInTheDocument();
+    });
+
+    // Dashboard sollte NICHT sichtbar sein
+    expect(screen.queryByTestId('dashboard')).not.toBeInTheDocument();
+  });
+
+  it('should show Dashboard when isFirstRun is false', async () => {
+    const mockIPCService = IPCService as any;
+    mockIPCService.isFirstRun = vi.fn().mockResolvedValue(false);
+    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.onDaemonStatusChange = vi.fn();
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard')).toBeInTheDocument();
+    });
+
+    // FirstRunDialog sollte NICHT sichtbar sein
+    expect(screen.queryByTestId('first-run-dialog')).not.toBeInTheDocument();
+  });
+
+  it('should hide FirstRunDialog when onComplete is called', async () => {
+    const mockIPCService = IPCService as any;
+    mockIPCService.isFirstRun = vi.fn().mockResolvedValue(true);
+    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.onDaemonStatusChange = vi.fn();
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('first-run-dialog')).toBeInTheDocument();
+    });
+
+    // Click the complete button
+    const completeButton = screen.getByRole('button', { name: /Complete Setup/i });
+    completeButton.click();
+
+    await waitFor(() => {
+      // FirstRunDialog sollte verschwunden sein
+      expect(screen.queryByTestId('first-run-dialog')).not.toBeInTheDocument();
+      // Dashboard sollte jetzt sichtbar sein
+      expect(screen.getByTestId('dashboard')).toBeInTheDocument();
+    });
+  });
+
+  it('should call isFirstRun on mount', async () => {
+    const mockIPCService = IPCService as any;
+    mockIPCService.isFirstRun = vi.fn().mockResolvedValue(false);
+    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.onDaemonStatusChange = vi.fn();
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(mockIPCService.isFirstRun).toHaveBeenCalled();
+    });
+  });
+
+  it('should handle isFirstRun error gracefully', async () => {
+    const mockIPCService = IPCService as any;
+    mockIPCService.isFirstRun = vi.fn().mockRejectedValue(new Error('IPC error'));
+    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.onDaemonStatusChange = vi.fn();
+
+    render(<App />);
+
+    // Should show dashboard even if isFirstRun fails
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard')).toBeInTheDocument();
+    });
+  });
+
+  it('should show loading state initially', async () => {
+    const mockIPCService = IPCService as any;
+    // Verzögere den resolve
+    mockIPCService.isFirstRun = vi.fn(() => 
+      new Promise(resolve => setTimeout(() => resolve(false), 100))
+    );
+    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.onDaemonStatusChange = vi.fn();
+
+    render(<App />);
+
+    // Loading text sollte sichtbar sein
+    expect(screen.getByText(/Loading.../i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      // Nach loading sollte Dashboard sichtbar sein
+      expect(screen.getByTestId('dashboard')).toBeInTheDocument();
+    });
+  });
+});

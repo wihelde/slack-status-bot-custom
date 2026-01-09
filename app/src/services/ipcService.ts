@@ -53,6 +53,11 @@ declare global {
       resetStatusConfiguration: () => Promise<{ success: boolean; error?: string }>;
       setHoliday: (returnDate: string) => Promise<{ success: boolean; data?: boolean; error?: string }>;
       onStatusChanged: (callback: (statusData: any) => void) => void;
+      onOpenHolidayModal: (callback: () => void) => void;
+      setAutoLaunch: (enabled: boolean) => Promise<{ success: boolean; verified?: boolean; error?: string }>;
+      getAutoLaunch: () => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
+      isFirstRun: () => Promise<{ success: boolean; isFirstRun?: boolean; error?: string }>;
+      completeFirstRun: () => Promise<{ success: boolean; error?: string }>;
     };
   }
 }
@@ -466,5 +471,82 @@ export class IPCService {
       return;
     }
     window.electronAPI.onStatusChanged(callback);
+  }
+
+  /**
+   * Listen for open-holiday-modal event
+   */
+  static onOpenHolidayModal(callback: () => void): void {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return;
+    }
+    window.electronAPI.onOpenHolidayModal(callback);
+  }
+
+  /**
+   * Set auto-launch on startup
+   */
+  static async setAutoLaunch(enabled: boolean): Promise<boolean> {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return false;
+    }
+    try {
+      const result = await window.electronAPI.setAutoLaunch(enabled);
+      return result.success;
+    } catch (error) {
+      console.error('Error setting auto-launch:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get auto-launch status
+   */
+  static async getAutoLaunch(): Promise<boolean | null> {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return null;
+    }
+    try {
+      const result = await window.electronAPI.getAutoLaunch();
+      return result.success ? (result.enabled || false) : null;
+    } catch (error) {
+      console.error('Error getting auto-launch status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if this is the first run
+   */
+  static async isFirstRun(): Promise<boolean> {
+    if (!this.isElectron()) {
+      return false;
+    }
+    try {
+      const result = await window.electronAPI.isFirstRun();
+      return result.success ? (result.isFirstRun || false) : false;
+    } catch (error) {
+      console.error('Error checking first run:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Mark first run as complete
+   */
+  static async completeFirstRun(): Promise<boolean> {
+    if (!this.isElectron()) {
+      return false;
+    }
+    try {
+      const result = await window.electronAPI.completeFirstRun();
+      return result.success;
+    } catch (error) {
+      console.error('Error completing first run:', error);
+      return false;
+    }
   }
 }

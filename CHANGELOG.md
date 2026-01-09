@@ -1,12 +1,29 @@
 # Changelog
 
-## [1.2.4] - 2026-01-09
+## [1.4.0] - 2026-01-09
+
+## Added
+
+- Autostart-setting via Launch Agent
+- you can now minimize the App and its still usable via menu-item at the top of your screen
+
+## Changed
+
+- fixed one wrong test which broke in v1.3.0
+
+## [1.3.0] - 2026-01-09
 
 ### Added
 
 - possibility to define own custom status
 - possibility to change icons and message for quick-actions
 - new tests
+
+## [1.2.4] - 
+
+### Fixed
+
+- status was not changed when song was changed, but Spotify and Apple Music just continued playing
 
 ## [1.2.3] - 2025-12-02
 

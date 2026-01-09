@@ -206,16 +206,17 @@ describe('StatusManager', () => {
     });
 
     it('should skip correction if user has set a custom status', async () => {
+      // Use a custom emoji that is NOT in the managed statuses
       mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: ':palm_tree:',
-        status_text: 'Vacationing',
+        status_emoji: ':custom_user_emoji:',
+        status_text: 'Custom vacation message',
       });
 
       statusManager.setStatusCheckState({ value: '' });
 
       await statusManager.correctStatus();
 
-      // Should not attempt to reset
+      // Should not attempt to reset because the emoji is not managed
       expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
 
