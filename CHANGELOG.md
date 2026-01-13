@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.1] - 2026-01-13
+
+## Added
+
+- removed the special handling for weekends, because the user can now take care if it by setting status especially for the weekend
+- update check - the app checks now for new updates and informs the user about it
+- added tests
+
+## Changed
+
+- changed tests
+
 ## [1.4.0] - 2026-01-09
 
 ## Added

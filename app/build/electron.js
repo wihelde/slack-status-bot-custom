@@ -144,6 +144,13 @@ function createWindow() {
 function updateTrayMenu() {
   if (tray && buildContextMenu) {
     tray.setContextMenu(buildContextMenu());
+    
+    // Update tray icon to show update available
+    if (updateAvailable) {
+      logToFile('[Tray] Update available - changing icon');
+      // Use a different visual indicator - we could use different icon or title
+      // For now, just log it
+    }
   }
 }
 
@@ -290,6 +297,11 @@ function createTray() {
             },
           }
         );
+        
+        // Update tray title to show indicator
+        if (tray) {
+          tray.setTitle('●');
+        }
       }
 
       menuItems.push(
@@ -333,16 +345,95 @@ function checkForUpdates() {
   }
 
   try {
-    logToFile('[Updates] About to call autoUpdater.checkForUpdates()');
+    // Manually check GitLab releases API for latest version
+    const https = require('https');
+    const currentVersion = app.getVersion();
     
-    autoUpdater.checkForUpdates().then(() => {
-      logToFile('[Updates] checkForUpdates promise resolved');
-    }).catch((error) => {
-      logToFile('[Updates] checkForUpdates error: ' + (error ? error.message : 'unknown error'));
+    logToFile('[Updates] Current version: ' + currentVersion);
+    logToFile('[Updates] Checking GitLab for newer releases...');
+    
+    const options = {
+      hostname: 'gitlab.com',
+      path: '/api/v4/projects/22692225/releases',
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Slack Status Bot'
+      }
+    };
+    
+    const req = https.request(options, (res) => {
+      let data = '';
+      
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      res.on('end', () => {
+        try {
+          if (res.statusCode === 200) {
+            const releases = JSON.parse(data);
+            if (releases && releases.length > 0) {
+              const latestRelease = releases[0];
+              const latestVersion = latestRelease.tag_name.replace(/^v/, '');
+              logToFile('[Updates] Latest release found: ' + latestVersion);
+              
+              // Compare versions (simple semantic versioning)
+              if (isNewerVersion(latestVersion, currentVersion)) {
+                logToFile('[Updates] Update available: ' + latestVersion);
+                updateAvailable = {
+                  version: latestVersion,
+                  releaseDate: latestRelease.released_at || new Date().toISOString(),
+                };
+                
+                // Send to renderer
+                if (mainWindow && mainWindow.webContents) {
+                  mainWindow.webContents.send('update-available', updateAvailable);
+                }
+                
+                // Update tray
+                if (tray && buildContextMenu) {
+                  updateTrayMenu();
+                }
+              } else {
+                logToFile('[Updates] You are on the latest version');
+              }
+            }
+          } else {
+            logToFile('[Updates] GitLab API error: ' + res.statusCode);
+          }
+        } catch (e) {
+          logToFile('[Updates] Error parsing releases: ' + e.message);
+        }
+      });
     });
+    
+    req.on('error', (error) => {
+      logToFile('[Updates] Network error: ' + error.message);
+    });
+    
+    req.end();
   } catch (e) {
     logToFile('[Updates] Exception in checkForUpdates: ' + (e ? e.message : 'unknown error'));
   }
+}
+
+/**
+ * Compare versions (simple semantic versioning)
+ * Returns true if newVersion > currentVersion
+ */
+function isNewerVersion(newVersion, currentVersion) {
+  const newParts = newVersion.split('.').map(Number);
+  const currentParts = currentVersion.split('.').map(Number);
+  
+  for (let i = 0; i < Math.max(newParts.length, currentParts.length); i++) {
+    const newPart = newParts[i] || 0;
+    const currentPart = currentParts[i] || 0;
+    
+    if (newPart > currentPart) return true;
+    if (newPart < currentPart) return false;
+  }
+  
+  return false;
 }
 
 /**
@@ -350,47 +441,6 @@ function checkForUpdates() {
  */
 function setupUpdateListeners() {
   logToFile('[Updates] setupUpdateListeners() called');
-  
-  // Configure updater to check local app directory for latest.yaml (for testing)
-  // This MUST be done BEFORE calling checkForUpdates()
-  try {
-    // app.getAppPath() = /path/to/dist/mac-arm64/Slack Status Bot.app/Contents/Resources/app
-    // We need to find /path/to/dist
-    const appPath = app.getAppPath();
-    const pathParts = appPath.split(path.sep);
-    
-    // Find the 'dist' directory in the path
-    const distIndex = pathParts.indexOf('dist');
-    let distPath = null;
-    
-    if (distIndex !== -1) {
-      // Reconstruct path up to and including 'dist'
-      distPath = pathParts.slice(0, distIndex + 1).join(path.sep);
-    }
-    
-    if (distPath) {
-      logToFile('[Updates] Found dist path: ' + distPath);
-      const latestYmlPath = path.join(distPath, 'latest-mac.yml');
-      logToFile('[Updates] Checking for local latest-mac.yml at: ' + latestYmlPath);
-      
-      if (fs.existsSync(latestYmlPath)) {
-        logToFile('[Updates] Found local latest-mac.yml! Setting feed URL to: file://' + distPath);
-        // Set feed URL for local testing
-        autoUpdater.setFeedURL({
-          provider: 'generic',
-          url: 'file://' + distPath
-        });
-        logToFile('[Updates] Feed URL configured for local updates');
-      } else {
-        logToFile('[Updates] No local latest-mac.yml found. Will use default GitLab URL.');
-        // Will use default from package.json publish config
-      }
-    } else {
-      logToFile('[Updates] Could not find dist directory in app path: ' + appPath);
-    }
-  } catch (e) {
-    logToFile('[Updates] Could not configure local feed: ' + e.message);
-  }
   
   autoUpdater.on('update-available', (updateInfo) => {
     logToFile('[Updates] Event: update-available, version: ' + (updateInfo ? updateInfo.version : 'unknown'));

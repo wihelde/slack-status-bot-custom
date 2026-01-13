@@ -68,12 +68,10 @@
       "node_modules/electron-is-dev/**/*",
       "node_modules/electron-updater/**/*"
     ],
-    "publish": [
-      {
-        "provider": "generic",
-        "url": "https://gitlab.com/api/v4/projects/wihel_de%2Fslack-status-bot-custom/releases"
-      }
-    ],
+    "publish": {
+      "provider": "generic",
+      "url": "https://gitlab.com/wihel_de/slack-status-bot-custom/-/releases"
+    },
     "asar": false,
     "directories": {
       "buildResources": "assets"

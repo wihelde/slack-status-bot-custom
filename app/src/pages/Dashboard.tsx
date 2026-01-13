@@ -225,6 +225,33 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="dashboard">
+      {updateAvailable && (
+        <div className="update-banner">
+          <div className="update-content">
+            <span className="update-icon">🚀</span>
+            <div className="update-text">
+              <strong>Update available!</strong>
+              <p>Version {updateAvailable.version} is ready to install</p>
+            </div>
+            <a 
+              href={`https://gitlab.com/wihel_de/slack-status-bot-custom/-/releases/v${updateAvailable.version}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="update-link"
+            >
+              Download
+            </a>
+            <button 
+              className="update-close"
+              onClick={() => setUpdateAvailable(null)}
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="dashboard-header">
         <h1>Slack Status Bot</h1>
         <div className={`daemon-status ${daemonRunning ? 'running' : 'stopped'}`}>
@@ -381,33 +408,6 @@ const Dashboard: React.FC = () => {
           })()}
         </div>
       </div>
-
-      {updateAvailable && (
-        <div className="update-banner">
-          <div className="update-content">
-            <span className="update-icon">🚀</span>
-            <div className="update-text">
-              <strong>Update available!</strong>
-              <p>Version {updateAvailable.version} is ready to install</p>
-            </div>
-            <a 
-              href={`https://gitlab.com/wihel_de/slack-status-bot-custom/-/releases/v${updateAvailable.version}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="update-link"
-            >
-              Download
-            </a>
-            <button 
-              className="update-close"
-              onClick={() => setUpdateAvailable(null)}
-              title="Dismiss"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
 
       <HolidayModal
         isOpen={showHolidayModal}
