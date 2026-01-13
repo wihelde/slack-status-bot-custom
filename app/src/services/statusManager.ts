@@ -4,7 +4,7 @@ import { STATUS_MESSAGES, DayOfWeek, CustomStatusConfig, getDefaultStatusConfigu
 import { logger } from '../utils/logger';
 
 export interface StatusCheckState {
-  value: 'weekday' | 'monday' | 'friday' | 'not working' | '';
+  value: 'not working' | '';
   activeSource?: string; // Track which source is currently active (e.g. 'zoom', 'teams', 'huddle')
 }
 
@@ -153,12 +153,6 @@ export class StatusManager extends EventEmitter {
   async reset(): Promise<boolean> {
     const dayOfWeek = this.getDayOfWeek();
 
-    // On weekends, don't automatically set a status - respect user's settings
-    if (dayOfWeek === DayOfWeek.SATURDAY || dayOfWeek === DayOfWeek.SUNDAY) {
-      logger.info(`[statusManager] reset() skipped on weekend - respecting user's current status`);
-      return false;
-    }
-
     // Get status from configuration for this day
     const status = this.getStatusForDay(dayOfWeek);
 
@@ -177,7 +171,15 @@ export class StatusManager extends EventEmitter {
 
     const emoji = status.emoji;
     const message = status.message;
-    const stateValue: StatusCheckState['value'] = dayOfWeek === DayOfWeek.MONDAY ? 'monday' : dayOfWeek === DayOfWeek.FRIDAY ? 'friday' : 'weekday';
+    
+    // Check if the emoji is a protected status that requires 'not working' mode
+    const protectedEmojis = [
+      STATUS_MESSAGES.OFF_EMOJI,
+      STATUS_MESSAGES.SICK_EMOJI,
+      STATUS_MESSAGES.HOLIDAY_EMOJI,
+      STATUS_MESSAGES.PARENTAL_LEAVE_EMOJI,
+    ];
+    const stateValue: StatusCheckState['value'] = protectedEmojis.includes(emoji) ? 'not working' : '';
 
     logger.info(`[statusManager] reset() called`, { stateValue, emoji, currentState: this.statusCheckState.value });
 
@@ -235,35 +237,30 @@ export class StatusManager extends EventEmitter {
     let presence: 'auto' | 'away' = 'auto';
     let enableDND: boolean = false;
 
-    if (dayOfWeek === DayOfWeek.SATURDAY || dayOfWeek === DayOfWeek.SUNDAY) {
-      emoji = STATUS_MESSAGES.OFF_EMOJI;
-      message = this.getRandomOfflineMessage();
-      stateValue = 'not working';
-      presence = 'away';
-    } else {
-      // Weekday - get from config
-      const status = this.getStatusForDay(dayOfWeek);
-      if (status) {
-        emoji = status.emoji;
-        message = status.message;
-        presence = status.presence;
-        enableDND = status.enableDND;
-      } else {
-        // Fallback: empty status
-        emoji = '';
-        message = '';
-        stateValue = '';
-        presence = 'auto';
-        enableDND = false;
-      }
+    // Get status from configuration for this day (works for ALL days now)
+    const status = this.getStatusForDay(dayOfWeek);
+
+    if (status) {
+      emoji = status.emoji;
+      message = status.message;
+      presence = status.presence;
+      enableDND = status.enableDND;
       
-      if (dayOfWeek === DayOfWeek.MONDAY) {
-        stateValue = 'monday';
-      } else if (dayOfWeek === DayOfWeek.FRIDAY) {
-        stateValue = 'friday';
-      } else {
-        stateValue = 'weekday';
-      }
+      // Check if this is a protected status
+      const protectedEmojis = [
+        STATUS_MESSAGES.OFF_EMOJI,
+        STATUS_MESSAGES.SICK_EMOJI,
+        STATUS_MESSAGES.HOLIDAY_EMOJI,
+        STATUS_MESSAGES.PARENTAL_LEAVE_EMOJI,
+      ];
+      stateValue = protectedEmojis.includes(emoji) ? 'not working' : '';
+    } else {
+      // No status configured for this day - set empty status
+      emoji = '';
+      message = '';
+      stateValue = '';
+      presence = 'auto';
+      enableDND = false;
     }
 
     // Set the new status WITHOUT checking isStatusClean()
@@ -294,9 +291,14 @@ export class StatusManager extends EventEmitter {
    */
   async correctStatus(): Promise<void> {
     // Don't correct status if a source is actively running
-    // (e.g., if user is in a meeting, we shouldn't try to set the day-based status)
     if (this.statusCheckState.activeSource) {
       logger.debug(`[statusManager] correctStatus: Skipping because source is active`, { activeSource: this.statusCheckState.activeSource });
+      return;
+    }
+
+    // Don't correct status if 'not working' mode is active (user has set a protected status like sick, holiday, off)
+    if (this.statusCheckState.value === 'not working') {
+      logger.debug(`[statusManager] correctStatus: Skipping because 'not working' mode is active`);
       return;
     }
 
@@ -308,35 +310,35 @@ export class StatusManager extends EventEmitter {
     const { status_emoji: emoji } = profile;
 
     // Don't correct status if user has set a custom (non-managed) status
-    // Custom statuses like vacation, sick leave, etc. should not be overridden by auto-correction
     if (emoji && !this.isCurrentStatusManaged(emoji)) {
       logger.debug(`[statusManager] correctStatus: Skipping because user has set a custom status`, { emoji });
       return;
     }
 
-    // Check if we need to update based on day
-    if (dayOfWeek === DayOfWeek.MONDAY && this.statusCheckState.value !== 'monday' && this.statusCheckState.value !== 'not working') {
+    // Get the configured status for this day
+    const dayStatus = this.getStatusForDay(dayOfWeek);
+    
+    // Check if we need to update to the day-based status
+    if (dayStatus && emoji !== dayStatus.emoji) {
+      logger.info(`[statusManager] correctStatus: Day-based status needs update`, { currentEmoji: emoji, targetEmoji: dayStatus.emoji, day: DayOfWeek[dayOfWeek] });
       await this.reset();
-    } else if (
-      dayOfWeek >= DayOfWeek.TUESDAY && dayOfWeek <= DayOfWeek.THURSDAY &&
-      this.statusCheckState.value !== 'weekday' &&
-      this.statusCheckState.value !== 'not working'
-    ) {
-      await this.reset();
-    } else if (dayOfWeek === DayOfWeek.FRIDAY && this.statusCheckState.value !== 'friday' && this.statusCheckState.value !== 'not working') {
-      await this.reset();
+      return;
     }
 
     // Check if source-specific status should be reset
     if (!emoji) return;
 
     if (emoji === STATUS_MESSAGES.ZOOM_EMOJI && !this.statusCheckState.value?.includes('meeting')) {
-      // Zoom emoji but not in meeting anymore
+      logger.info(`[statusManager] correctStatus: Zoom emoji detected but no meeting active, resetting`);
       await this.reset();
     } else if (emoji === STATUS_MESSAGES.SPOTIFY_EMOJI && !this.statusCheckState.value?.includes('spotify')) {
-      // Spotify emoji but not playing
+      logger.info(`[statusManager] correctStatus: Spotify emoji detected but no music playing, resetting`);
+      await this.reset();
+    } else if (emoji === STATUS_MESSAGES.APPLE_MUSIC_EMOJI && !this.statusCheckState.value?.includes('apple_music')) {
+      logger.info(`[statusManager] correctStatus: Apple Music emoji detected but no music playing, resetting`);
       await this.reset();
     }
+    // Add similar checks for other active sources (TEAMS, DISCORD, HUDDLE, etc.) if needed
   }
 
   /**
