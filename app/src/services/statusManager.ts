@@ -329,13 +329,18 @@ export class StatusManager extends EventEmitter {
       return;
     }
 
-    // Use cached profile to avoid excessive API calls
-    if (!this.profileCache) {
-      logger.debug(`[statusManager] correctStatus: No cached profile available, skipping`);
+    // Use cached profile, or fetch fresh if cache is empty
+    let profile = this.profileCache;
+    if (!profile) {
+      profile = await this.getCachedProfile();
+    }
+    
+    if (!profile) {
+      logger.debug(`[statusManager] correctStatus: No profile available, skipping`);
       return;
     }
 
-    const emoji = this.profileCache.status_emoji;
+    const emoji = profile.status_emoji;
     if (!emoji) return;
 
     // Don't correct status if user has set a custom (non-managed) status
@@ -367,8 +372,20 @@ export class StatusManager extends EventEmitter {
 
     // Check if current emoji is a valid status for today
     const validEmojisForToday = this.dayStatusEmojiMap.get(dayOfWeek) || new Set();
-    if (validEmojisForToday.size > 0 && !validEmojisForToday.has(emoji)) {
-      logger.info(`[statusManager] correctStatus: Current emoji is not valid for today`, { emoji, validEmojis: Array.from(validEmojisForToday), day: DayOfWeek[dayOfWeek] });
+    
+    // Reset if:
+    // 1. There ARE valid emojis for today but the current one is NOT in the list
+    // 2. There are NO valid emojis for today but one is still set (user removed all statuses for this day)
+    const hasValidEmojisForToday = validEmojisForToday.size > 0;
+    const currentEmojiIsValid = emoji && validEmojisForToday.has(emoji);
+    
+    if ((hasValidEmojisForToday && !currentEmojiIsValid) || (!hasValidEmojisForToday && emoji)) {
+      logger.info(`[statusManager] correctStatus: Current emoji is not valid for today`, { 
+        emoji, 
+        hasValidEmojisForToday,
+        validEmojis: Array.from(validEmojisForToday), 
+        day: DayOfWeek[dayOfWeek] 
+      });
       await this.reset();
       return;
     }
