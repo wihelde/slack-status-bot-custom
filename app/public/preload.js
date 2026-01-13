@@ -157,4 +157,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * Mark first run as complete
    */
   completeFirstRun: () => ipcRenderer.invoke('complete-first-run'),
+
+  /**
+   * Listen for update available event
+   */
+  onUpdateAvailable: (callback) => {
+    ipcRenderer.on('update-available', (event, updateInfo) => callback(updateInfo));
+  },
+
+  /**
+   * Get current update availability status
+   */
+  getUpdateAvailable: () => ipcRenderer.invoke('get-update-available'),
 });

@@ -1,6 +1,7 @@
 console.log('[Electron] Starting up...');
 
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 
@@ -30,6 +31,7 @@ let createDaemon;
 let mainWindow;
 let tray;
 let buildContextMenu; // Wird in createTray() definiert
+let updateAvailable = null; // Speichert Update-Info { version, releaseDate }
 
 // Simple config storage in user app data
 const getConfigPath = () => {
@@ -274,6 +276,22 @@ function createTray() {
         }
       }
 
+      // Add update menu item if update is available
+      if (updateAvailable) {
+        menuItems.push(
+          {
+            type: 'separator',
+          },
+          {
+            label: `🚀 Update available (v${updateAvailable.version})`,
+            click: () => {
+              const releaseUrl = `https://gitlab.com/wihel_de/slack-status-bot-custom/-/releases/v${updateAvailable.version}`;
+              shell.openExternal(releaseUrl);
+            },
+          }
+        );
+      }
+
       menuItems.push(
         {
           type: 'separator',
@@ -302,6 +320,57 @@ function createTray() {
   }
 }
 
+/**
+ * Check for updates
+ */
+function checkForUpdates() {
+  if (isDev) {
+    logToFile('[Updates] Skipping update check in development mode');
+    return;
+  }
+
+  try {
+    logToFile('[Updates] Checking for updates...');
+    
+    autoUpdater.checkForUpdates().catch((error) => {
+      logToFile('[Updates] Error checking for updates: ' + error.message);
+    });
+  } catch (e) {
+    logToFile('[Updates] Error: ' + e.message);
+  }
+}
+
+/**
+ * Setup update event listeners
+ */
+function setupUpdateListeners() {
+  autoUpdater.on('update-available', (updateInfo) => {
+    logToFile('[Updates] Update available: ' + updateInfo.version);
+    updateAvailable = {
+      version: updateInfo.version,
+      releaseDate: updateInfo.releaseDate,
+    };
+    
+    // Benachrichtige Renderer Process
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('update-available', updateAvailable);
+    }
+    
+    // Update Tray Menu
+    if (tray && buildContextMenu) {
+      updateTrayMenu();
+    }
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    logToFile('[Updates] No update available');
+  });
+
+  autoUpdater.on('error', (error) => {
+    logToFile('[Updates] AutoUpdater error: ' + error.message);
+  });
+}
+
 app.whenReady().then(() => {
   logToFile('[App] App is ready!');
   logToFile('[App] Platform: ' + process.platform);
@@ -316,6 +385,12 @@ app.whenReady().then(() => {
   logToFile('[App] Creating tray...');
   createTray();
   logToFile('[App] Tray creation attempted');
+
+  // Setup update checking
+  setupUpdateListeners();
+  checkForUpdates();
+  // Check for updates every 4 hours
+  setInterval(checkForUpdates, 4 * 60 * 60 * 1000);
 
   // Initialize daemon if available
   try {
@@ -910,6 +985,21 @@ ipcMain.handle('complete-first-run', async (event) => {
     return { success: true };
   } catch (error) {
     console.error('Error completing first run:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Get update availability status
+ */
+ipcMain.handle('get-update-available', async (event) => {
+  try {
+    if (updateAvailable) {
+      return { success: true, updateAvailable };
+    }
+    return { success: true, updateAvailable: null };
+  } catch (error) {
+    console.error('Error getting update status:', error);
     return { success: false, error: error.message };
   }
 });

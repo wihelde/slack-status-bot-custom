@@ -58,6 +58,8 @@ declare global {
       getAutoLaunch: () => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
       isFirstRun: () => Promise<{ success: boolean; isFirstRun?: boolean; error?: string }>;
       completeFirstRun: () => Promise<{ success: boolean; error?: string }>;
+      onUpdateAvailable: (callback: (updateInfo: { version: string; releaseDate: string }) => void) => void;
+      getUpdateAvailable: () => Promise<{ success: boolean; updateAvailable?: { version: string; releaseDate: string } | null; error?: string }>;
     };
   }
 }
@@ -547,6 +549,33 @@ export class IPCService {
     } catch (error) {
       console.error('Error completing first run:', error);
       return false;
+    }
+  }
+
+  /**
+   * Listen for update available event
+   */
+  static onUpdateAvailable(callback: (updateInfo: { version: string; releaseDate: string }) => void): void {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return;
+    }
+    window.electronAPI.onUpdateAvailable(callback);
+  }
+
+  /**
+   * Get current update availability status
+   */
+  static async getUpdateAvailable(): Promise<{ version: string; releaseDate: string } | null> {
+    if (!this.isElectron()) {
+      return null;
+    }
+    try {
+      const result = await window.electronAPI.getUpdateAvailable();
+      return result.success ? (result.updateAvailable ?? null) : null;
+    } catch (error) {
+      console.error('Error getting update status:', error);
+      return null;
     }
   }
 }
