@@ -6,16 +6,13 @@ create_release:
   image: registry.gitlab.com/gitlab-org/release-cli:latest
   script:
     - export VERSION=${CI_COMMIT_TAG#v}
-    # DMG asset
-    - export DMG_URL="$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-$VERSION-arm64.dmg"
-    - export DMG_LINK="name=Slack Status Bot macOS (dmg),url=$DMG_URL,link_type=package"
-    # ZIP asset
-    - export ZIP_URL="$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-$VERSION-arm64-mac.zip"
-    - export ZIP_LINK="name=Slack Status Bot macOS (zip),url=$ZIP_URL,link_type=package"
-    # Update metadata file for electron-updater
-    - export UPDATE_METADATA_URL="$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/latest-mac.yml"
-    - export UPDATE_METADATA_LINK="name=latest-mac.yml,url=$UPDATE_METADATA_URL,link_type=other"
-    # Create release with all assets
-    - release-cli create --tag-name $CI_COMMIT_TAG --name "Release $CI_COMMIT_TAG" --description "Slack Status Bot Release $CI_COMMIT_TAG" --assets-link "$DMG_LINK" --assets-link "$ZIP_LINK" --assets-link "$UPDATE_METADATA_LINK"
+    # Create release with asset links in JSON format
+    - release-cli create 
+      --tag-name $CI_COMMIT_TAG 
+      --name "Release $CI_COMMIT_TAG" 
+      --description "Slack Status Bot Release $CI_COMMIT_TAG" 
+      --assets-link "{\"name\":\"Slack Status Bot macOS (dmg)\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-$VERSION-arm64.dmg\",\"link_type\":\"package\"}"
+      --assets-link "{\"name\":\"Slack Status Bot macOS (zip)\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-$VERSION-arm64-mac.zip\",\"link_type\":\"package\"}"
+      --assets-link "{\"name\":\"latest-mac.yml\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/latest-mac.yml\",\"link_type\":\"other\"}"
   only:
     - tags
