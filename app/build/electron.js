@@ -324,19 +324,24 @@ function createTray() {
  * Check for updates
  */
 function checkForUpdates() {
+  logToFile('[Updates] checkForUpdates() called');
+  
+  // Skip update check in dev mode
   if (isDev) {
     logToFile('[Updates] Skipping update check in development mode');
     return;
   }
 
   try {
-    logToFile('[Updates] Checking for updates...');
+    logToFile('[Updates] About to call autoUpdater.checkForUpdates()');
     
-    autoUpdater.checkForUpdates().catch((error) => {
-      logToFile('[Updates] Error checking for updates: ' + error.message);
+    autoUpdater.checkForUpdates().then(() => {
+      logToFile('[Updates] checkForUpdates promise resolved');
+    }).catch((error) => {
+      logToFile('[Updates] checkForUpdates error: ' + (error ? error.message : 'unknown error'));
     });
   } catch (e) {
-    logToFile('[Updates] Error: ' + e.message);
+    logToFile('[Updates] Exception in checkForUpdates: ' + (e ? e.message : 'unknown error'));
   }
 }
 
@@ -344,8 +349,52 @@ function checkForUpdates() {
  * Setup update event listeners
  */
 function setupUpdateListeners() {
+  logToFile('[Updates] setupUpdateListeners() called');
+  
+  // Configure updater to check local app directory for latest.yaml (for testing)
+  // This MUST be done BEFORE calling checkForUpdates()
+  try {
+    // app.getAppPath() = /path/to/dist/mac-arm64/Slack Status Bot.app/Contents/Resources/app
+    // We need to find /path/to/dist
+    const appPath = app.getAppPath();
+    const pathParts = appPath.split(path.sep);
+    
+    // Find the 'dist' directory in the path
+    const distIndex = pathParts.indexOf('dist');
+    let distPath = null;
+    
+    if (distIndex !== -1) {
+      // Reconstruct path up to and including 'dist'
+      distPath = pathParts.slice(0, distIndex + 1).join(path.sep);
+    }
+    
+    if (distPath) {
+      logToFile('[Updates] Found dist path: ' + distPath);
+      const latestYmlPath = path.join(distPath, 'latest-mac.yml');
+      logToFile('[Updates] Checking for local latest-mac.yml at: ' + latestYmlPath);
+      
+      if (fs.existsSync(latestYmlPath)) {
+        logToFile('[Updates] Found local latest-mac.yml! Setting feed URL to: file://' + distPath);
+        // Set feed URL for local testing
+        autoUpdater.setFeedURL({
+          provider: 'generic',
+          url: 'file://' + distPath
+        });
+        logToFile('[Updates] Feed URL configured for local updates');
+      } else {
+        logToFile('[Updates] No local latest-mac.yml found. Will use default GitLab URL.');
+        // Will use default from package.json publish config
+      }
+    } else {
+      logToFile('[Updates] Could not find dist directory in app path: ' + appPath);
+    }
+  } catch (e) {
+    logToFile('[Updates] Could not configure local feed: ' + e.message);
+  }
+  
   autoUpdater.on('update-available', (updateInfo) => {
-    logToFile('[Updates] Update available: ' + updateInfo.version);
+    logToFile('[Updates] Event: update-available, version: ' + (updateInfo ? updateInfo.version : 'unknown'));
+    
     updateAvailable = {
       version: updateInfo.version,
       releaseDate: updateInfo.releaseDate,
@@ -353,22 +402,30 @@ function setupUpdateListeners() {
     
     // Benachrichtige Renderer Process
     if (mainWindow && mainWindow.webContents) {
+      logToFile('[Updates] Sending update-available to renderer');
       mainWindow.webContents.send('update-available', updateAvailable);
     }
     
     // Update Tray Menu
     if (tray && buildContextMenu) {
+      logToFile('[Updates] Updating tray menu');
       updateTrayMenu();
     }
   });
 
   autoUpdater.on('update-not-available', () => {
-    logToFile('[Updates] No update available');
+    logToFile('[Updates] Event: update-not-available');
   });
 
   autoUpdater.on('error', (error) => {
-    logToFile('[Updates] AutoUpdater error: ' + error.message);
+    logToFile('[Updates] Event: error, message: ' + (error ? error.message : 'unknown'));
   });
+  
+  autoUpdater.on('checking-for-update', () => {
+    logToFile('[Updates] Event: checking-for-update');
+  });
+  
+  logToFile('[Updates] Listeners attached');
 }
 
 app.whenReady().then(() => {
@@ -380,6 +437,18 @@ app.whenReady().then(() => {
   config = loadConfig();
   logToFile('[App] Config loaded');
   
+  // Ensure logger is at least at DEBUG level at startup for update check visibility
+  // This will be overridden by user preference from config when the daemon starts
+  try {
+    const { logger } = require('./dist/utils/logger');
+    if (logger && logger.setLogLevel) {
+      logger.setLogLevel('DEBUG');
+      logToFile('[App] Startup log level set to DEBUG for visibility');
+    }
+  } catch (e) {
+    logToFile('[App] Could not set startup log level: ' + e.message);
+  }
+  
   logToFile('[App] Creating window...');
   createWindow();
   logToFile('[App] Creating tray...');
@@ -387,10 +456,16 @@ app.whenReady().then(() => {
   logToFile('[App] Tray creation attempted');
 
   // Setup update checking
+  logToFile('[App] Setting up update listeners...');
   setupUpdateListeners();
+  logToFile('[App] Checking for updates (first time)...');
   checkForUpdates();
+  logToFile('[App] Scheduling update check every 4 hours...');
   // Check for updates every 4 hours
-  setInterval(checkForUpdates, 4 * 60 * 60 * 1000);
+  setInterval(() => {
+    logToFile('[App] Running scheduled update check...');
+    checkForUpdates();
+  }, 4 * 60 * 60 * 1000);
 
   // Initialize daemon if available
   try {
