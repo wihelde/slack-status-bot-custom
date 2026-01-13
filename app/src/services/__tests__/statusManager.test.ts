@@ -194,20 +194,21 @@ describe('StatusManager', () => {
       const state = { value: '' as const, activeSource: 'zoom' };
       statusManager.setStatusCheckState(state);
 
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+      // Set the profile cache instead of mocking getProfile
+      statusManager.setProfileCache({
         status_emoji: ':custom_emoji:',
         status_text: 'Custom',
       });
 
       await statusManager.correctStatus();
 
-      // Should not attempt to set profile
+      // Should not attempt to set profile (source still active)
       expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
 
     it('should skip correction if user has set a custom status', async () => {
       // Use a custom emoji that is NOT in the managed statuses
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+      statusManager.setProfileCache({
         status_emoji: ':custom_user_emoji:',
         status_text: 'Custom vacation message',
       });
@@ -220,15 +221,15 @@ describe('StatusManager', () => {
       expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
 
-    it('should correct status if it is a managed emoji with wrong state', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+    it('should correct status if emoji is not valid for today', async () => {
+      // Set a Spotify emoji but we're on Friday (where Friday status should be set)
+      statusManager.setProfileCache({
         status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
         status_text: 'Playing',
       });
 
       statusManager.setStatusCheckState({ value: '' });
 
-      // We're on Friday, so should set TGIF status
       // Mock the date to be Friday
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2025-11-21')); // Friday
@@ -237,8 +238,29 @@ describe('StatusManager', () => {
       
       vi.useRealTimers();
 
-      // Should have attempted to reset/correct
+      // Should have attempted to reset because Spotify is not a valid Friday emoji
       expect(mockSlackService.setProfile).toHaveBeenCalled();
+    });
+
+    it('should skip correction if emoji is valid for today', async () => {
+      // Set Friday emoji on Friday - should NOT reset
+      statusManager.setProfileCache({
+        status_emoji: STATUS_MESSAGES.TGIF_EMOJI,
+        status_text: 'TGIF',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-21')); // Friday
+      
+      mockSlackService.setProfile.mockClear();
+      await statusManager.correctStatus();
+      
+      vi.useRealTimers();
+
+      // Should NOT have reset because emoji is valid for Friday
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
   });
 
@@ -334,14 +356,19 @@ describe('StatusManager', () => {
         },
       ];
       
-      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+      mockSlackService.setProfile.mockClear();
+      mockSlackService.setProfile.mockResolvedValue(true);
       
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2025-11-17')); // Monday
+      
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+      
+      // Use resetWithoutCheck() to bypass isStatusClean() for this test
+      await customStatusManager.resetWithoutCheck();
+
       vi.useRealTimers();
-
-      await customStatusManager.reset();
-
+      
       const state = customStatusManager.getStatusCheckState();
       expect(state.value).toBe('not working');
     });
@@ -360,14 +387,19 @@ describe('StatusManager', () => {
         },
       ];
       
-      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+      mockSlackService.setProfile.mockClear();
+      mockSlackService.setProfile.mockResolvedValue(true);
       
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2025-11-17')); // Monday
+      
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+
+      // Use resetWithoutCheck() to bypass isStatusClean() for this test
+      await customStatusManager.resetWithoutCheck();
+
       vi.useRealTimers();
-
-      await customStatusManager.reset();
-
+      
       const state = customStatusManager.getStatusCheckState();
       expect(state.value).toBe('not working');
     });
@@ -472,15 +504,18 @@ describe('StatusManager', () => {
       
       const customStatusManager = new StatusManager(mockSlackService, customStatuses);
       
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
-        status_text: 'Playing',
-      });
-
+      mockSlackService.setProfile.mockClear();
+      
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2025-11-22')); // Saturday
       
       customStatusManager.setStatusCheckState({ value: '' });
+      // Set profile cache (Spotify emoji, but Saturday config has Saturday emoji)
+      customStatusManager.setProfileCache({
+        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
+        status_text: 'Playing',
+      });
+      
       await customStatusManager.correctStatus();
       
       vi.useRealTimers();
@@ -521,11 +556,6 @@ describe('StatusManager', () => {
     it('should update to configured day status if different from current', async () => {
       mockSlackService.setProfile.mockClear();
       mockSlackService.setProfile = vi.fn().mockResolvedValue(true);
-      // Use a managed emoji (Spotify) so correctStatus doesn't skip due to custom status
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
-        status_text: 'Playing',
-      });
       
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2025-11-17')); // Monday
@@ -546,6 +576,12 @@ describe('StatusManager', () => {
       const customStatusManager = new StatusManager(mockSlackService, customStatuses);
 
       customStatusManager.setStatusCheckState({ value: '' });
+      // Set profile cache to Spotify (different from Monday emoji)
+      customStatusManager.setProfileCache({
+        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
+        status_text: 'Playing',
+      });
+      
       await customStatusManager.correctStatus();
       
       vi.useRealTimers();

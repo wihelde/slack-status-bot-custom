@@ -22,6 +22,7 @@ export class StatusManager extends EventEmitter {
   private profileCache: SlackProfile | null = null;
   private profileCacheTime: number = 0;
   private readonly PROFILE_CACHE_TTL = 5000; // Cache profile for 5 seconds
+  private dayStatusEmojiMap: Map<number, Set<string>> = new Map(); // Maps DayOfWeek → valid emoji set for that day
 
   constructor(slackService: SlackService, customStatuses?: CustomStatusConfig[]) {
     super(); // Call EventEmitter constructor
@@ -42,6 +43,32 @@ export class StatusManager extends EventEmitter {
       // Note: OFF_EMOJI (:mobile_phone_off:) is intentionally NOT included - it should only be set manually via UI
     ];
     this.allowedEmojis = new Set([...statusEmojis, ...sourceEmojis]);
+    
+    // Build mapping: DayOfWeek → Set of valid status emojis for that day
+    this.buildDayStatusEmojiMap();
+  }
+
+  /**
+   * Build a mapping of which emojis are valid for each day
+   */
+  private buildDayStatusEmojiMap(): void {
+    this.dayStatusEmojiMap.clear();
+    for (let day = 0; day < 7; day++) {
+      const emojisForDay = new Set(
+        this.customStatuses
+          .filter(s => s.days.includes(day))
+          .map(s => s.emoji)
+      );
+      this.dayStatusEmojiMap.set(day, emojisForDay);
+    }
+  }
+
+  /**
+   * Set profile cache (mainly for testing)
+   */
+  setProfileCache(profile: SlackProfile | null): void {
+    this.profileCache = profile;
+    this.profileCacheTime = Date.now();
   }
 
   /**
@@ -302,43 +329,52 @@ export class StatusManager extends EventEmitter {
       return;
     }
 
-    const dayOfWeek = this.getDayOfWeek();
-    const profile = await this.slackService.getProfile();
+    // Use cached profile to avoid excessive API calls
+    if (!this.profileCache) {
+      logger.debug(`[statusManager] correctStatus: No cached profile available, skipping`);
+      return;
+    }
 
-    if (!profile) return;
-
-    const { status_emoji: emoji } = profile;
+    const emoji = this.profileCache.status_emoji;
+    if (!emoji) return;
 
     // Don't correct status if user has set a custom (non-managed) status
-    if (emoji && !this.isCurrentStatusManaged(emoji)) {
+    if (!this.isCurrentStatusManaged(emoji)) {
       logger.debug(`[statusManager] correctStatus: Skipping because user has set a custom status`, { emoji });
       return;
     }
 
-    // Get the configured status for this day
-    const dayStatus = this.getStatusForDay(dayOfWeek);
+    const dayOfWeek = this.getDayOfWeek();
     
-    // Check if we need to update to the day-based status
-    if (dayStatus && emoji !== dayStatus.emoji) {
-      logger.info(`[statusManager] correctStatus: Day-based status needs update`, { currentEmoji: emoji, targetEmoji: dayStatus.emoji, day: DayOfWeek[dayOfWeek] });
+    // Mapping: Source emoji → Source name
+    const sourceEmojiMap: Record<string, string> = {
+      [STATUS_MESSAGES.SPOTIFY_EMOJI]: 'spotify',
+      [STATUS_MESSAGES.APPLE_MUSIC_EMOJI]: 'appleMusic',
+      [STATUS_MESSAGES.ZOOM_EMOJI]: 'zoom',
+      [STATUS_MESSAGES.TEAMS_EMOJI]: 'teams',
+      [STATUS_MESSAGES.DISCORD_EMOJI]: 'discord',
+      [STATUS_MESSAGES.SKYPE_EMOJI]: 'skype',
+      [STATUS_MESSAGES.HUDDLE_EMOJI]: 'huddle',
+    };
+
+    // Check if current emoji is a source-specific status that's no longer active
+    const sourceForEmoji = sourceEmojiMap[emoji];
+    if (sourceForEmoji && this.statusCheckState.activeSource !== sourceForEmoji) {
+      logger.info(`[statusManager] correctStatus: Source emoji detected but source no longer active`, { emoji, expectedSource: sourceForEmoji, activeSource: this.statusCheckState.activeSource });
       await this.reset();
       return;
     }
 
-    // Check if source-specific status should be reset
-    if (!emoji) return;
-
-    if (emoji === STATUS_MESSAGES.ZOOM_EMOJI && !this.statusCheckState.value?.includes('meeting')) {
-      logger.info(`[statusManager] correctStatus: Zoom emoji detected but no meeting active, resetting`);
+    // Check if current emoji is a valid status for today
+    const validEmojisForToday = this.dayStatusEmojiMap.get(dayOfWeek) || new Set();
+    if (validEmojisForToday.size > 0 && !validEmojisForToday.has(emoji)) {
+      logger.info(`[statusManager] correctStatus: Current emoji is not valid for today`, { emoji, validEmojis: Array.from(validEmojisForToday), day: DayOfWeek[dayOfWeek] });
       await this.reset();
-    } else if (emoji === STATUS_MESSAGES.SPOTIFY_EMOJI && !this.statusCheckState.value?.includes('spotify')) {
-      logger.info(`[statusManager] correctStatus: Spotify emoji detected but no music playing, resetting`);
-      await this.reset();
-    } else if (emoji === STATUS_MESSAGES.APPLE_MUSIC_EMOJI && !this.statusCheckState.value?.includes('apple_music')) {
-      logger.info(`[statusManager] correctStatus: Apple Music emoji detected but no music playing, resetting`);
-      await this.reset();
+      return;
     }
-    // Add similar checks for other active sources (TEAMS, DISCORD, HUDDLE, etc.) if needed
+
+    // If we got here, the current emoji is valid for today - no correction needed
+    logger.debug(`[statusManager] correctStatus: Current emoji is valid for today, no correction needed`, { emoji, day: DayOfWeek[dayOfWeek] });
   }
 
   /**
@@ -447,6 +483,9 @@ export class StatusManager extends EventEmitter {
       this.finalStatus = message;
       this.invalidateProfileCache();
       
+      // Mark as manually set so correctStatus() won't override it
+      this.statusCheckState.activeSource = 'manual';
+      
       // Statuses that should set statusCheckState to 'not working'
       const notWorkingEmojis = [
         STATUS_MESSAGES.OFF_EMOJI,           // off
@@ -540,6 +579,9 @@ export class StatusManager extends EventEmitter {
       STATUS_MESSAGES.HUDDLE_EMOJI,
     ];
     this.allowedEmojis = new Set([...statusEmojis, ...sourceEmojis]);
+    
+    // Rebuild day → emoji mapping
+    this.buildDayStatusEmojiMap();
     
     logger.info('[statusManager] Custom statuses updated', { count: statuses.length });
   }
