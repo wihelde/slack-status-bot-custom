@@ -317,7 +317,7 @@ const Settings: React.FC = () => {
           <ul>
             <li>🎵 Music: Spotify and Apple Music</li>
             <li>📞 Meetings: Zoom, Teams, and Slack Huddles</li>
-            <li>🗓️ Day-based: Monday morning, Friday vibes, weekends</li>
+            <li>🗓️ Day-based: Automated status for each day (Monday to Sunday)</li>
             <li>⏰ Auto-correction: Resumes normal status when activities end</li>
           </ul>
           <p>

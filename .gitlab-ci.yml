@@ -5,15 +5,9 @@ create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
   script:
-    - echo "Release job started for $CI_COMMIT_TAG"
-  release:
-    tag_name: $CI_COMMIT_TAG
-    name: 'Release $CI_COMMIT_TAG'
-    description: 'Slack Status Bot Release $CI_COMMIT_TAG'
-    assets:
-      links:
-        - name: 'Slack Status Bot macOS (arm64)'
-          url: '$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-${CI_COMMIT_TAG#v}-arm64.dmg'
-          link_type: 'package'
+    - export VERSION=${CI_COMMIT_TAG#v}
+    - export ASSET_URL="$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-$VERSION-arm64.dmg"
+    - export ASSET_LINK="name=Slack Status Bot macOS (arm64),url=$ASSET_URL,link_type=package"
+    - release-cli create --tag-name $CI_COMMIT_TAG --name "Release $CI_COMMIT_TAG" --description "Slack Status Bot Release $CI_COMMIT_TAG" --assets-link "$ASSET_LINK"
   only:
     - tags

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { StatusManager } from '../statusManager';
 import { SlackService } from '../slack';
-import { STATUS_MESSAGES } from '../../config/statusConfig';
+import { STATUS_MESSAGES, DayOfWeek } from '../../config/statusConfig';
 
 // Mock SlackService
 vi.mock('../slack');
@@ -36,11 +36,11 @@ describe('StatusManager', () => {
       expect(mockSlackService.disableDND).toHaveBeenCalled();
     });
 
-    it('should set statusCheckState to appropriate day value', async () => {
+    it('should set statusCheckState to empty string when day has no protected status', async () => {
       await statusManager.goOnline();
       
       const state = statusManager.getStatusCheckState();
-      expect(state.value).toMatch(/weekday|monday|friday|not working/);
+      expect(state.value).toBe('');
     });
   });
 
@@ -191,23 +191,24 @@ describe('StatusManager', () => {
 
   describe('correctStatus()', () => {
     it('should skip correction if a source is actively running', async () => {
-      const state = { value: 'weekday' as const, activeSource: 'zoom' };
+      const state = { value: '' as const, activeSource: 'zoom' };
       statusManager.setStatusCheckState(state);
 
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+      // Set the profile cache instead of mocking getProfile
+      statusManager.setProfileCache({
         status_emoji: ':custom_emoji:',
         status_text: 'Custom',
       });
 
       await statusManager.correctStatus();
 
-      // Should not attempt to set profile
+      // Should not attempt to set profile (source still active)
       expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
 
     it('should skip correction if user has set a custom status', async () => {
       // Use a custom emoji that is NOT in the managed statuses
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+      statusManager.setProfileCache({
         status_emoji: ':custom_user_emoji:',
         status_text: 'Custom vacation message',
       });
@@ -220,15 +221,15 @@ describe('StatusManager', () => {
       expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
 
-    it('should correct status if it is a managed emoji with wrong state', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+    it('should correct status if emoji is not valid for today', async () => {
+      // Set a Spotify emoji but we're on Friday (where Friday status should be set)
+      statusManager.setProfileCache({
         status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
         status_text: 'Playing',
       });
 
       statusManager.setStatusCheckState({ value: '' });
 
-      // We're on Friday, so should set TGIF status
       // Mock the date to be Friday
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2025-11-21')); // Friday
@@ -237,24 +238,45 @@ describe('StatusManager', () => {
       
       vi.useRealTimers();
 
-      // Should have attempted to reset/correct
+      // Should have attempted to reset because Spotify is not a valid Friday emoji
       expect(mockSlackService.setProfile).toHaveBeenCalled();
+    });
+
+    it('should skip correction if emoji is valid for today', async () => {
+      // Set Friday emoji on Friday - should NOT reset
+      statusManager.setProfileCache({
+        status_emoji: STATUS_MESSAGES.TGIF_EMOJI,
+        status_text: 'TGIF',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-21')); // Friday
+      
+      mockSlackService.setProfile.mockClear();
+      await statusManager.correctStatus();
+      
+      vi.useRealTimers();
+
+      // Should NOT have reset because emoji is valid for Friday
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
   });
 
   describe('reset() with blocked status', () => {
     it('should return false if blocked and user has custom status', async () => {
-      // User has set a custom (non-managed) status
+      // User has set a custom (truly non-managed) status - something we don't manage
       mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: ':palm_tree:',
-        status_text: 'Vacationing',
+        status_emoji: ':custom_emoji_we_dont_use:',
+        status_text: 'Custom status',
       });
 
       statusManager.setStatusCheckState({ value: '' });
 
-      // Mock the date to be Saturday (daemon would want to set OFF_EMOJI)
+      // Mock the date to be Monday (would try to set Monday emoji)
       vi.useFakeTimers();
-      vi.setSystemTime(new Date('2025-11-22')); // Saturday
+      vi.setSystemTime(new Date('2025-11-24')); // Monday
       
       const result = await statusManager.reset();
       
@@ -290,27 +312,27 @@ describe('StatusManager', () => {
       expect(result).toBe(true);
       // setProfile should have been called
       expect(mockSlackService.setProfile).toHaveBeenCalled();
-      // State should be updated to monday
+      // State should be updated to empty string (normal status, not protected)
       const state = statusManager.getStatusCheckState();
-      expect(state.value).toBe('monday');
+      expect(state.value).toBe('');
     });
   });
 
   describe('StatusCheckState with activeSource', () => {
     it('should track activeSource in statusCheckState', () => {
-      const state = { value: 'weekday' as const, activeSource: 'zoom' };
+      const state = { value: '' as const, activeSource: 'zoom' };
       statusManager.setStatusCheckState(state);
 
       const retrieved = statusManager.getStatusCheckState();
-      expect(retrieved.value).toBe('weekday');
+      expect(retrieved.value).toBe('');
       expect(retrieved.activeSource).toBe('zoom');
     });
 
     it('should allow clearing activeSource', () => {
-      let state: { value: 'weekday' | 'monday' | 'friday' | 'not working' | ''; activeSource?: string } = { value: 'weekday' as const, activeSource: 'zoom' };
+      let state: { value: '' | 'not working'; activeSource?: string } = { value: '', activeSource: 'zoom' };
       statusManager.setStatusCheckState(state);
 
-      state = { value: 'weekday' as const, activeSource: undefined };
+      state = { value: '', activeSource: undefined };
       statusManager.setStatusCheckState(state);
 
       const retrieved = statusManager.getStatusCheckState();
@@ -318,42 +340,284 @@ describe('StatusManager', () => {
     });
   });
 
-  describe('reset() on weekends', () => {
-    it('should skip reset on Saturday and return false', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
-        status_text: 'Playing',
-      });
+  describe('reset() with protected statuses', () => {
+    it('should set statusCheckState to "not working" when OFF_EMOJI is set', async () => {
+      // Create custom status with OFF_EMOJI for Monday
+      const customStatuses = [
+        {
+          id: 'off-monday',
+          emoji: STATUS_MESSAGES.OFF_EMOJI,
+          message: 'Off',
+          days: [DayOfWeek.MONDAY],
+          enableDND: false,
+          presence: 'away' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+      
+      mockSlackService.setProfile.mockClear();
+      mockSlackService.setProfile.mockResolvedValue(true);
+      
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-17')); // Monday
+      
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+      
+      // Use resetWithoutCheck() to bypass isStatusClean() for this test
+      await customStatusManager.resetWithoutCheck();
+
+      vi.useRealTimers();
+      
+      const state = customStatusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+    });
+
+    it('should set statusCheckState to "not working" when SICK_EMOJI is configured', async () => {
+      const customStatuses = [
+        {
+          id: 'sick-monday',
+          emoji: STATUS_MESSAGES.SICK_EMOJI,
+          message: 'Sick',
+          days: [DayOfWeek.MONDAY],
+          enableDND: false,
+          presence: 'away' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+      
+      mockSlackService.setProfile.mockClear();
+      mockSlackService.setProfile.mockResolvedValue(true);
+      
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-17')); // Monday
+      
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+
+      // Use resetWithoutCheck() to bypass isStatusClean() for this test
+      await customStatusManager.resetWithoutCheck();
+
+      vi.useRealTimers();
+      
+      const state = customStatusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+    });
+
+    it('should set statusCheckState to empty string for normal statuses', async () => {
+      const customStatuses = [
+        {
+          id: 'monday',
+          emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+          message: 'Monday vibes',
+          days: [DayOfWeek.MONDAY],
+          enableDND: false,
+          presence: 'auto' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+      
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+      
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-17')); // Monday
+      vi.useRealTimers();
+
+      await customStatusManager.reset();
+
+      const state = customStatusManager.getStatusCheckState();
+      expect(state.value).toBe('');
+    });
+  });
+
+  describe('reset() on weekends with user configuration', () => {
+    it('should set weekend status when user has configured one for Saturday', async () => {
+      mockSlackService.setProfile.mockClear();
+      mockSlackService.setProfile = vi.fn().mockResolvedValue(true);
+      
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-22')); // Saturday
+      
+      const customStatuses = [
+        {
+          id: 'saturday-status',
+          emoji: ':smile:',
+          message: 'Weekend vibes',
+          days: [DayOfWeek.SATURDAY],
+          enableDND: false,
+          presence: 'auto' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+      
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+
+      await customStatusManager.reset();
+      
+      vi.useRealTimers();
+
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith(':smile:', 'Weekend vibes');
+    });
+
+    it('should set empty status on weekend when user has no configuration', async () => {
+      // Create a custom status manager with NO Saturday configuration
+      const customStatuses = [
+        {
+          id: 'monday',
+          emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+          message: 'Monday vibes',
+          days: [DayOfWeek.MONDAY],
+          enableDND: false,
+          presence: 'auto' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+      
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
 
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2025-11-22')); // Saturday
-
-      const result = await statusManager.reset();
-
+      
+      await customStatusManager.reset();
+      
       vi.useRealTimers();
 
-      // Should return false because it's weekend
-      expect(result).toBe(false);
-      // setProfile should NOT be called
-      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith('', '');
     });
 
-    it('should skip reset on Sunday and return false', async () => {
+    it('should reset Spotify status on weekend when music stops', async () => {
+      const customStatuses = [
+        {
+          id: 'weekend-off',
+          emoji: ':smile:',
+          message: 'Weekend',
+          days: [DayOfWeek.SATURDAY],
+          enableDND: false,
+          presence: 'auto' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+      
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+      
+      mockSlackService.setProfile.mockClear();
+      
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-22')); // Saturday
+      
+      customStatusManager.setStatusCheckState({ value: '' });
+      // Set profile cache (Spotify emoji, but Saturday config has Saturday emoji)
+      customStatusManager.setProfileCache({
+        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
+        status_text: 'Playing',
+      });
+      
+      await customStatusManager.correctStatus();
+      
+      vi.useRealTimers();
+
+      expect(mockSlackService.setProfile).toHaveBeenCalled();
+    });
+  });
+
+  describe('correctStatus() with protected status active', () => {
+    it('should skip correction when statusCheckState.value is "not working"', async () => {
       mockSlackService.getProfile = vi.fn().mockResolvedValue({
         status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
         status_text: 'Playing',
       });
 
+      statusManager.setStatusCheckState({ value: 'not working' });
+
+      await statusManager.correctStatus();
+
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should not be overridden by Spotify when OFF_EMOJI with "not working" status is set', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.OFF_EMOJI,
+        status_text: 'Off',
+      });
+
+      statusManager.setStatusCheckState({ value: 'not working' });
+
+      await statusManager.correctStatus();
+
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('correctStatus() with day-based status update', () => {
+    it('should update to configured day status if different from current', async () => {
+      mockSlackService.setProfile.mockClear();
+      mockSlackService.setProfile = vi.fn().mockResolvedValue(true);
+      
       vi.useFakeTimers();
-      vi.setSystemTime(new Date('2025-11-23')); // Sunday
+      vi.setSystemTime(new Date('2025-11-17')); // Monday
+      
+      const customStatuses = [
+        {
+          id: 'monday',
+          emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+          message: 'Monday',
+          days: [DayOfWeek.MONDAY],
+          enableDND: false,
+          presence: 'auto' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+      
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
 
-      const result = await statusManager.reset();
-
+      customStatusManager.setStatusCheckState({ value: '' });
+      // Set profile cache to Spotify (different from Monday emoji)
+      customStatusManager.setProfileCache({
+        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
+        status_text: 'Playing',
+      });
+      
+      await customStatusManager.correctStatus();
+      
       vi.useRealTimers();
 
-      // Should return false because it's weekend
-      expect(result).toBe(false);
-      // setProfile should NOT be called
+      expect(mockSlackService.setProfile).toHaveBeenCalled();
+    });
+
+    it('should not update if current emoji matches day configuration', async () => {
+      const customStatuses = [
+        {
+          id: 'monday',
+          emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+          message: 'Monday',
+          days: [DayOfWeek.MONDAY],
+          enableDND: false,
+          presence: 'auto' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+      
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+        status_text: 'Monday',
+      });
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-17')); // Monday
+      
+      customStatusManager.setStatusCheckState({ value: '' });
+      await customStatusManager.correctStatus();
+      
+      vi.useRealTimers();
+
       expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
   });
