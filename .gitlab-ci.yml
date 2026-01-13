@@ -8,6 +8,7 @@ create_release:
     - export VERSION=${CI_COMMIT_TAG#v}
     - echo "Release job started for $CI_COMMIT_TAG"
     - echo "Version extracted: $VERSION"
-    - release-cli create --tag-name "$CI_COMMIT_TAG" --name "Release $CI_COMMIT_TAG" --description "Slack Status Bot Release $CI_COMMIT_TAG" --assets-link name="Slack Status Bot macOS (arm64)",url="$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-$VERSION-arm64.dmg",link_type=package
+    - export ASSET_URL="$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-$VERSION-arm64.dmg"
+    - release-cli create --tag-name "$CI_COMMIT_TAG" --name "Release $CI_COMMIT_TAG" --description "Slack Status Bot Release $CI_COMMIT_TAG" --assets-link "name=Slack Status Bot macOS (arm64),url=$ASSET_URL,link_type=package"
   only:
     - tags
