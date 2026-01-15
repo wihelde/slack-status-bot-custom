@@ -71,5 +71,6 @@ RELEASE_GUIDE.md
 # Exception for GitLab CI/CD
 !.gitlab-ci.yml
 !.gitignore
+!.gitattributes
 # Exception for release DMG files
-# !**/dist/*.dmg
+!**/dist/*.dmg

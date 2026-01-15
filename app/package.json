@@ -4,7 +4,10 @@
   "description": "Cross-platform Slack Status Bot with Tray UI",
   "main": "public/electron.js",
   "homepage": "./",
-  "author": "Martin",
+  "author": {
+    "name": "Martin",
+    "email": "slack-status-bot@wihel.de"
+  },
   "license": "MIT",
   "scripts": {
     "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron-dev\"",
