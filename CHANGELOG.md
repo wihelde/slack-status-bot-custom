@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.2] - 2026-01-15
+
+## Changed
+
+- updated packages
+
+## Fixed
+
+- when updating the app, the default status were merged with the status already configured in the config, which in the end showed a wrong configuration (by showing default status, which were not configured)
+
 ## [1.4.1] - 2026-01-13
 
 ## Added

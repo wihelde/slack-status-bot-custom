@@ -1,6 +1,6 @@
 {
   "name": "slack-status-bot",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Cross-platform Slack Status Bot with Tray UI",
   "main": "public/electron.js",
   "homepage": "./",
@@ -35,7 +35,7 @@
     "@electron-forge/maker-rpm": "^6.1.0",
     "@electron-forge/maker-squirrel": "^6.1.0",
     "@electron-forge/maker-zip": "^6.1.0",
-    "@electron-forge/plugin-webpack": "^6.1.0",
+    "@electron-forge/plugin-webpack": "^7.11.1",
     "@jest/globals": "^29.7.0",
     "@jest/test-sequencer": "^29.7.0",
     "@testing-library/jest-dom": "^6.1.4",
@@ -47,12 +47,13 @@
     "@types/react-dom": "^18.2.0",
     "concurrently": "^8.2.0",
     "cross-env": "^7.0.3",
-    "electron": "^27.0.0",
+    "electron": "^39.2.7",
     "electron-builder": "^24.6.0",
-    "react-scripts": "5.0.1",
+    "nth-check": "^2.1.1",
+    "react-scripts": "^5.0.1",
     "ts-jest": "^29.1.1",
     "typescript": "^4.9.5",
-    "vitest": "^1.0.0",
+    "vitest": "^4.0.17",
     "wait-on": "^7.0.1"
   },
   "build": {
@@ -72,7 +73,7 @@
       "provider": "generic",
       "url": "https://gitlab.com/wihel_de/slack-status-bot-custom/-/releases"
     },
-    "asar": false,
+    "asar": true,
     "directories": {
       "buildResources": "assets"
     },
@@ -129,5 +130,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "overrides": {
+    "svgo": "^3.0.0",
+    "postcss": "^8.4.31",
+    "webpack-dev-server": "^5.2.1"
   }
 }

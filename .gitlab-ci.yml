@@ -1,18 +1,39 @@
 stages:
+  - build
   - release
+
+build:
+  stage: build
+  image: node:20
+  script:
+    - cd app
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - app/dist/Slack\ Status\ Bot-*.dmg
+      - app/dist/Slack\ Status\ Bot-*-mac.zip
+      - app/dist/latest-mac.yml
+    expire_in: 30 days
+  only:
+    - tags
 
 create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
+  dependencies:
+    - build
   script:
     - export VERSION=${CI_COMMIT_TAG#v}
-    # Create release with asset links in JSON format
+    - export PROJECT_ID=$(echo $CI_PROJECT_ID)
+    - export PIPELINE_ID=$(echo $CI_PIPELINE_ID)
+    # Create release with artifact links
     - release-cli create 
       --tag-name $CI_COMMIT_TAG 
       --name "Release $CI_COMMIT_TAG" 
       --description "Slack Status Bot Release $CI_COMMIT_TAG" 
-      --assets-link "{\"name\":\"Slack Status Bot macOS (dmg)\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-$VERSION-arm64.dmg\",\"link_type\":\"package\"}"
-      --assets-link "{\"name\":\"Slack Status Bot macOS (zip)\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-$VERSION-arm64-mac.zip\",\"link_type\":\"package\"}"
-      --assets-link "{\"name\":\"latest-mac.yml\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/latest-mac.yml\",\"link_type\":\"other\"}"
+      --assets-link "{\"name\":\"Slack Status Bot macOS (dmg)\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/jobs/artifacts/$CI_COMMIT_SHA/raw/app/dist/Slack%20Status%20Bot-$VERSION-arm64.dmg?job=build\",\"link_type\":\"package\"}"
+      --assets-link "{\"name\":\"Slack Status Bot macOS (zip)\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/jobs/artifacts/$CI_COMMIT_SHA/raw/app/dist/Slack%20Status%20Bot-$VERSION-arm64-mac.zip?job=build\",\"link_type\":\"package\"}"
+      --assets-link "{\"name\":\"latest-mac.yml\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/jobs/artifacts/$CI_COMMIT_SHA/raw/app/dist/latest-mac.yml?job=build\",\"link_type\":\"other\"}"
   only:
     - tags
