@@ -905,4 +905,112 @@ describe('SlackStatusBotDaemon', () => {
       expect(daemonWithCallback).toBeDefined();
     });
   });
+
+  describe('Status Configuration Loading (PRIORITY 2)', () => {
+    it('should load status configuration exactly as saved in config file', async () => {
+      const configDir = `/tmp/test-daemon-config-${Date.now()}-${Math.random()}`;
+      
+      // Create a daemon and save a custom config with only 2 statuses
+      const daemon1 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+      
+      const customStatuses = [
+        {
+          id: 'custom1',
+          emoji: ':custom1:',
+          message: 'Custom Status 1',
+          days: [],
+          enableDND: false,
+          presence: 'auto' as const,
+          category: 'day_based' as const,
+        },
+        {
+          id: 'custom2',
+          emoji: ':custom2:',
+          message: 'Custom Status 2',
+          days: [],
+          enableDND: false,
+          presence: 'auto' as const,
+          category: 'day_based' as const,
+        },
+      ];
+      
+      // Save custom configuration
+      await daemon1.updateStatusConfiguration(customStatuses);
+      
+      // Create a new daemon to simulate app restart
+      const daemon2 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+      
+      // Get the loaded configuration
+      const loadedConfig = await daemon2.getStatusConfiguration();
+      
+      // Should have exactly 2 statuses (not merged with defaults)
+      expect(loadedConfig.length).toBe(2);
+      expect(loadedConfig.find(s => s.id === 'custom1')).toBeDefined();
+      expect(loadedConfig.find(s => s.id === 'custom2')).toBeDefined();
+      
+      // Should NOT contain default statuses (e.g., 'break', 'meeting')
+      expect(loadedConfig.find(s => s.id === 'break')).toBeUndefined();
+      expect(loadedConfig.find(s => s.id === 'meeting')).toBeUndefined();
+      expect(loadedConfig.find(s => s.id === 'focus')).toBeUndefined();
+    });
+
+    it('should not restore deleted default statuses', async () => {
+      const configDir = `/tmp/test-daemon-config-${Date.now()}-${Math.random()}`;
+      
+      // Get default statuses
+      const { getDefaultStatusConfiguration } = await import('../config/statusConfig');
+      const defaults = getDefaultStatusConfiguration();
+      
+      // Create a daemon and save config with only some default statuses removed
+      const daemon1 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+      
+      // Remove some default statuses (break and meeting)
+      const customStatuses = defaults.filter(s => s.id !== 'break' && s.id !== 'meeting');
+      await daemon1.updateStatusConfiguration(customStatuses);
+      
+      // Create a new daemon to simulate app restart
+      const daemon2 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+      
+      // Get the loaded configuration
+      const loadedConfig = await daemon2.getStatusConfiguration();
+      
+      // Deleted statuses should NOT be restored
+      expect(loadedConfig.find(s => s.id === 'break')).toBeUndefined();
+      expect(loadedConfig.find(s => s.id === 'meeting')).toBeUndefined();
+      
+      // Other default statuses should still be there
+      expect(loadedConfig.find(s => s.id === 'focus')).toBeDefined();
+      expect(loadedConfig.find(s => s.id === 'focus')).toBeDefined();
+    });
+
+    it('should initialize with defaults if config file does not exist', async () => {
+      const configDir = `/tmp/test-daemon-config-nonexistent-${Date.now()}-${Math.random()}`;
+      
+      // Create a daemon with a non-existent config dir
+      const daemon = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+      
+      // Should initialize with defaults
+      const config = await daemon.getStatusConfiguration();
+      
+      expect(config.length).toBeGreaterThan(0);
+      // Should have default quick actions
+      expect(config.find(s => s.id === 'break')).toBeDefined();
+      expect(config.find(s => s.id === 'meeting')).toBeDefined();
+    });
+  });
 });

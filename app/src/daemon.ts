@@ -554,42 +554,13 @@ export class SlackStatusBotDaemon {
           this.sourceOrder = config.sourceOrder;
         }
 
-        // Load status configuration or use defaults
+        // Load status configuration from config file
         if (config.statusConfiguration && Array.isArray(config.statusConfiguration.customStatuses)) {
-          // Merge loaded configuration with defaults to ensure new quick actions are available
-          const loadedStatuses = config.statusConfiguration.customStatuses;
-          const defaultStatuses = getDefaultStatusConfiguration();
-          
-          // Create a map of loaded statuses by ID
-          const loadedMap = new Map<string, CustomStatusConfig>();
-          for (const status of loadedStatuses) {
-            loadedMap.set(status.id, status);
-          }
-          
-          // Start with default statuses, but replace with loaded versions if they exist
-          const mergedStatuses: CustomStatusConfig[] = [];
-          for (const defaultStatus of defaultStatuses) {
-            const loadedStatus = loadedMap.get(defaultStatus.id);
-            // If status exists in loaded config, use it (preserves user changes)
-            // Otherwise use the default (ensures new quick actions are available)
-            mergedStatuses.push(loadedStatus || defaultStatus);
-          }
-          
-          // Also add any custom day-based statuses that were created by the user
-          // (those that don't exist in defaults)
-          const defaultIds = new Set<string>();
-          for (const s of defaultStatuses) {
-            defaultIds.add(s.id);
-          }
-          for (const status of loadedStatuses) {
-            if (!defaultIds.has(status.id)) {
-              mergedStatuses.push(status);
-            }
-          }
-          
-          this.statusConfiguration = mergedStatuses;
+          // Load exactly what's in the config file, without merging with defaults
+          // If user deleted default statuses, they should stay deleted
+          this.statusConfiguration = config.statusConfiguration.customStatuses;
         } else {
-          // Initialize with defaults if not found
+          // Initialize with defaults only if config doesn't exist
           this.statusConfiguration = getDefaultStatusConfiguration();
         }
       } catch (error) {
