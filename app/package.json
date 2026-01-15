@@ -1,6 +1,6 @@
 {
   "name": "slack-status-bot",
-  "version": "1.4.2",
+  "version": "1.4.1",
   "description": "Cross-platform Slack Status Bot with Tray UI",
   "main": "public/electron.js",
   "homepage": "./",
@@ -74,7 +74,7 @@
     ],
     "publish": {
       "provider": "generic",
-      "url": "https://gitlab.com/wihel_de/slack-status-bot-custom/-/releases"
+      "url": "https://gitlab.com/wihel_de/slack-status-bot-custom/-/raw/v${version}/app/dist"
     },
     "asar": true,
     "beforePack": "./scripts/beforePack.js",
