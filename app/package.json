@@ -77,7 +77,6 @@
       "url": "https://gitlab.com/wihel_de/slack-status-bot-custom/-/raw/v${version}/app/dist"
     },
     "asar": true,
-    "beforePack": "./scripts/beforePack.js",
     "directories": {
       "buildResources": "assets"
     },
@@ -93,25 +92,20 @@
     },
     "dmg": {
       "title": "Slack Status Bot",
+      "background": "build-assets/dmg-background.png",
       "window": {
         "width": 540,
-        "height": 417
+        "height": 580
       },
       "contents": [
         {
-          "x": 270,
-          "y": 220,
-          "type": "file",
-          "path": "scripts/Install.command"
-        },
-        {
-          "x": 1090,
-          "y": 220,
+          "x": 100,
+          "y": 340,
           "type": "file"
         },
         {
-          "x": 1450,
-          "y": 220,
+          "x": 440,
+          "y": 340,
           "type": "link",
           "path": "/Applications"
         }
