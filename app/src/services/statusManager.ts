@@ -89,6 +89,13 @@ export class StatusManager extends EventEmitter {
   }
 
   /**
+   * Public method to get cached profile (for change detection in daemon)
+   */
+  async getLastKnownProfile(): Promise<SlackProfile | null> {
+    return this.profileCache;
+  }
+
+  /**
    * Invalidate profile cache
    */
   private invalidateProfileCache(): void {

@@ -372,18 +372,30 @@ export class SlackStatusBotDaemon {
             if (status.message !== sourceState[sourceName].lastMessage) {
               const canChange = await this.statusManager.isStatusClean();
               if (canChange) {
-                sourceState[sourceName].lastMessage = status.message || '';
-                const logReason = isStateTransition ? 'became active' : 'message changed';
-                logger.info(`[polling] ${sourceName} ${logReason}, setting status`, { emoji: status.emoji, message: status.message });
-                await this.slackService.setProfile(status.emoji!, status.message!);
+                // Change detection: Only call setProfile if the status has actually changed
+                const lastProfile = await this.statusManager.getLastKnownProfile();
+                const statusChanged = !lastProfile || 
+                  lastProfile.status_emoji !== status.emoji || 
+                  lastProfile.status_text !== status.message;
                 
-                // Emit status changed event for UI update
-                this.statusManager.emit('statusChanged', { 
-                  emoji: status.emoji, 
-                  message: status.message,
-                  stateValue: 'activeSource'
-                });
-                statusWasSet = true;
+                if (statusChanged) {
+                  sourceState[sourceName].lastMessage = status.message || '';
+                  const logReason = isStateTransition ? 'became active' : 'message changed';
+                  logger.info(`[polling] ${sourceName} ${logReason}, setting status`, { emoji: status.emoji, message: status.message });
+                  await this.slackService.setProfile(status.emoji!, status.message!);
+                  
+                  // Emit status changed event for UI update
+                  this.statusManager.emit('statusChanged', { 
+                    emoji: status.emoji, 
+                    message: status.message,
+                    stateValue: 'activeSource'
+                  });
+                  statusWasSet = true;
+                } else {
+                  // Status hasn't changed, just update lastMessage tracking
+                  sourceState[sourceName].lastMessage = status.message || '';
+                  logger.debug(`[polling] ${sourceName} status unchanged, skipping API call`);
+                }
               } else {
                 logger.warn(`[polling] ${sourceName} became active but status is not clean, skipping status change`);
               }
@@ -439,8 +451,18 @@ export class SlackStatusBotDaemon {
                 console.log(`[polling] Switching status from ${sourceName} to ${nextActiveSource}`);
                 const canChange = await this.statusManager.isStatusClean();
                 if (canChange) {
-                  sourceState[nextActiveSource].lastMessage = nextStatus.message;
-                  await this.slackService.setProfile(nextStatus.emoji!, nextStatus.message!);
+                  // Change detection: Only call setProfile if the status has actually changed
+                  const lastProfile = await this.statusManager.getLastKnownProfile();
+                  const statusChanged = !lastProfile || 
+                    lastProfile.status_emoji !== nextStatus.emoji || 
+                    lastProfile.status_text !== nextStatus.message;
+                  
+                  if (statusChanged) {
+                    sourceState[nextActiveSource].lastMessage = nextStatus.message;
+                    await this.slackService.setProfile(nextStatus.emoji!, nextStatus.message!);
+                  } else {
+                    logger.debug(`[polling] Next source status unchanged, skipping API call`);
+                  }
                 }
               }
             } else {
