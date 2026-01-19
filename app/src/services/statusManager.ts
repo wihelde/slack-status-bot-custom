@@ -663,7 +663,18 @@ export class StatusManager extends EventEmitter {
     ];
     
     // Also check the allowedEmojis set (ON_STATUS_PAIRS)
-    return managedEmojis.includes(emoji) || this.allowedEmojis.has(emoji);
+    if (managedEmojis.includes(emoji) || this.allowedEmojis.has(emoji)) {
+      return true;
+    }
+
+    // Check if it's an overridable third-party status (treat as managed so it can be replaced)
+    for (const pattern of this.overridablePatterns) {
+      if (emoji === pattern.emoji) {
+        return true; // Overridable statuses are considered "managed" for correction purposes
+      }
+    }
+
+    return false;
   }
 
   private getDayOfWeek(): DayOfWeek {

@@ -559,6 +559,8 @@ export class SlackStatusBotDaemon {
 
   private loadConfig(): void {
     const configFile = this.getConfigFilePath();
+    let isNewConfig = false; // Track if we're creating a new config
+    
     if (fs.existsSync(configFile)) {
       try {
         const config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
@@ -585,6 +587,7 @@ export class SlackStatusBotDaemon {
         } else {
           // Initialize with defaults only if config doesn't exist
           this.statusConfiguration = getDefaultStatusConfiguration();
+          isNewConfig = true;
         }
 
         // Load overridable patterns from config file
@@ -593,21 +596,31 @@ export class SlackStatusBotDaemon {
         } else {
           // Initialize with defaults if not in config
           this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
+          isNewConfig = true;
         }
       } catch (error) {
         console.error('Error loading config:', error);
         // Initialize with defaults on error
         this.statusConfiguration = getDefaultStatusConfiguration();
         this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
+        isNewConfig = true;
       }
       
       // Update StatusManager with loaded configuration so allowedEmojis includes user-defined emojis
       this.statusManager.setCustomStatuses(this.statusConfiguration);
       this.statusManager.setOverridablePatterns(this.overridablePatterns);
+      
+      // Save config if we loaded defaults to persist them
+      if (isNewConfig) {
+        this.saveConfig();
+      }
     } else {
       // Initialize with defaults if config file doesn't exist
       this.statusConfiguration = getDefaultStatusConfiguration();
       this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
+      
+      // Save default config on first run
+      this.saveConfig();
     }
   }
 
