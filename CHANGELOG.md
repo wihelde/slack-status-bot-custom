@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.3] - 2026-
+
+## Added
+
+- new option to overwrite specific emoji + status-message, e.g. set bei another slack-app
+  - the configuration can be edited under ~/Library/Application\ Support/slack-status-bot/config.js
+
+## Fixed
+
+- when using multiple tokens, there were rare cases where the Slack API responded with a 429 and the status was not changed -> Multi-token requests are now sent sequentially with a slight delay.
+
 ## [1.4.2] - 2026-01-15
 
 ## Changed

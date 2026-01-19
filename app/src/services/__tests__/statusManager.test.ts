@@ -675,4 +675,156 @@ describe('StatusManager', () => {
       expect(result).toBe(false);
     });
   });
+
+  describe('Overridable Third-Party Status Patterns', () => {
+    it('should allow overriding Officely Hamburg status', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: ':office:',
+        status_text: 'Office Hamburg (via Officely)',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      const result = await statusManager.isStatusClean();
+
+      // Should be true - Officely status is overridable
+      expect(result).toBe(true);
+    });
+
+    it('should allow overriding Officely Belgrade status', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: ':office:',
+        status_text: 'Office Belgrade (via Officely)',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      const result = await statusManager.isStatusClean();
+
+      // Should be true - Officely status is overridable
+      expect(result).toBe(true);
+    });
+
+    it('should block non-matching Officely messages', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: ':office:',
+        status_text: 'Office Paris (via Officely)',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      const result = await statusManager.isStatusClean();
+
+      // Should be false - this Officely office is not in the whitelist
+      expect(result).toBe(false);
+    });
+
+    it('should allow custom overridable patterns', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: ':home:',
+        status_text: 'Working from home - Remote',
+      });
+
+      // Add custom pattern
+      statusManager.setOverridablePatterns([
+        {
+          emoji: ':home:',
+          messagePatterns: [
+            'Working from home - Remote',
+            'WFH - Office Tool',
+            'Home Office',
+          ],
+          description: 'WFH tracking tool',
+        },
+      ]);
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      const result = await statusManager.isStatusClean();
+
+      // Should be true - custom pattern is in whitelist
+      expect(result).toBe(true);
+    });
+
+    it('should match any message pattern in the list', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: ':home:',
+        status_text: 'Home Office',
+      });
+
+      // Add custom pattern with multiple message options
+      statusManager.setOverridablePatterns([
+        {
+          emoji: ':home:',
+          messagePatterns: [
+            'Working from home - Remote',
+            'WFH - Office Tool',
+            'Home Office',
+          ],
+          description: 'WFH tracking tool',
+        },
+      ]);
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      const result = await statusManager.isStatusClean();
+
+      // Should be true - "Home Office" is in the messagePatterns list
+      expect(result).toBe(true);
+    });
+
+    it('should reject emoji without matching message', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: ':home:',
+        status_text: 'Unknown message',
+      });
+
+      // Add custom pattern
+      statusManager.setOverridablePatterns([
+        {
+          emoji: ':home:',
+          messagePatterns: [
+            'Working from home - Remote',
+            'WFH - Office Tool',
+          ],
+          description: 'WFH tracking tool',
+        },
+      ]);
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      const result = await statusManager.isStatusClean();
+
+      // Should be false - message not in the list
+      expect(result).toBe(false);
+    });
+
+    it('should handle multiple overridable patterns', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: ':custom:',
+        status_text: 'Custom Tool Status',
+      });
+
+      // Add multiple patterns
+      statusManager.setOverridablePatterns([
+        {
+          emoji: ':office:',
+          messagePatterns: ['Office Hamburg (via Officely)'],
+          description: 'Officely',
+        },
+        {
+          emoji: ':custom:',
+          messagePatterns: ['Custom Tool Status'],
+          description: 'Custom tool',
+        },
+      ]);
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      const result = await statusManager.isStatusClean();
+
+      // Should be true - matches second pattern
+      expect(result).toBe(true);
+    });
+  });
 });

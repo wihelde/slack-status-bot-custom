@@ -29,11 +29,22 @@ export interface CustomStatusConfig {
 }
 
 /**
+ * Overridable Status Pattern
+ * Defines third-party status patterns that the bot is allowed to override
+ */
+export interface OverridableStatusPattern {
+  emoji: string;
+  messagePatterns: string[]; // Exact message matches allowed to override
+  description?: string; // e.g., "Officely office booking"
+}
+
+/**
  * Overall Status Configuration
- * Container for all custom statuses
+ * Container for all custom statuses and overridable patterns
  */
 export interface StatusConfiguration {
   customStatuses: CustomStatusConfig[];
+  overridablePatterns?: OverridableStatusPattern[];
 }
 
 export const STATUS_MESSAGES = {
@@ -151,6 +162,23 @@ export const POLL_INTERVALS = {
   STATUS_CORRECTION: 60000,  // Correct status every 60 seconds
   PRESENCE: 540000,     // Check presence every 9 minutes
 };
+
+/**
+ * Default Overridable Status Patterns
+ * These third-party statuses are allowed to be overridden by the bot
+ * Users can extend this list in their config file
+ */
+export const DEFAULT_OVERRIDABLE_PATTERNS: OverridableStatusPattern[] = [
+  {
+    emoji: ':office:',
+    messagePatterns: [
+      'Office Hamburg (via Officely)',
+      'Office Belgrade (via Officely)',
+    ],
+    description: 'Officely office booking status',
+  },
+  // Add more patterns here as needed
+];
 
 /**
  * Get default status configuration

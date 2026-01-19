@@ -3,7 +3,7 @@ import { StatusManager } from './services/statusManager';
 import { SpotifyAdapter } from './services/sources/spotify';
 import { AppleMusicAdapter } from './services/sources/appleMusic';
 import { ZoomAdapter, TeamsAdapter, HuddleAdapter } from './services/sources/meetings';
-import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration } from './config/statusConfig';
+import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration, OverridableStatusPattern, DEFAULT_OVERRIDABLE_PATTERNS } from './config/statusConfig';
 import { logger } from './utils/logger';
 import fs from 'fs';
 import path from 'path';
@@ -27,6 +27,7 @@ export class SlackStatusBotDaemon {
   private configDir: string;
   private sourceOrder: string[] = ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'];
   private statusConfiguration: CustomStatusConfig[] = [];
+  private overridablePatterns: OverridableStatusPattern[] = [];
   private lastResetBlockedTime: number = 0; // Track when reset was last blocked
   private readonly RESET_BLOCKED_COOLDOWN = 30000; // Don't retry reset for 30 seconds if blocked
   private onStatusChanged?: (statusData: any) => void; // Callback for status changes (IPC)
@@ -585,17 +586,28 @@ export class SlackStatusBotDaemon {
           // Initialize with defaults only if config doesn't exist
           this.statusConfiguration = getDefaultStatusConfiguration();
         }
+
+        // Load overridable patterns from config file
+        if (config.statusConfiguration && Array.isArray(config.statusConfiguration.overridablePatterns)) {
+          this.overridablePatterns = config.statusConfiguration.overridablePatterns;
+        } else {
+          // Initialize with defaults if not in config
+          this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
+        }
       } catch (error) {
         console.error('Error loading config:', error);
         // Initialize with defaults on error
         this.statusConfiguration = getDefaultStatusConfiguration();
+        this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
       }
       
       // Update StatusManager with loaded configuration so allowedEmojis includes user-defined emojis
       this.statusManager.setCustomStatuses(this.statusConfiguration);
+      this.statusManager.setOverridablePatterns(this.overridablePatterns);
     } else {
       // Initialize with defaults if config file doesn't exist
       this.statusConfiguration = getDefaultStatusConfiguration();
+      this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
     }
   }
 
@@ -624,6 +636,7 @@ export class SlackStatusBotDaemon {
       sourceOrder: this.sourceOrder,
       statusConfiguration: {
         customStatuses: this.statusConfiguration,
+        overridablePatterns: this.overridablePatterns,
       },
       lastUpdated: new Date().toISOString(),
     };
