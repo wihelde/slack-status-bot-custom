@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { SlackService, SlackProfile } from './slack';
-import { STATUS_MESSAGES, DayOfWeek, CustomStatusConfig, getDefaultStatusConfiguration } from '../config/statusConfig';
+import { STATUS_MESSAGES, DayOfWeek, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS, OverridableStatusPattern } from '../config/statusConfig';
 import { logger } from '../utils/logger';
 
 export interface StatusCheckState {
@@ -23,11 +23,13 @@ export class StatusManager extends EventEmitter {
   private profileCacheTime: number = 0;
   private readonly PROFILE_CACHE_TTL = 5000; // Cache profile for 5 seconds
   private dayStatusEmojiMap: Map<number, Set<string>> = new Map(); // Maps DayOfWeek → valid emoji set for that day
+  private overridablePatterns: OverridableStatusPattern[];
 
   constructor(slackService: SlackService, customStatuses?: CustomStatusConfig[]) {
     super(); // Call EventEmitter constructor
     this.slackService = slackService;
     this.customStatuses = customStatuses || getDefaultStatusConfiguration();
+    this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
     
     // Build set of all valid emojis from custom statuses
     const statusEmojis = this.customStatuses.map(s => s.emoji);
@@ -89,6 +91,13 @@ export class StatusManager extends EventEmitter {
   }
 
   /**
+   * Public method to get cached profile (for change detection in daemon)
+   */
+  async getLastKnownProfile(): Promise<SlackProfile | null> {
+    return this.profileCache;
+  }
+
+  /**
    * Invalidate profile cache
    */
   private invalidateProfileCache(): void {
@@ -107,6 +116,12 @@ export class StatusManager extends EventEmitter {
     }
 
     const { status_emoji: emoji, status_text: text } = profile;
+
+    // Check if it's an overridable third-party status (e.g., Officely)
+    if (this.isOverridableThirdPartyStatus(emoji, text)) {
+      logger.debug(`[statusManager] isStatusClean: true (overridable third-party status)`, { emoji, text });
+      return true; // Allow override
+    }
 
     // Allow if status is one of our automatic messages
     if (this.allowedEmojis.has(emoji)) {
@@ -603,7 +618,29 @@ export class StatusManager extends EventEmitter {
     logger.info('[statusManager] Custom statuses updated', { count: statuses.length });
   }
 
+  /**
+   * Update overridable status patterns at runtime
+   */
+  setOverridablePatterns(patterns: OverridableStatusPattern[]): void {
+    this.overridablePatterns = patterns;
+    logger.info('[statusManager] Overridable patterns updated', { count: patterns.length });
+  }
+
   // Private helper methods
+
+  /**
+   * Check if status is from a third-party tool that we're allowed to override
+   * Uses the overridable patterns list from config (no API calls)
+   */
+  private isOverridableThirdPartyStatus(emoji: string, text: string): boolean {
+    for (const pattern of this.overridablePatterns) {
+      if (emoji === pattern.emoji && pattern.messagePatterns.includes(text)) {
+        logger.debug(`[statusManager] Found overridable status pattern`, { emoji, text, pattern: pattern.description });
+        return true;
+      }
+    }
+    return false;
+  }
 
   /**
    * Check if the current emoji is one of our managed emojis
@@ -626,7 +663,18 @@ export class StatusManager extends EventEmitter {
     ];
     
     // Also check the allowedEmojis set (ON_STATUS_PAIRS)
-    return managedEmojis.includes(emoji) || this.allowedEmojis.has(emoji);
+    if (managedEmojis.includes(emoji) || this.allowedEmojis.has(emoji)) {
+      return true;
+    }
+
+    // Check if it's an overridable third-party status (treat as managed so it can be replaced)
+    for (const pattern of this.overridablePatterns) {
+      if (emoji === pattern.emoji) {
+        return true; // Overridable statuses are considered "managed" for correction purposes
+      }
+    }
+
+    return false;
   }
 
   private getDayOfWeek(): DayOfWeek {

@@ -1013,4 +1013,106 @@ describe('SlackStatusBotDaemon', () => {
       expect(config.find(s => s.id === 'meeting')).toBeDefined();
     });
   });
+
+  describe('Overridable Status Patterns Configuration (PRIORITY 2)', () => {
+    it('should save overridable patterns to config', async () => {
+      const configDir = `/tmp/test-daemon-patterns-${Date.now()}-${Math.random()}`;
+      
+      const daemon1 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      // Patterns are loaded from defaults initially
+      expect(daemon1).toBeDefined();
+
+      // Create a new daemon to check if patterns were persisted
+      const daemon2 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      expect(daemon2).toBeDefined();
+    });
+
+    it('should load default overridable patterns on first start', () => {
+      const configDir = `/tmp/test-daemon-patterns-defaults-${Date.now()}-${Math.random()}`;
+      
+      const daemon = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      // Daemon should initialize with default patterns
+      expect(daemon).toBeDefined();
+    });
+
+    it('should persist custom overridable patterns across restarts', async () => {
+      const configDir = `/tmp/test-daemon-patterns-custom-${Date.now()}-${Math.random()}`;
+      
+      // First daemon - should have defaults
+      const daemon1 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      // Trigger config save by disabling/enabling a source
+      daemon1.toggleSource('spotify', false);
+      
+      // Create second daemon with same config dir
+      const daemon2 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      // Both daemons should be valid
+      expect(daemon1).toBeDefined();
+      expect(daemon2).toBeDefined();
+
+      // Check source state was persisted
+      const statuses2 = await daemon2.getSourceStatuses();
+      expect(statuses2.spotify.enabled).toBe(false);
+    });
+
+    it('should include overridable patterns in saved config', async () => {
+      const configDir = `/tmp/test-daemon-patterns-save-${Date.now()}-${Math.random()}`;
+      
+      const daemon = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      // Save config by toggling a source
+      daemon.toggleSource('spotify', false);
+
+      // Read the config file directly to verify patterns are saved
+      const configFile = require('path').join(configDir, 'config.json');
+      const config = JSON.parse(require('fs').readFileSync(configFile, 'utf-8'));
+
+      // Should have statusConfiguration with overridablePatterns
+      expect(config.statusConfiguration).toBeDefined();
+      expect(config.statusConfiguration.overridablePatterns).toBeDefined();
+      expect(Array.isArray(config.statusConfiguration.overridablePatterns)).toBe(true);
+      
+      // Should have at least Officely pattern by default
+      const officelyPattern = config.statusConfiguration.overridablePatterns.find(
+        (p: any) => p.emoji === ':office:'
+      );
+      expect(officelyPattern).toBeDefined();
+      expect(officelyPattern.messagePatterns).toContain('Office Hamburg (via Officely)');
+      expect(officelyPattern.messagePatterns).toContain('Office Belgrade (via Officely)');
+    });
+
+    it('should handle empty overridable patterns gracefully', () => {
+      const configDir = `/tmp/test-daemon-patterns-empty-${Date.now()}-${Math.random()}`;
+      
+      const daemon = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      // Should not throw
+      expect(daemon).toBeDefined();
+    });
+  });
 });

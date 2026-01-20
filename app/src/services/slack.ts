@@ -58,6 +58,7 @@ export class SlackService {
 
   /**
    * Set user profile (status emoji and text)
+   * Sequential requests with delays to avoid rate limiting
    */
   async setProfile(statusEmoji: string, statusText: string, statusExpiration: number = 0): Promise<boolean> {
     if (this.tokens.length === 0) {
@@ -73,17 +74,22 @@ export class SlackService {
     logger.info(`[slack] setProfile called`, { emoji: statusEmoji, text: statusText, tokenCount: this.tokens.length });
 
     try {
-      // Set for all configured tokens
-      const results = await Promise.all(
-        this.tokens.map(token =>
-          this.axiosInstance.post('/users.profile.set', { profile }, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          })
-        )
-      );
+      // Set profile sequentially for each token to avoid rate limiting
+      const results = [];
+      for (const token of this.tokens) {
+        const response = await this.axiosInstance.post('/users.profile.set', { profile }, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        results.push(response);
+        
+        // Add delay between requests (100ms) to avoid rate limiting
+        if (this.tokens.indexOf(token) < this.tokens.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
 
       const allOk = results.every(r => r.data.ok);
       
@@ -105,6 +111,7 @@ export class SlackService {
 
   /**
    * Set user presence (auto/away)
+   * Sequential requests with delays to avoid rate limiting
    */
   async setPresence(presence: 'auto' | 'away'): Promise<boolean> {
     if (this.tokens.length === 0) {
@@ -114,16 +121,21 @@ export class SlackService {
     logger.info(`[slack] setPresence called`, { presence, tokenCount: this.tokens.length });
 
     try {
-      const results = await Promise.all(
-        this.tokens.map(token =>
-          this.axiosInstance.post('/users.setPresence', { presence }, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          })
-        )
-      );
+      const results = [];
+      for (const token of this.tokens) {
+        const response = await this.axiosInstance.post('/users.setPresence', { presence }, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        results.push(response);
+        
+        // Add delay between requests (100ms) to avoid rate limiting
+        if (this.tokens.indexOf(token) < this.tokens.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
 
       const allOk = results.every(r => r.data.ok);
       if (allOk) {
@@ -167,6 +179,7 @@ export class SlackService {
 
   /**
    * Enable Do Not Disturb
+   * Sequential requests with delays to avoid rate limiting
    */
   async enableDND(minutes: number = 1440): Promise<boolean> {
     if (this.tokens.length === 0) {
@@ -175,18 +188,24 @@ export class SlackService {
 
     try {
       console.log(`[DND] Enabling DND for ${minutes} minutes...`);
-      const results = await Promise.all(
-        this.tokens.map(token =>
-          this.axiosInstance.post('/dnd.setSnooze', 
-            { num_minutes: minutes },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          )
-        )
-      );
+      const results = [];
+      
+      for (const token of this.tokens) {
+        const response = await this.axiosInstance.post('/dnd.setSnooze', 
+          { num_minutes: minutes },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        results.push(response);
+        
+        // Add delay between requests (100ms) to avoid rate limiting
+        if (this.tokens.indexOf(token) < this.tokens.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
 
       const success = results.every(r => r.data.ok);
       console.log(`[DND] DND enabled successfully: ${success}`);
@@ -200,6 +219,7 @@ export class SlackService {
 
   /**
    * Disable Do Not Disturb
+   * Sequential requests with delays to avoid rate limiting
    */
   async disableDND(): Promise<boolean> {
     if (this.tokens.length === 0) {
@@ -207,15 +227,21 @@ export class SlackService {
     }
 
     try {
-      const results = await Promise.all(
-        this.tokens.map(token =>
-          this.axiosInstance.post('/dnd.endDnd', {}, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          })
-        )
-      );
+      const results = [];
+      
+      for (const token of this.tokens) {
+        const response = await this.axiosInstance.post('/dnd.endDnd', {}, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        results.push(response);
+        
+        // Add delay between requests (100ms) to avoid rate limiting
+        if (this.tokens.indexOf(token) < this.tokens.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
 
       return results.every(r => r.data.ok);
     } catch (error) {

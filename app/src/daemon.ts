@@ -3,7 +3,7 @@ import { StatusManager } from './services/statusManager';
 import { SpotifyAdapter } from './services/sources/spotify';
 import { AppleMusicAdapter } from './services/sources/appleMusic';
 import { ZoomAdapter, TeamsAdapter, HuddleAdapter } from './services/sources/meetings';
-import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration } from './config/statusConfig';
+import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration, OverridableStatusPattern, DEFAULT_OVERRIDABLE_PATTERNS } from './config/statusConfig';
 import { logger } from './utils/logger';
 import fs from 'fs';
 import path from 'path';
@@ -27,6 +27,7 @@ export class SlackStatusBotDaemon {
   private configDir: string;
   private sourceOrder: string[] = ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'];
   private statusConfiguration: CustomStatusConfig[] = [];
+  private overridablePatterns: OverridableStatusPattern[] = [];
   private lastResetBlockedTime: number = 0; // Track when reset was last blocked
   private readonly RESET_BLOCKED_COOLDOWN = 30000; // Don't retry reset for 30 seconds if blocked
   private onStatusChanged?: (statusData: any) => void; // Callback for status changes (IPC)
@@ -372,18 +373,30 @@ export class SlackStatusBotDaemon {
             if (status.message !== sourceState[sourceName].lastMessage) {
               const canChange = await this.statusManager.isStatusClean();
               if (canChange) {
-                sourceState[sourceName].lastMessage = status.message || '';
-                const logReason = isStateTransition ? 'became active' : 'message changed';
-                logger.info(`[polling] ${sourceName} ${logReason}, setting status`, { emoji: status.emoji, message: status.message });
-                await this.slackService.setProfile(status.emoji!, status.message!);
+                // Change detection: Only call setProfile if the status has actually changed
+                const lastProfile = await this.statusManager.getLastKnownProfile();
+                const statusChanged = !lastProfile || 
+                  lastProfile.status_emoji !== status.emoji || 
+                  lastProfile.status_text !== status.message;
                 
-                // Emit status changed event for UI update
-                this.statusManager.emit('statusChanged', { 
-                  emoji: status.emoji, 
-                  message: status.message,
-                  stateValue: 'activeSource'
-                });
-                statusWasSet = true;
+                if (statusChanged) {
+                  sourceState[sourceName].lastMessage = status.message || '';
+                  const logReason = isStateTransition ? 'became active' : 'message changed';
+                  logger.info(`[polling] ${sourceName} ${logReason}, setting status`, { emoji: status.emoji, message: status.message });
+                  await this.slackService.setProfile(status.emoji!, status.message!);
+                  
+                  // Emit status changed event for UI update
+                  this.statusManager.emit('statusChanged', { 
+                    emoji: status.emoji, 
+                    message: status.message,
+                    stateValue: 'activeSource'
+                  });
+                  statusWasSet = true;
+                } else {
+                  // Status hasn't changed, just update lastMessage tracking
+                  sourceState[sourceName].lastMessage = status.message || '';
+                  logger.debug(`[polling] ${sourceName} status unchanged, skipping API call`);
+                }
               } else {
                 logger.warn(`[polling] ${sourceName} became active but status is not clean, skipping status change`);
               }
@@ -439,8 +452,18 @@ export class SlackStatusBotDaemon {
                 console.log(`[polling] Switching status from ${sourceName} to ${nextActiveSource}`);
                 const canChange = await this.statusManager.isStatusClean();
                 if (canChange) {
-                  sourceState[nextActiveSource].lastMessage = nextStatus.message;
-                  await this.slackService.setProfile(nextStatus.emoji!, nextStatus.message!);
+                  // Change detection: Only call setProfile if the status has actually changed
+                  const lastProfile = await this.statusManager.getLastKnownProfile();
+                  const statusChanged = !lastProfile || 
+                    lastProfile.status_emoji !== nextStatus.emoji || 
+                    lastProfile.status_text !== nextStatus.message;
+                  
+                  if (statusChanged) {
+                    sourceState[nextActiveSource].lastMessage = nextStatus.message;
+                    await this.slackService.setProfile(nextStatus.emoji!, nextStatus.message!);
+                  } else {
+                    logger.debug(`[polling] Next source status unchanged, skipping API call`);
+                  }
                 }
               }
             } else {
@@ -536,6 +559,8 @@ export class SlackStatusBotDaemon {
 
   private loadConfig(): void {
     const configFile = this.getConfigFilePath();
+    let isNewConfig = false; // Track if we're creating a new config
+    
     if (fs.existsSync(configFile)) {
       try {
         const config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
@@ -562,18 +587,40 @@ export class SlackStatusBotDaemon {
         } else {
           // Initialize with defaults only if config doesn't exist
           this.statusConfiguration = getDefaultStatusConfiguration();
+          isNewConfig = true;
+        }
+
+        // Load overridable patterns from config file
+        if (config.statusConfiguration && Array.isArray(config.statusConfiguration.overridablePatterns)) {
+          this.overridablePatterns = config.statusConfiguration.overridablePatterns;
+        } else {
+          // Initialize with defaults if not in config
+          this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
+          isNewConfig = true;
         }
       } catch (error) {
         console.error('Error loading config:', error);
         // Initialize with defaults on error
         this.statusConfiguration = getDefaultStatusConfiguration();
+        this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
+        isNewConfig = true;
       }
       
       // Update StatusManager with loaded configuration so allowedEmojis includes user-defined emojis
       this.statusManager.setCustomStatuses(this.statusConfiguration);
+      this.statusManager.setOverridablePatterns(this.overridablePatterns);
+      
+      // Save config if we loaded defaults to persist them
+      if (isNewConfig) {
+        this.saveConfig();
+      }
     } else {
       // Initialize with defaults if config file doesn't exist
       this.statusConfiguration = getDefaultStatusConfiguration();
+      this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
+      
+      // Save default config on first run
+      this.saveConfig();
     }
   }
 
@@ -602,6 +649,7 @@ export class SlackStatusBotDaemon {
       sourceOrder: this.sourceOrder,
       statusConfiguration: {
         customStatuses: this.statusConfiguration,
+        overridablePatterns: this.overridablePatterns,
       },
       lastUpdated: new Date().toISOString(),
     };
