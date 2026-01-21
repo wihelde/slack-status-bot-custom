@@ -94,7 +94,7 @@ function createWindow() {
   });
 
   const startUrl = isDev
-    ? 'http://localhost:3000'
+    ? 'http://localhost:3001'
     : `file://${path.join(__dirname, '../build/index.html')}`;
 
   mainWindow.loadURL(startUrl);
@@ -157,6 +157,15 @@ function updateTrayMenu() {
 function createTray() {
   logToFile('[Tray] Starting tray creation...');
   logToFile('[Tray] __dirname: ' + __dirname);
+  
+  // Wenn Tray bereits existiert, nur Menü aktualisieren statt neu zu erstellen
+  if (tray) {
+    logToFile('[Tray] Tray already exists, updating context menu instead of recreating');
+    if (buildContextMenu) {
+      tray.setContextMenu(buildContextMenu());
+    }
+    return;
+  }
   
   // Die Icons können an verschiedenen Orten sein, je nachdem ob Dev oder Build
   // Dev: /app/assets/
@@ -570,6 +579,7 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (mainWindow === null) {
     createWindow();
+    // Tray wird bereits in app.whenReady() erstellt, also nicht nochmal hier erstellen
   } else {
     mainWindow.show();
   }
@@ -582,6 +592,15 @@ app.on('before-quit', async () => {
       await daemon.stop();
     } catch (e) {
       console.error('Error stopping daemon:', e);
+    }
+  }
+  // Cleanup tray
+  if (tray) {
+    try {
+      tray.destroy();
+      tray = null;
+    } catch (e) {
+      console.error('Error destroying tray on quit:', e);
     }
   }
 });

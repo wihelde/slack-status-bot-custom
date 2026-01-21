@@ -1,6 +1,12 @@
 # Changelog
 
-## [1.4.3] - 2026-
+## [1.4.4] - 2026-01-21
+
+## Fixed
+
+- it could happen that two icons were shown in the menu-bar, even just one process is running
+
+## [1.4.3] - 2026-01-20
 
 ## Added
 
