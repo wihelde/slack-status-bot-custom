@@ -1115,4 +1115,83 @@ describe('SlackStatusBotDaemon', () => {
       expect(daemon).toBeDefined();
     });
   });
+
+  describe('Overridable Status Correction (PRIORITY 1)', () => {
+    it('should include Officely in default overridable patterns', async () => {
+      await daemon.start();
+
+      // The daemon's statusManager should have Officely patterns loaded by default
+      const statusManager = daemon['statusManager'] as any;
+      const hasOfficelyPattern = statusManager.overridablePatterns.some(
+        (p: any) => p.emoji === ':office:' && p.messagePatterns.includes('Office Hamburg (via Officely)')
+      );
+
+      expect(hasOfficelyPattern).toBe(true);
+
+      await daemon.stop();
+    });
+
+    it('should recognize Officely status with correct emoji and text', async () => {
+      await daemon.start();
+
+      const statusManager = daemon['statusManager'] as any;
+      
+      // Test the isOverridableThirdPartyStatus method (private, accessed via reflection)
+      const isOverridableThirdPartyStatus = statusManager.isOverridableThirdPartyStatus.bind(statusManager);
+      
+      // Should return true for Officely Hamburg
+      const result = isOverridableThirdPartyStatus(':office:', 'Office Hamburg (via Officely)');
+      expect(result).toBe(true);
+
+      // Should return false for wrong text
+      const resultWrongText = isOverridableThirdPartyStatus(':office:', 'Some other text');
+      expect(resultWrongText).toBe(false);
+
+      // Should return false for wrong emoji
+      const resultWrongEmoji = isOverridableThirdPartyStatus(':custom:', 'Office Hamburg (via Officely)');
+      expect(resultWrongEmoji).toBe(false);
+
+      await daemon.stop();
+    });
+
+    it('should recognize custom overridable pattern', async () => {
+      await daemon.start();
+
+      const statusManager = daemon['statusManager'] as any;
+      
+      // Add custom pattern
+      const customPatterns = [
+        {
+          emoji: ':custom_tool:',
+          messagePatterns: ['Status from Custom Tool'],
+          description: 'Custom tool status',
+        },
+      ];
+      statusManager.setOverridablePatterns([
+        ...statusManager.overridablePatterns,
+        ...customPatterns
+      ]);
+
+      const isOverridableThirdPartyStatus = statusManager.isOverridableThirdPartyStatus.bind(statusManager);
+      
+      // Should recognize custom pattern
+      const result = isOverridableThirdPartyStatus(':custom_tool:', 'Status from Custom Tool');
+      expect(result).toBe(true);
+
+      await daemon.stop();
+    });
+
+    it('should NOT recognize non-overridable custom status', async () => {
+      await daemon.start();
+
+      const statusManager = daemon['statusManager'] as any;
+      const isOverridableThirdPartyStatus = statusManager.isOverridableThirdPartyStatus.bind(statusManager);
+      
+      // Non-overridable status should return false
+      const result = isOverridableThirdPartyStatus(':custom_manual:', 'My custom status');
+      expect(result).toBe(false);
+
+      await daemon.stop();
+    });
+  });
 });

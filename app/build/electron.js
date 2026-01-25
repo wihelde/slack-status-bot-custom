@@ -99,6 +99,16 @@ function createWindow() {
 
   mainWindow.loadURL(startUrl);
 
+  // Externe Links (target="_blank") im System-Browser öffnen
+  // statt in einem neuen Electron-Fenster
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    // Nur externe URLs im Browser öffnen (http/https)
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' }; // Verhindert das neue Electron-Fenster
+  });
+
   if (isDev) {
     mainWindow.webContents.openDevTools();
   }

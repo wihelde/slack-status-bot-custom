@@ -262,6 +262,68 @@ describe('StatusManager', () => {
       // Should NOT have reset because emoji is valid for Friday
       expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
+
+    it('should replace overridable third-party status (Officely)', async () => {
+      // Set Officely Hamburg status - should be replaced
+      statusManager.setProfileCache({
+        status_emoji: ':office:',
+        status_text: 'Office Hamburg (via Officely)',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      mockSlackService.setProfile.mockClear();
+      await statusManager.correctStatus();
+
+      // Should have attempted to set a new status (replace Officely with day-based)
+      expect(mockSlackService.setProfile).toHaveBeenCalled();
+      // The new emoji should NOT be :office:
+      const callArgs = mockSlackService.setProfile.mock.calls[0];
+      expect(callArgs[0]).not.toBe(':office:');
+    });
+
+    it('should replace custom overridable status', async () => {
+      // Add custom overridable pattern
+      statusManager.setOverridablePatterns([
+        {
+          emoji: ':custom_tool:',
+          messagePatterns: ['Status from Custom Tool'],
+          description: 'Custom tool status',
+        },
+      ]);
+
+      // Set custom tool status - should be replaced
+      statusManager.setProfileCache({
+        status_emoji: ':custom_tool:',
+        status_text: 'Status from Custom Tool',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      mockSlackService.setProfile.mockClear();
+      await statusManager.correctStatus();
+
+      // Should have attempted to replace the custom tool status
+      expect(mockSlackService.setProfile).toHaveBeenCalled();
+      const callArgs = mockSlackService.setProfile.mock.calls[0];
+      expect(callArgs[0]).not.toBe(':custom_tool:');
+    });
+
+    it('should NOT replace overridable status with wrong message', async () => {
+      // Officely Belgrade is in the patterns, but Paris is not
+      statusManager.setProfileCache({
+        status_emoji: ':office:',
+        status_text: 'Office Paris (via Officely)',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      mockSlackService.setProfile.mockClear();
+      await statusManager.correctStatus();
+
+      // Should NOT have reset because the message doesn't match the pattern
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
   });
 
   describe('reset() with blocked status', () => {

@@ -260,9 +260,9 @@ const Settings: React.FC = () => {
             rows={3}
           />
           <small className="help-text">
-            📖 Get your token from{' '}
+            📖 Get your token from the{' '}
             <a href="https://open-source.pages.gitlab.esome.info/slack-token-service/" target="_blank" rel="noopener noreferrer">
-              Slack App Settings
+              Slack Bot Token Service
             </a>
             . You can add multiple tokens separated by commas.
           </small>

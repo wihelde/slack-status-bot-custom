@@ -356,7 +356,16 @@ export class StatusManager extends EventEmitter {
     }
 
     const emoji = profile.status_emoji;
+    const text = profile.status_text;
     if (!emoji) return;
+
+    // Check if it's an overridable third-party status (e.g., Officely)
+    // If it is, always replace it with the correct day-based status
+    if (this.isOverridableThirdPartyStatus(emoji, text)) {
+      logger.info(`[statusManager] correctStatus: Found overridable third-party status, will replace it`, { emoji, text });
+      await this.reset();
+      return;
+    }
 
     // Don't correct status if user has set a custom (non-managed) status
     if (!this.isCurrentStatusManaged(emoji)) {
@@ -665,13 +674,6 @@ export class StatusManager extends EventEmitter {
     // Also check the allowedEmojis set (ON_STATUS_PAIRS)
     if (managedEmojis.includes(emoji) || this.allowedEmojis.has(emoji)) {
       return true;
-    }
-
-    // Check if it's an overridable third-party status (treat as managed so it can be replaced)
-    for (const pattern of this.overridablePatterns) {
-      if (emoji === pattern.emoji) {
-        return true; // Overridable statuses are considered "managed" for correction purposes
-      }
     }
 
     return false;

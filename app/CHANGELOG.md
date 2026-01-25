@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.5] - 2021-01-25
+
+## Fixed
+
+- found some use-case where the override-feature introduced in 1.4.3 was not working as expected
+- the page to get the users-token has been opened inside the app, which lead to a "this browser is not supported"-message
+
 ## [1.4.4] - 2026-01-21
 
 ## Fixed
