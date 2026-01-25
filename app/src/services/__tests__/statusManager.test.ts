@@ -119,6 +119,10 @@ describe('StatusManager', () => {
 
   describe('reset()', () => {
     it('should check isStatusClean before resetting', async () => {
+      // Mock to Monday so there's a configured status for the day
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-24')); // Monday
+      
       mockSlackService.getProfile = vi.fn().mockResolvedValue({
         status_emoji: ':custom_emoji:',
         status_text: 'Custom status',
@@ -126,12 +130,18 @@ describe('StatusManager', () => {
 
       const result = await statusManager.reset();
       
+      vi.useRealTimers();
+      
       // Should be blocked because emoji is not in allowed list
       expect(result).toBe(false);
       expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
 
     it('should set presence to auto', async () => {
+      // Mock to Monday so there's a configured status for the day
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-24')); // Monday
+      
       mockSlackService.getProfile = vi.fn().mockResolvedValue({
         status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
         status_text: 'Playing Spotify',
@@ -139,16 +149,24 @@ describe('StatusManager', () => {
 
       await statusManager.reset();
       
+      vi.useRealTimers();
+      
       expect(mockSlackService.setPresence).toHaveBeenCalledWith('auto');
     });
 
     it('should disable DND', async () => {
+      // Mock to Monday so there's a configured status for the day
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-24')); // Monday
+      
       mockSlackService.getProfile = vi.fn().mockResolvedValue({
         status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
         status_text: 'Playing Spotify',
       });
 
       await statusManager.reset();
+      
+      vi.useRealTimers();
       
       expect(mockSlackService.disableDND).toHaveBeenCalled();
     });

@@ -6,6 +6,7 @@ const LogViewer: React.FC = () => {
   const [logs, setLogs] = useState<string>('Loading logs...');
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true); // Auto-scroll to bottom
   const logContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -22,19 +23,46 @@ const LogViewer: React.FC = () => {
     return () => clearInterval(interval);
   }, [autoRefresh]);
 
+  // Scroll to bottom when logs change (if autoScroll is enabled)
+  useEffect(() => {
+    if (autoScroll && logContainerRef.current) {
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        if (logContainerRef.current) {
+          logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+        }
+      }, 0);
+    }
+  }, [logs, autoScroll]);
+
+  // Detect if user scrolls away from bottom (disable auto-scroll)
+  const handleScroll = () => {
+    if (!logContainerRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = logContainerRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50; // Within 50px of bottom
+    
+    // Only update if value changed to avoid re-renders
+    if (isAtBottom !== autoScroll) {
+      setAutoScroll(isAtBottom);
+    }
+  };
+
   const loadLogs = async () => {
     try {
       const logContent = await IPCService.getLogs(300);
       setLogs(logContent);
       setLoading(false);
-
-      // Auto-scroll to bottom if auto-refresh is enabled
-      if (autoRefresh && logContainerRef.current) {
-        logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-      }
     } catch (error) {
       setLogs(`Error loading logs: ${error}`);
       setLoading(false);
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+      setAutoScroll(true);
     }
   };
 
@@ -93,11 +121,23 @@ const LogViewer: React.FC = () => {
       <div 
         ref={logContainerRef}
         className="log-container"
+        onScroll={handleScroll}
       >
         {logs ? (
           <pre className="log-content">{logs}</pre>
         ) : (
           <div className="no-logs">No logs to display</div>
+        )}
+        
+        {/* Show scroll-to-bottom button when not at bottom */}
+        {!autoScroll && (
+          <button 
+            className="scroll-to-bottom-btn"
+            onClick={scrollToBottom}
+            title="Scroll to bottom"
+          >
+            ↓ New logs
+          </button>
         )}
       </div>
 

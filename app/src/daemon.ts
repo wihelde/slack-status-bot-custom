@@ -660,6 +660,20 @@ export class SlackStatusBotDaemon {
       console.error('Error saving config:', error);
     }
   }
+
+  /**
+   * Set the log level for the daemon's logger
+   */
+  setLogLevel(level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'): void {
+    logger.setLogLevel(level);
+  }
+
+  /**
+   * Get the current log level
+   */
+  getLogLevel(): string {
+    return logger.getLogLevel();
+  }
 }
 
 // Export singleton instance

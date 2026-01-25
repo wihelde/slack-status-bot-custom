@@ -667,8 +667,8 @@ export class StatusManager extends EventEmitter {
       STATUS_MESSAGES.TEAMS_EMOJI,
       STATUS_MESSAGES.SKYPE_EMOJI,
       STATUS_MESSAGES.REMEET_EMOJI,
-      STATUS_MESSAGES.OFF_EMOJI,
       STATUS_MESSAGES.HUDDLE_EMOJI,
+      // Note: OFF_EMOJI is NOT included - it's a protected status that should not be auto-corrected
     ];
     
     // Also check the allowedEmojis set (ON_STATUS_PAIRS)

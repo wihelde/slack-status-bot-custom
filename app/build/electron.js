@@ -497,6 +497,27 @@ function setupUpdateListeners() {
   logToFile('[Updates] Listeners attached');
 }
 
+// Single Instance Lock - verhindert mehrere App-Instanzen
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // Eine andere Instanz läuft bereits - diese Instanz beenden
+  console.log('[Electron] Another instance is already running. Quitting...');
+  app.quit();
+} else {
+  // Wenn jemand versucht eine zweite Instanz zu starten,
+  // das Fenster der ersten Instanz fokussieren
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    logToFile('[App] Second instance attempted - focusing existing window');
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
 app.whenReady().then(() => {
   logToFile('[App] App is ready!');
   logToFile('[App] Platform: ' + process.platform);
@@ -506,17 +527,8 @@ app.whenReady().then(() => {
   config = loadConfig();
   logToFile('[App] Config loaded');
   
-  // Ensure logger is at least at DEBUG level at startup for update check visibility
-  // This will be overridden by user preference from config when the daemon starts
-  try {
-    const { logger } = require('./dist/utils/logger');
-    if (logger && logger.setLogLevel) {
-      logger.setLogLevel('DEBUG');
-      logToFile('[App] Startup log level set to DEBUG for visibility');
-    }
-  } catch (e) {
-    logToFile('[App] Could not set startup log level: ' + e.message);
-  }
+  // Note: Logger is part of the React bundle, not available in main process at startup.
+  // Log level will be set when the daemon starts.
   
   logToFile('[App] Creating window...');
   createWindow();
@@ -848,24 +860,53 @@ ipcMain.handle('get-daemon-status', async (event) => {
   }
 });
 
+// Log file paths (same as logger.ts uses)
+const getLogDir = () => path.join(app.getPath('userData'), 'logs');
+const getLogFile = () => path.join(getLogDir(), 'app.log');
+
+// In-memory log level (default: ERROR)
+let currentLogLevel = config.logLevel || 'ERROR';
+
 /**
- * Get recent logs
+ * Get recent logs - reads directly from log file
  */
 ipcMain.handle('get-logs', async (event, lines = 200) => {
   try {
-    const { logger } = require('../dist/utils/logger');
-    const logs = logger.getRecentLogs(lines);
-    return { success: true, data: logs };
+    const logFile = getLogFile();
+    if (!fs.existsSync(logFile)) {
+      return { success: true, data: '(No logs yet)' };
+    }
+    const content = fs.readFileSync(logFile, 'utf-8');
+    const allLines = content.split('\n');
+    const recentLines = allLines.slice(-lines).join('\n');
+    return { success: true, data: recentLines };
   } catch (error) {
     console.error('Error getting logs:', error);
     return { success: false, error: error.message, data: '(Error reading logs)' };
   }
 });
 
+/**
+ * Clear logs - removes log files directly
+ */
 ipcMain.handle('clear-logs', async (event) => {
   try {
-    const { logger } = require('../dist/utils/logger');
-    logger.clearLogs();
+    const logDir = getLogDir();
+    const logFile = getLogFile();
+    
+    // Remove main log file
+    if (fs.existsSync(logFile)) {
+      fs.unlinkSync(logFile);
+    }
+    
+    // Remove backup files
+    for (let i = 1; i <= 15; i++) {
+      const backupFile = path.join(logDir, `app.log.${i}`);
+      if (fs.existsSync(backupFile)) {
+        fs.unlinkSync(backupFile);
+      }
+    }
+    
     console.log('[IPC] Logs cleared');
     return { success: true };
   } catch (error) {
@@ -874,10 +915,20 @@ ipcMain.handle('clear-logs', async (event) => {
   }
 });
 
+/**
+ * Set log level - stored in config and passed to daemon
+ */
 ipcMain.handle('set-log-level', async (event, level) => {
   try {
-    const { logger } = require('../dist/utils/logger');
-    logger.setLogLevel(level);
+    currentLogLevel = level;
+    config.logLevel = level;
+    saveConfig(config);
+    
+    // If daemon is running, update its logger
+    if (daemon && daemon.setLogLevel) {
+      daemon.setLogLevel(level);
+    }
+    
     return { success: true, logLevel: level };
   } catch (error) {
     console.error('Error setting log level:', error);
@@ -885,11 +936,12 @@ ipcMain.handle('set-log-level', async (event, level) => {
   }
 });
 
+/**
+ * Get current log level
+ */
 ipcMain.handle('get-log-level', async (event) => {
   try {
-    const { logger } = require('../dist/utils/logger');
-    const logLevel = logger.getLogLevel();
-    return { success: true, logLevel };
+    return { success: true, logLevel: currentLogLevel };
   } catch (error) {
     console.error('Error getting log level:', error);
     return { success: false, error: error.message };
@@ -1157,3 +1209,5 @@ ipcMain.handle('get-update-available', async (event) => {
     return { success: false, error: error.message };
   }
 });
+
+} // Ende des Single Instance Lock else-Blocks
