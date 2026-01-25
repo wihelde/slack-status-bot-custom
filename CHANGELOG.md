@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.6] - 
+
+## Fixed
+
+- in some cases two instances were started when you reboot your machine
+- logs now use auto-scroll in the correct way
+- away-status is now "secured" and will not be changed by the automatic status-correction (runs every 60 seconds)
+
 ## [1.4.5] - 2021-01-25
 
 ## Fixed
