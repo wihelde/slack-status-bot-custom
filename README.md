@@ -2,6 +2,15 @@
 
 Desktop application for automating your Slack status based on music playback, meetings, and custom rules.
 
+## Installation
+
+### macOS (Currently Supported)
+Download the latest `.dmg` installer from [Releases](https://github.com/yourusername/slack-status-bot/releases)
+Move the app to your applications-folder
+Open your terminal and execute the following command: 
+
+`xattr -dr com.apple.quarantine /Applications/Slack\ Status\ Bot.app`
+
 ## Features
 
 **Multi-Source Status Updates**
@@ -23,11 +32,6 @@ Desktop application for automating your Slack status based on music playback, me
 - Per-source enable/disable
 - Customizable source priority order
 - Auto-start on login
-
-## Installation
-
-### macOS (Currently Supported)
-Download the latest `.dmg` installer from [Releases](https://github.com/yourusername/slack-status-bot/releases)
 
 ## Configuration
 
