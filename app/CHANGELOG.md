@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.7]
+
+## Changed
+
+- sections in Settings -> Status Configuration can now be fold and unfold
+- without a token the source-toggles were not usable - its now indicated and shows a hint to first set up a token
+
+
+## Fixed
+
+- auto-start was not checking existing launchAgents which could end up in a missleading state
+
 ## [1.4.6] - 2026-01-26
 
 ## Fixed

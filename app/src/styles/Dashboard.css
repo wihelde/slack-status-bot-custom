@@ -384,6 +384,45 @@ input:checked + .slider:before {
   opacity: 1;
 }
 
+/* Disabled states for sources when daemon is not running */
+.dashboard-card.disabled-card {
+  opacity: 0.7;
+}
+
+.sources-disabled-notice {
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 15px;
+  color: #856404;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sources-grid.disabled {
+  pointer-events: none;
+}
+
+.sources-grid.disabled .source-item {
+  opacity: 0.5;
+}
+
+.toggle.disabled {
+  cursor: not-allowed;
+}
+
+.toggle.disabled .slider {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.toggle.disabled input:checked + .slider {
+  background-color: #a0c4a0;
+}
+
 @media (max-width: 768px) {
   .dashboard {
     padding: 15px;

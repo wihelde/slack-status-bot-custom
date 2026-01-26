@@ -80,7 +80,7 @@ describe('FirstRunDialog', () => {
     });
   });
 
-  it('should NOT call setAutoLaunch when checkbox is not enabled', async () => {
+  it('should call setAutoLaunch(false) when checkbox is not enabled', async () => {
     const onComplete = vi.fn();
     const mockIPCService = IPCService as any;
 
@@ -90,7 +90,8 @@ describe('FirstRunDialog', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(mockIPCService.setAutoLaunch).not.toHaveBeenCalled();
+      // Explicitly set auto-launch to false to ensure it's disabled
+      expect(mockIPCService.setAutoLaunch).toHaveBeenCalledWith(false);
     });
   });
 

@@ -16,6 +16,8 @@ export const StatusConfigEditor: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
+  const [scheduledExpanded, setScheduledExpanded] = useState(false);
 
   // Load status configuration on mount
   useEffect(() => {
@@ -226,62 +228,95 @@ export const StatusConfigEditor: React.FC = () => {
     <div className="status-config-editor">
       <div className="editor-container">
         {/* Quick Actions Section */}
-        <section className="status-section">
-          <h3>Quick Actions</h3>
-          <p className="section-description">
-            These status options appear as buttons on the Dashboard. Edit the emoji and message to customize them.
-          </p>
-
-          <div className="statuses-list">
-            {quickActions.map((status, index) => {
-              const actualIndex = statuses.findIndex(s => s.id === status.id);
-              return (
-                <StatusItem
-                  key={status.id}
-                  status={status}
-                  index={actualIndex}
-                  isQuickAction={true}
-                  onStatusChange={handleStatusChange}
-                  onCopy={handleCopyStatus}
-                  onDelete={handleDeleteStatus}
-                />
-              );
-            })}
+        <section className={`status-section collapsible ${quickActionsExpanded ? 'expanded' : 'collapsed'}`}>
+          <div 
+            className="section-header-collapsible"
+            onClick={() => setQuickActionsExpanded(!quickActionsExpanded)}
+          >
+            <div className="section-header-left">
+              <span className="collapse-icon">{quickActionsExpanded ? '▼' : '▶'}</span>
+              <h3>Quick Actions</h3>
+              <span className="item-count">({quickActions.length})</span>
+            </div>
           </div>
+          
+          {quickActionsExpanded && (
+            <>
+              <p className="section-description">
+                These status options appear as buttons on the Dashboard. Edit the emoji and message to customize them.
+              </p>
+
+              <div className="statuses-list">
+                {quickActions.map((status, index) => {
+                  const actualIndex = statuses.findIndex(s => s.id === status.id);
+                  return (
+                    <StatusItem
+                      key={status.id}
+                      status={status}
+                      index={actualIndex}
+                      isQuickAction={true}
+                      onStatusChange={handleStatusChange}
+                      onCopy={handleCopyStatus}
+                      onDelete={handleDeleteStatus}
+                    />
+                  );
+                })}
+              </div>
+            </>
+          )}
         </section>
 
         {/* Day-based Status Section */}
-        <section className="status-section">
-          <div className="section-header">
-            <h3>Scheduled Status (by Day of Week)</h3>
-            <button className="btn btn-secondary" onClick={handleAddNewStatus}>
+        <section className={`status-section collapsible ${scheduledExpanded ? 'expanded' : 'collapsed'}`}>
+          <div 
+            className="section-header-collapsible"
+            onClick={() => setScheduledExpanded(!scheduledExpanded)}
+          >
+            <div className="section-header-left">
+              <span className="collapse-icon">{scheduledExpanded ? '▼' : '▶'}</span>
+              <h3>Scheduled Status (by Day of Week)</h3>
+              <span className="item-count">({dayBased.length})</span>
+            </div>
+            <button 
+              className="btn btn-secondary" 
+              onClick={(e) => {
+                e.stopPropagation();
+                setScheduledExpanded(true);
+                handleAddNewStatus();
+              }}
+            >
               + Add New Status
             </button>
           </div>
-          <p className="section-description">
-            Set automatic status updates for specific days of the week. If multiple statuses are configured for the same day, one will be randomly selected.
-          </p>
+          
+          {scheduledExpanded && (
+            <>
+              <p className="section-description">
+                Set automatic status updates for specific days of the week. If multiple statuses are configured for the same day, one will be randomly selected.
+              </p>
 
-          <div className="statuses-list">
-            {dayBased.length === 0 ? (
-              <p className="no-statuses">No day-based statuses configured. Click "Add New Status" to create one.</p>
-            ) : (
-              dayBased.map((status, index) => {
-                const actualIndex = statuses.findIndex(s => s.id === status.id);
-                return (
-                  <StatusItem
-                    key={status.id}
-                    status={status}
-                    index={actualIndex}
-                    isQuickAction={false}
-                    onStatusChange={handleStatusChange}
-                    onCopy={handleCopyStatus}
-                    onDelete={handleDeleteStatus}
-                  />
-                );
-              })
-            )}
-          </div>
+              <div className="statuses-list">
+                {dayBased.length === 0 ? (
+                  <p className="no-statuses">No day-based statuses configured. Click "Add New Status" to create one.</p>
+                ) : (
+                  dayBased.map((status, index) => {
+                    const actualIndex = statuses.findIndex(s => s.id === status.id);
+                    return (
+                      <StatusItem
+                        key={status.id}
+                        status={status}
+                        index={actualIndex}
+                        isQuickAction={false}
+                        onStatusChange={handleStatusChange}
+                        onCopy={handleCopyStatus}
+                        onDelete={handleDeleteStatus}
+                      />
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
         </section>
       </div>
 

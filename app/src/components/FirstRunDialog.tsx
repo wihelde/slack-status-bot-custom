@@ -13,10 +13,8 @@ const FirstRunDialog: React.FC<FirstRunDialogProps> = ({ onComplete }) => {
   const handleConfirm = async () => {
     setLoading(true);
     try {
-      // Setze Auto-Launch wenn gewünscht
-      if (setting) {
-        await IPCService.setAutoLaunch(true);
-      }
+      // Setze Auto-Launch basierend auf User-Auswahl (explizit auch false setzen!)
+      await IPCService.setAutoLaunch(setting);
       // Markiere First Run als abgeschlossen
       await IPCService.completeFirstRun();
       onComplete();

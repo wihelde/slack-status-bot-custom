@@ -285,18 +285,24 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="dashboard-card">
+      <div className={`dashboard-card ${!daemonRunning ? 'disabled-card' : ''}`}>
         <h2>Active Sources</h2>
-        <div className="sources-grid">
+        {!daemonRunning && (
+          <div className="sources-disabled-notice">
+            ⚠️ Configure a Slack token in Settings to enable source tracking
+          </div>
+        )}
+        <div className={`sources-grid ${!daemonRunning ? 'disabled' : ''}`}>
           {sources.map((source) => (
             <div key={source.name} className={`source-item ${source.isActive ? 'active' : ''}`}>
               <div className="source-header">
                 <h3>{sourceIcons[source.name]} {sourceLabels[source.name]}</h3>
-                <label className="toggle">
+                <label className={`toggle ${!daemonRunning ? 'disabled' : ''}`}>
                   <input
                     type="checkbox"
                     checked={source.enabled}
                     onChange={() => handleToggleSource(source.name)}
+                    disabled={!daemonRunning}
                   />
                   <span className="slider"></span>
                 </label>
