@@ -1,6 +1,12 @@
 # Changelog
 
-## [1.4.7]
+## [1.4.8]
+
+## Fixed
+
+- there was some race condition when a source became inactive and the automatic status correction ran at the same time
+
+## [1.4.7] - 2026-01-27
 
 ## Changed
 

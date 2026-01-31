@@ -31,6 +31,10 @@ export class SlackStatusBotDaemon {
   private lastResetBlockedTime: number = 0; // Track when reset was last blocked
   private readonly RESET_BLOCKED_COOLDOWN = 30000; // Don't retry reset for 30 seconds if blocked
   private onStatusChanged?: (statusData: any) => void; // Callback for status changes (IPC)
+  private lastProfileSetTime: number = 0; // Track when we last set a profile
+  private readonly PROFILE_SET_COOLDOWN = 2000; // Minimum 2 seconds between profile updates to avoid rate limiting
+  private isPolling: boolean = false; // Prevent concurrent polling cycles
+  private pollTimeoutId: NodeJS.Timeout | null = null; // Track polling timeout for cleanup
 
   constructor(config: DaemonConfig) {
     this.slackService = new SlackService(config.slackTokens);
@@ -90,6 +94,12 @@ export class SlackStatusBotDaemon {
     // Clear all intervals
     this.intervals.forEach(interval => clearInterval(interval));
     this.intervals = [];
+    
+    // Clear polling timeout
+    if (this.pollTimeoutId) {
+      clearTimeout(this.pollTimeoutId);
+      this.pollTimeoutId = null;
+    }
 
     this.saveConfig();
     console.log('✅ Daemon stopped');
@@ -298,8 +308,16 @@ export class SlackStatusBotDaemon {
       huddle: { wasActive: false, lastMessage: '' },
     };
 
-    // Poll all sources every second
-    const interval = setInterval(async () => {
+    // Poll all sources - use recursive setTimeout instead of setInterval to ensure
+    // no concurrent polling cycles (setInterval doesn't wait for async operations to complete)
+    const poll = async (): Promise<void> => {
+      if (this.isPolling) {
+        logger.debug('[polling] Polling already in progress, skipping this cycle');
+        return;
+      }
+
+      this.isPolling = true;
+
       try {
         const sourceStatuses = await this.getSourceStatuses();
 
@@ -380,18 +398,28 @@ export class SlackStatusBotDaemon {
                   lastProfile.status_text !== status.message;
                 
                 if (statusChanged) {
-                  sourceState[sourceName].lastMessage = status.message || '';
-                  const logReason = isStateTransition ? 'became active' : 'message changed';
-                  logger.info(`[polling] ${sourceName} ${logReason}, setting status`, { emoji: status.emoji, message: status.message });
-                  await this.slackService.setProfile(status.emoji!, status.message!);
+                  // Check cooldown to avoid rate limiting
+                  const now = Date.now();
+                  const timeSinceLastSet = now - this.lastProfileSetTime;
                   
-                  // Emit status changed event for UI update
-                  this.statusManager.emit('statusChanged', { 
-                    emoji: status.emoji, 
-                    message: status.message,
-                    stateValue: 'activeSource'
-                  });
-                  statusWasSet = true;
+                  if (timeSinceLastSet >= this.PROFILE_SET_COOLDOWN) {
+                    sourceState[sourceName].lastMessage = status.message || '';
+                    const logReason = isStateTransition ? 'became active' : 'message changed';
+                    logger.info(`[polling] ${sourceName} ${logReason}, setting status`, { emoji: status.emoji, message: status.message });
+                    await this.slackService.setProfile(status.emoji!, status.message!);
+                    this.lastProfileSetTime = now;
+                    
+                    // Emit status changed event for UI update
+                    this.statusManager.emit('statusChanged', { 
+                      emoji: status.emoji, 
+                      message: status.message,
+                      stateValue: 'activeSource'
+                    });
+                    statusWasSet = true;
+                  } else {
+                    const remainingCooldown = Math.ceil((this.PROFILE_SET_COOLDOWN - timeSinceLastSet) / 1000);
+                    logger.debug(`[polling] ${sourceName} status changed but rate limited (${remainingCooldown}s cooldown remaining)`, { emoji: status.emoji, message: status.message });
+                  }
                 } else {
                   // Status hasn't changed, just update lastMessage tracking
                   sourceState[sourceName].lastMessage = status.message || '';
@@ -459,8 +487,19 @@ export class SlackStatusBotDaemon {
                     lastProfile.status_text !== nextStatus.message;
                   
                   if (statusChanged) {
-                    sourceState[nextActiveSource].lastMessage = nextStatus.message;
-                    await this.slackService.setProfile(nextStatus.emoji!, nextStatus.message!);
+                    // Check cooldown to avoid rate limiting
+                    const now = Date.now();
+                    const timeSinceLastSet = now - this.lastProfileSetTime;
+                    
+                    if (timeSinceLastSet >= this.PROFILE_SET_COOLDOWN) {
+                      sourceState[nextActiveSource].lastMessage = nextStatus.message;
+                      logger.info(`[polling] Switching status from ${sourceName} to ${nextActiveSource}, setting profile`, { emoji: nextStatus.emoji, message: nextStatus.message });
+                      await this.slackService.setProfile(nextStatus.emoji!, nextStatus.message!);
+                      this.lastProfileSetTime = now;
+                    } else {
+                      const remainingCooldown = Math.ceil((this.PROFILE_SET_COOLDOWN - timeSinceLastSet) / 1000);
+                      logger.debug(`[polling] Source switch deferred due to rate limit (${remainingCooldown}s cooldown remaining)`);
+                    }
                   } else {
                     logger.debug(`[polling] Next source status unchanged, skipping API call`);
                   }
@@ -518,10 +557,19 @@ export class SlackStatusBotDaemon {
         }
       } catch (error) {
         console.error('Error polling sources:', error);
+      } finally {
+        this.isPolling = false;
       }
-    }, POLL_INTERVALS.SPOTIFY);
 
-    this.intervals.push(interval);
+      // Schedule next poll only after this one completes
+      // This prevents concurrent polling cycles
+      if (this.running) {
+        this.pollTimeoutId = setTimeout(poll, POLL_INTERVALS.SPOTIFY);
+      }
+    };
+
+    // Start first poll
+    poll();
   }
 
   private startStatusCorrection(): void {

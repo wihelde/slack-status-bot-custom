@@ -24,6 +24,7 @@ export class StatusManager extends EventEmitter {
   private readonly PROFILE_CACHE_TTL = 5000; // Cache profile for 5 seconds
   private dayStatusEmojiMap: Map<number, Set<string>> = new Map(); // Maps DayOfWeek → valid emoji set for that day
   private overridablePatterns: OverridableStatusPattern[];
+  private isResetting: boolean = false; // Prevent concurrent reset calls
 
   constructor(slackService: SlackService, customStatuses?: CustomStatusConfig[]) {
     super(); // Call EventEmitter constructor
@@ -193,6 +194,25 @@ export class StatusManager extends EventEmitter {
    * Reset status to default based on day of week
    */
   async reset(): Promise<boolean> {
+    // Prevent concurrent reset calls (race condition protection)
+    if (this.isResetting) {
+      logger.info(`[statusManager] reset() skipped - another reset is already in progress`);
+      return true; // Return true to indicate "handled" (the other reset will do the job)
+    }
+    
+    this.isResetting = true;
+    
+    try {
+      return await this.performReset();
+    } finally {
+      this.isResetting = false;
+    }
+  }
+
+  /**
+   * Internal reset implementation (called by reset() with concurrency protection)
+   */
+  private async performReset(): Promise<boolean> {
     const dayOfWeek = this.getDayOfWeek();
 
     // Get status from configuration for this day
