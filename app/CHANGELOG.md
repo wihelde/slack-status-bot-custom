@@ -1,6 +1,12 @@
 # Changelog
 
-## [1.4.8]
+## [1.4.9] - 
+
+## Fixed
+
+- adjusted dmg-build, so that the background-image in the dmg is shown (again)
+
+## [1.4.8] - 2026-01-31
 
 ## Fixed
 
