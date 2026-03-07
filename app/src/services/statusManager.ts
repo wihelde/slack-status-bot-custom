@@ -109,6 +109,10 @@ export class StatusManager extends EventEmitter {
   /**
    * Check if current status is "clean" (allowed to change)
    * Returns true if status can be changed, false if it's protected
+   * 
+   * CRITICAL: The order of checks matters! See ARCHITECTURE.md: "The isStatusClean() Decision Tree"
+   * - 'not working' mode check MUST come BEFORE allowedEmojis check
+   * - This protects Holiday status from being overridden by music/meeting sources
    */
   async isStatusClean(): Promise<boolean> {
     const profile = await this.getCachedProfile();
@@ -224,6 +228,11 @@ export class StatusManager extends EventEmitter {
 
   /**
    * Internal reset implementation (called by reset() with concurrency protection)
+   * 
+   * CRITICAL: Must check 'not working' mode at the START!
+   * See ARCHITECTURE.md: "The performReset() Protection"
+   * - If statusCheckState.value === 'not working', return FALSE immediately
+   * - This prevents reset() from clearing Holiday status when Spotify stops
    */
   private async performReset(): Promise<boolean> {
     // Prevent resetting if 'not working' mode is active (user has set a protected status)
@@ -369,6 +378,14 @@ export class StatusManager extends EventEmitter {
 
   /**
    * Correct status based on day of week if needed
+   * 
+   * Handles several cases:
+   * 1. Skips if a source is actively running (Spotify, Zoom, etc.)
+   * 2. Handles Holiday expiration: detects when Slack-side expiration passes and auto-clears 'not working' mode
+   * 3. Corrects status if current emoji doesn't match the day configuration
+   * 4. Respects user's custom/manual statuses
+   * 
+   * See ARCHITECTURE.md: "Flow 4: Holiday Expiration Ends"
    */
   async correctStatus(): Promise<void> {
     // Don't correct status if a source is actively running
