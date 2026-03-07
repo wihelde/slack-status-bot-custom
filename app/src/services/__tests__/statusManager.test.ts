@@ -205,6 +205,48 @@ describe('StatusManager', () => {
       
       expect(result).toBe(true);
     });
+
+    it('should block resetting when Holiday emoji is set and statusCheckState is "not working"', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing',
+      });
+
+      statusManager.setStatusCheckState({ value: 'not working' });
+
+      const result = await statusManager.isStatusClean();
+      
+      // Should be false - Holiday status is protected when in 'not working' mode
+      expect(result).toBe(false);
+    });
+
+    it('should block resetting when other protected emojis are set in "not working" mode', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.SICK_EMOJI,
+        status_text: 'Out sick',
+      });
+
+      statusManager.setStatusCheckState({ value: 'not working' });
+
+      const result = await statusManager.isStatusClean();
+      
+      // Should be false - Sick status is protected when in 'not working' mode
+      expect(result).toBe(false);
+    });
+
+    it('should allow resetting when status is managed but not in "not working" mode', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      const result = await statusManager.isStatusClean();
+      
+      // Should be true - Holiday emoji is allowed when NOT in 'not working' mode
+      expect(result).toBe(true);
+    });
   });
 
   describe('correctStatus()', () => {
@@ -511,6 +553,76 @@ describe('StatusManager', () => {
     });
   });
 
+  describe('Holiday Status Protection Against Polling', () => {
+    it('should not allow Spotify to override Holiday status when in "not working" mode', async () => {
+      // Setup: User has set Holiday status
+      await statusManager.setCustomStatus(
+        STATUS_MESSAGES.HOLIDAY_EMOJI,
+        'strong vacationing (back on 14.03.2026)'
+      );
+
+      // Verify the state is set to 'not working'
+      let state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+
+      // Now simulate Spotify polling trying to change status
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing (back on 14.03.2026)',
+      });
+
+      const isClean = await statusManager.isStatusClean();
+
+      // Should be false - Holiday status is protected
+      expect(isClean).toBe(false);
+      
+      // Spotify should NOT be allowed to set status
+      mockSlackService.setProfile.mockClear();
+      // This simulates what daemon.ts does during polling
+      if (isClean) {
+        await statusManager.setCustomStatus(
+          STATUS_MESSAGES.SPOTIFY_EMOJI,
+          'Playing something'
+        );
+      }
+
+      // setProfile should not have been called
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+      
+      // State should still be 'not working'
+      state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+    });
+
+    it('should allow Spotify when Holiday status was cleared (statusCheckState reset)', async () => {
+      // Setup: User has set Holiday status
+      await statusManager.setCustomStatus(
+        STATUS_MESSAGES.HOLIDAY_EMOJI,
+        'strong vacationing'
+      );
+
+      let state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+
+      // User manually goes online (clears the holiday status)
+      await statusManager.goOnline();
+
+      state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('');
+
+      // Now Spotify should be able to set status
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+        status_text: 'Monday',
+      });
+
+      const isClean = await statusManager.isStatusClean();
+
+      // Should be true - no longer in 'not working' mode
+      expect(isClean).toBe(true);
+    });
+  });
+
   describe('reset() on weekends with user configuration', () => {
     it('should set weekend status when user has configured one for Saturday', async () => {
       mockSlackService.setProfile.mockClear();
@@ -753,6 +865,95 @@ describe('StatusManager', () => {
 
       // Should be false because OFF_EMOJI is not in managed list
       expect(result).toBe(false);
+    });
+  });
+
+  describe('correctStatus() with Holiday expiration', () => {
+    it('should skip correction when Holiday status has active expiration', async () => {
+      const futureTimestamp = Math.floor(Date.now() / 1000) + 86400; // +1 day
+      
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing',
+        status_expiration: futureTimestamp,
+      });
+
+      statusManager.setStatusCheckState({ value: 'not working' });
+      mockSlackService.setProfile.mockClear();
+      
+      await statusManager.correctStatus();
+
+      // Should not attempt to change status (Holiday is protected by expiration)
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should clear not working mode when Holiday expiration has ended', async () => {
+      // This test directly verifies that the expired holiday logic works
+      // by calling correctStatus with a profile that has expired holiday status
+      
+      const pastTimestamp = Math.floor(Date.now() / 1000) - 86400; // 1 day ago
+      const now = Math.floor(Date.now() / 1000);
+      
+      // Verify the timestamp is actually in the past
+      expect(pastTimestamp).toBeLessThan(now);
+      
+      // Create a fresh StatusManager instance
+      const testStatusManager = new StatusManager(mockSlackService);
+      
+      // Set initial state
+      testStatusManager.setStatusCheckState({ value: 'not working' });
+      
+      // Set profile cache with expired holiday
+      testStatusManager.setProfileCache({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing',
+        status_expiration: pastTimestamp,
+      });
+
+      // Verify initial state
+      let state = testStatusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+
+      // Call correctStatus - it should clear the not working mode
+      // because the Holiday expiration is in the past
+      await testStatusManager.correctStatus();
+
+      // Verify that the state was cleared
+      state = testStatusManager.getStatusCheckState();
+      expect(state.value).toBe('');
+      expect(state.activeSource).toBeUndefined();
+    });
+
+    it('should protect other not working statuses regardless of expiration', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.OFF_EMOJI,
+        status_text: 'Off',
+        status_expiration: 0, // No expiration
+      });
+
+      statusManager.setStatusCheckState({ value: 'not working' });
+      mockSlackService.setProfile.mockClear();
+      
+      await statusManager.correctStatus();
+
+      // Should not attempt to change status (Off is always protected)
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should protect Sick status even when expiration field is present', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.SICK_EMOJI,
+        status_text: 'Out sick',
+        status_expiration: 0,
+      });
+
+      statusManager.setStatusCheckState({ value: 'not working' });
+      mockSlackService.setProfile.mockClear();
+      
+      await statusManager.correctStatus();
+
+      // Should not attempt to change status (Sick is always protected)
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
   });
 

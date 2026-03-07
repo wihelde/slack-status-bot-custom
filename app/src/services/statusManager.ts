@@ -109,24 +109,26 @@ export class StatusManager extends EventEmitter {
   /**
    * Check if current status is "clean" (allowed to change)
    * Returns true if status can be changed, false if it's protected
+   * 
+   * CRITICAL: The order of checks matters! See ARCHITECTURE.md: "The isStatusClean() Decision Tree"
+   * - 'not working' mode check MUST come BEFORE allowedEmojis check
+   * - This protects Holiday status from being overridden by music/meeting sources
    */
   async isStatusClean(): Promise<boolean> {
     const profile = await this.getCachedProfile();
     if (!profile) {
+      logger.debug(`[statusManager] isStatusClean: true (no profile)`);
       return true; // Allow if we can't check
     }
 
     const { status_emoji: emoji, status_text: text } = profile;
+    const state = this.statusCheckState.value;
+    logger.debug(`[statusManager] isStatusClean called`, { emoji, text, statusCheckStateValue: state });
 
     // Check if it's an overridable third-party status (e.g., Officely)
     if (this.isOverridableThirdPartyStatus(emoji, text)) {
       logger.debug(`[statusManager] isStatusClean: true (overridable third-party status)`, { emoji, text });
       return true; // Allow override
-    }
-
-    // Allow if status is one of our automatic messages
-    if (this.allowedEmojis.has(emoji)) {
-      return true;
     }
 
     // Managed emojis (that the daemon can automatically set)
@@ -143,10 +145,15 @@ export class StatusManager extends EventEmitter {
       STATUS_MESSAGES.SKYPE_EMOJI,
       STATUS_MESSAGES.REMEET_EMOJI,
       STATUS_MESSAGES.HUDDLE_EMOJI,
+      // Protected statuses that should be blocked in 'not working' mode
+      STATUS_MESSAGES.HOLIDAY_EMOJI,
+      STATUS_MESSAGES.SICK_EMOJI,
+      STATUS_MESSAGES.PARENTAL_LEAVE_EMOJI,
     ];
 
-    // When "not working" mode is active, block automatic status changes
+    // When "not working" mode is active, block automatic status changes (check BEFORE allowedEmojis)
     if (this.statusCheckState.value === 'not working') {
+      logger.info(`[statusManager] isStatusClean: in 'not working' mode`, { emoji, managedEmojisIncludes: managedEmojis.includes(emoji) });
       // Only allow empty status or specific unmanaged statuses
       if (!emoji && !text) {
         logger.debug(`[statusManager] isStatusClean: true (empty status in 'not working' mode)`);
@@ -159,22 +166,32 @@ export class StatusManager extends EventEmitter {
       }
     }
 
+    // Allow if status is one of our automatic messages (only if NOT in "not working" mode)
+    if (this.allowedEmojis.has(emoji)) {
+      logger.debug(`[statusManager] isStatusClean: true (in allowedEmojis)`, { emoji });
+      return true;
+    }
+
     // Allow if it's one of our managed emojis (when NOT in "not working" mode)
     if (managedEmojis.includes(emoji)) {
+      logger.debug(`[statusManager] isStatusClean: true (managed emoji, not in 'not working' mode)`, { emoji });
       return true;
     }
 
     // Allow if it's an Outlook meeting status
     if (emoji === ':spiral_calendar_pad:' && text === 'In a meeting • Outlook Calendar') {
+      logger.debug(`[statusManager] isStatusClean: true (Outlook meeting)`);
       return true;
     }
 
     // Allow if status is empty
     if (!emoji && !text) {
+      logger.debug(`[statusManager] isStatusClean: true (empty status)`);
       return true;
     }
 
     // Block if none of the above match
+    logger.debug(`[statusManager] isStatusClean: false (custom status)`, { emoji, text });
     return false;
   }
 
@@ -211,8 +228,19 @@ export class StatusManager extends EventEmitter {
 
   /**
    * Internal reset implementation (called by reset() with concurrency protection)
+   * 
+   * CRITICAL: Must check 'not working' mode at the START!
+   * See ARCHITECTURE.md: "The performReset() Protection"
+   * - If statusCheckState.value === 'not working', return FALSE immediately
+   * - This prevents reset() from clearing Holiday status when Spotify stops
    */
   private async performReset(): Promise<boolean> {
+    // Prevent resetting if 'not working' mode is active (user has set a protected status)
+    if (this.statusCheckState.value === 'not working') {
+      logger.warn(`[statusManager] performReset() blocked - 'not working' mode is active`, { currentState: this.statusCheckState.value });
+      return false;
+    }
+
     const dayOfWeek = this.getDayOfWeek();
 
     // Get status from configuration for this day
@@ -350,17 +378,19 @@ export class StatusManager extends EventEmitter {
 
   /**
    * Correct status based on day of week if needed
+   * 
+   * Handles several cases:
+   * 1. Skips if a source is actively running (Spotify, Zoom, etc.)
+   * 2. Handles Holiday expiration: detects when Slack-side expiration passes and auto-clears 'not working' mode
+   * 3. Corrects status if current emoji doesn't match the day configuration
+   * 4. Respects user's custom/manual statuses
+   * 
+   * See ARCHITECTURE.md: "Flow 4: Holiday Expiration Ends"
    */
   async correctStatus(): Promise<void> {
     // Don't correct status if a source is actively running
     if (this.statusCheckState.activeSource) {
       logger.debug(`[statusManager] correctStatus: Skipping because source is active`, { activeSource: this.statusCheckState.activeSource });
-      return;
-    }
-
-    // Don't correct status if 'not working' mode is active (user has set a protected status like sick, holiday, off)
-    if (this.statusCheckState.value === 'not working') {
-      logger.debug(`[statusManager] correctStatus: Skipping because 'not working' mode is active`);
       return;
     }
 
@@ -378,6 +408,30 @@ export class StatusManager extends EventEmitter {
     const emoji = profile.status_emoji;
     const text = profile.status_text;
     if (!emoji) return;
+
+    // When "not working" mode is active, handle special cases
+    if (this.statusCheckState.value === 'not working') {
+      // Special handling for Holiday status with expiration
+      if (emoji === STATUS_MESSAGES.HOLIDAY_EMOJI) {
+        const now = Math.floor(Date.now() / 1000);
+        
+        // If Holiday has an active expiration, protect it
+        if (profile.status_expiration && profile.status_expiration > now) {
+          logger.debug(`[statusManager] correctStatus: Holiday has active expiration, skipping`, { expiration: profile.status_expiration, now });
+          return; // Protect the status
+        }
+        
+        // Holiday expiration ended or no expiration - clear the not working mode
+        logger.info(`[statusManager] correctStatus: Holiday expiration ended, clearing not working mode`, { expiration: profile.status_expiration, now });
+        this.statusCheckState.value = '';
+        this.statusCheckState.activeSource = undefined;
+        // Fall through to continue with normal correctStatus logic
+      } else {
+        // All other protected statuses (Off, Sick, Parental Leave) - always protect
+        logger.debug(`[statusManager] correctStatus: Skipping because 'not working' mode is active with protected status`, { emoji });
+        return;
+      }
+    }
 
     // Check if it's an overridable third-party status (e.g., Officely)
     // If it is, always replace it with the correct day-based status
@@ -537,6 +591,7 @@ export class StatusManager extends EventEmitter {
    * Set custom status (manual action - no isStatusClean check)
    */
   async setCustomStatus(emoji: string, message: string, expiration: number = 0): Promise<boolean> {
+    logger.info(`[statusManager] setCustomStatus called`, { emoji, message, expiration });
     // Direct set without isStatusClean check (manual action)
     const success = await this.slackService.setProfile(emoji, message, expiration);
 
@@ -582,6 +637,7 @@ export class StatusManager extends EventEmitter {
       // Only set 'not working' for specific statuses
       if (notWorkingEmojis.includes(emoji)) {
         this.statusCheckState.value = 'not working';
+        logger.info(`[statusManager] setCustomStatus: set statusCheckState.value to 'not working'`, { emoji });
       }
       // For other statuses, leave the current status check state as is
       // (don't change it, like in Bash version)

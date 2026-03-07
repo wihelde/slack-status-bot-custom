@@ -5,6 +5,7 @@ export interface SlackProfile {
   status_emoji: string;
   status_text: string;
   huddle_state?: string;
+  status_expiration?: number;
 }
 
 export interface SlackUser {
