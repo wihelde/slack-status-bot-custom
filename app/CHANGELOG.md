@@ -1,10 +1,12 @@
 # Changelog
 
-## [1.4.9] - 
+## [1.4.9] - 2026-03-07
 
 ## Fixed
 
 - adjusted dmg-build, so that the background-image in the dmg is shown (again)
+- holiday-status was changed when music was started
+- improved logic regarding holiday-expiration
 
 ## [1.4.8] - 2026-01-31
 
