@@ -205,6 +205,48 @@ describe('StatusManager', () => {
       
       expect(result).toBe(true);
     });
+
+    it('should block resetting when Holiday emoji is set and statusCheckState is "not working"', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing',
+      });
+
+      statusManager.setStatusCheckState({ value: 'not working' });
+
+      const result = await statusManager.isStatusClean();
+      
+      // Should be false - Holiday status is protected when in 'not working' mode
+      expect(result).toBe(false);
+    });
+
+    it('should block resetting when other protected emojis are set in "not working" mode', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.SICK_EMOJI,
+        status_text: 'Out sick',
+      });
+
+      statusManager.setStatusCheckState({ value: 'not working' });
+
+      const result = await statusManager.isStatusClean();
+      
+      // Should be false - Sick status is protected when in 'not working' mode
+      expect(result).toBe(false);
+    });
+
+    it('should allow resetting when status is managed but not in "not working" mode', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing',
+      });
+
+      statusManager.setStatusCheckState({ value: '' });
+
+      const result = await statusManager.isStatusClean();
+      
+      // Should be true - Holiday emoji is allowed when NOT in 'not working' mode
+      expect(result).toBe(true);
+    });
   });
 
   describe('correctStatus()', () => {
@@ -508,6 +550,76 @@ describe('StatusManager', () => {
 
       const state = customStatusManager.getStatusCheckState();
       expect(state.value).toBe('');
+    });
+  });
+
+  describe('Holiday Status Protection Against Polling', () => {
+    it('should not allow Spotify to override Holiday status when in "not working" mode', async () => {
+      // Setup: User has set Holiday status
+      await statusManager.setCustomStatus(
+        STATUS_MESSAGES.HOLIDAY_EMOJI,
+        'strong vacationing (back on 14.03.2026)'
+      );
+
+      // Verify the state is set to 'not working'
+      let state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+
+      // Now simulate Spotify polling trying to change status
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing (back on 14.03.2026)',
+      });
+
+      const isClean = await statusManager.isStatusClean();
+
+      // Should be false - Holiday status is protected
+      expect(isClean).toBe(false);
+      
+      // Spotify should NOT be allowed to set status
+      mockSlackService.setProfile.mockClear();
+      // This simulates what daemon.ts does during polling
+      if (isClean) {
+        await statusManager.setCustomStatus(
+          STATUS_MESSAGES.SPOTIFY_EMOJI,
+          'Playing something'
+        );
+      }
+
+      // setProfile should not have been called
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+      
+      // State should still be 'not working'
+      state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+    });
+
+    it('should allow Spotify when Holiday status was cleared (statusCheckState reset)', async () => {
+      // Setup: User has set Holiday status
+      await statusManager.setCustomStatus(
+        STATUS_MESSAGES.HOLIDAY_EMOJI,
+        'strong vacationing'
+      );
+
+      let state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+
+      // User manually goes online (clears the holiday status)
+      await statusManager.goOnline();
+
+      state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('');
+
+      // Now Spotify should be able to set status
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+        status_text: 'Monday',
+      });
+
+      const isClean = await statusManager.isStatusClean();
+
+      // Should be true - no longer in 'not working' mode
+      expect(isClean).toBe(true);
     });
   });
 

@@ -124,11 +124,6 @@ export class StatusManager extends EventEmitter {
       return true; // Allow override
     }
 
-    // Allow if status is one of our automatic messages
-    if (this.allowedEmojis.has(emoji)) {
-      return true;
-    }
-
     // Managed emojis (that the daemon can automatically set)
     // Note: OFF_EMOJI (:mobile_phone_off:) is intentionally NOT included - it should only be set manually via UI
     const managedEmojis = [
@@ -143,9 +138,13 @@ export class StatusManager extends EventEmitter {
       STATUS_MESSAGES.SKYPE_EMOJI,
       STATUS_MESSAGES.REMEET_EMOJI,
       STATUS_MESSAGES.HUDDLE_EMOJI,
+      // Protected statuses that should be blocked in 'not working' mode
+      STATUS_MESSAGES.HOLIDAY_EMOJI,
+      STATUS_MESSAGES.SICK_EMOJI,
+      STATUS_MESSAGES.PARENTAL_LEAVE_EMOJI,
     ];
 
-    // When "not working" mode is active, block automatic status changes
+    // When "not working" mode is active, block automatic status changes (check BEFORE allowedEmojis)
     if (this.statusCheckState.value === 'not working') {
       // Only allow empty status or specific unmanaged statuses
       if (!emoji && !text) {
@@ -157,6 +156,11 @@ export class StatusManager extends EventEmitter {
         logger.warn(`[statusManager] isStatusClean: false (managed emoji in 'not working' mode)`, { emoji, state: this.statusCheckState.value });
         return false;
       }
+    }
+
+    // Allow if status is one of our automatic messages (only if NOT in "not working" mode)
+    if (this.allowedEmojis.has(emoji)) {
+      return true;
     }
 
     // Allow if it's one of our managed emojis (when NOT in "not working" mode)
