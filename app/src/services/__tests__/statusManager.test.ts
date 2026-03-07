@@ -868,6 +868,95 @@ describe('StatusManager', () => {
     });
   });
 
+  describe('correctStatus() with Holiday expiration', () => {
+    it('should skip correction when Holiday status has active expiration', async () => {
+      const futureTimestamp = Math.floor(Date.now() / 1000) + 86400; // +1 day
+      
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing',
+        status_expiration: futureTimestamp,
+      });
+
+      statusManager.setStatusCheckState({ value: 'not working' });
+      mockSlackService.setProfile.mockClear();
+      
+      await statusManager.correctStatus();
+
+      // Should not attempt to change status (Holiday is protected by expiration)
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should clear not working mode when Holiday expiration has ended', async () => {
+      // This test directly verifies that the expired holiday logic works
+      // by calling correctStatus with a profile that has expired holiday status
+      
+      const pastTimestamp = Math.floor(Date.now() / 1000) - 86400; // 1 day ago
+      const now = Math.floor(Date.now() / 1000);
+      
+      // Verify the timestamp is actually in the past
+      expect(pastTimestamp).toBeLessThan(now);
+      
+      // Create a fresh StatusManager instance
+      const testStatusManager = new StatusManager(mockSlackService);
+      
+      // Set initial state
+      testStatusManager.setStatusCheckState({ value: 'not working' });
+      
+      // Set profile cache with expired holiday
+      testStatusManager.setProfileCache({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing',
+        status_expiration: pastTimestamp,
+      });
+
+      // Verify initial state
+      let state = testStatusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+
+      // Call correctStatus - it should clear the not working mode
+      // because the Holiday expiration is in the past
+      await testStatusManager.correctStatus();
+
+      // Verify that the state was cleared
+      state = testStatusManager.getStatusCheckState();
+      expect(state.value).toBe('');
+      expect(state.activeSource).toBeUndefined();
+    });
+
+    it('should protect other not working statuses regardless of expiration', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.OFF_EMOJI,
+        status_text: 'Off',
+        status_expiration: 0, // No expiration
+      });
+
+      statusManager.setStatusCheckState({ value: 'not working' });
+      mockSlackService.setProfile.mockClear();
+      
+      await statusManager.correctStatus();
+
+      // Should not attempt to change status (Off is always protected)
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should protect Sick status even when expiration field is present', async () => {
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.SICK_EMOJI,
+        status_text: 'Out sick',
+        status_expiration: 0,
+      });
+
+      statusManager.setStatusCheckState({ value: 'not working' });
+      mockSlackService.setProfile.mockClear();
+      
+      await statusManager.correctStatus();
+
+      // Should not attempt to change status (Sick is always protected)
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Overridable Third-Party Status Patterns', () => {
     it('should allow overriding Officely Hamburg status', async () => {
       mockSlackService.getProfile = vi.fn().mockResolvedValue({
