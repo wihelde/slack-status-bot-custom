@@ -235,6 +235,8 @@ function createTray() {
       }
     }
 
+    tray.setToolTip('Slack Status Bot');
+
     // Funktion zum Erstellen des Context-Menüs
     buildContextMenu = () => {
       const menuItems = [
