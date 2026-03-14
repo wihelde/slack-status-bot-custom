@@ -13,8 +13,9 @@ describe('IPCService - Tray Integration', () => {
 
     it('should call window.electronAPI.onOpenHolidayModal if available', () => {
       const mockCallback = vi.fn();
+      const mockCleanup = vi.fn();
       const mockElectronAPI = {
-        onOpenHolidayModal: vi.fn(),
+        onOpenHolidayModal: vi.fn(() => mockCleanup),
       };
 
       // Mock the window object
@@ -26,9 +27,10 @@ describe('IPCService - Tray Integration', () => {
         writable: true,
       });
 
-      IPCService.onOpenHolidayModal(mockCallback);
+      const cleanup = IPCService.onOpenHolidayModal(mockCallback);
 
       expect(mockElectronAPI.onOpenHolidayModal).toHaveBeenCalledWith(mockCallback);
+      expect(cleanup).toBe(mockCleanup);
 
       // Restore window
       Object.defineProperty(global, 'window', {
@@ -83,15 +85,17 @@ describe('IPCService - Tray Integration', () => {
   });
 
   describe('Integration with other IPC methods', () => {
-    it('should have consistent error handling with other methods', () => {
+    it('should return cleanup functions consistently', () => {
       // Verify that onOpenHolidayModal has same pattern as onStatusChanged
       expect(typeof IPCService.onOpenHolidayModal).toBe('function');
       expect(typeof IPCService.onStatusChanged).toBe('function');
 
-      // Both should return void (no return value)
+      // Both should return cleanup functions
+      const mockCleanup1 = vi.fn();
+      const mockCleanup2 = vi.fn();
       const mockElectronAPI = {
-        onOpenHolidayModal: vi.fn(),
-        onStatusChanged: vi.fn(),
+        onOpenHolidayModal: vi.fn(() => mockCleanup1),
+        onStatusChanged: vi.fn(() => mockCleanup2),
       };
 
       const originalWindow = global.window;
@@ -99,6 +103,25 @@ describe('IPCService - Tray Integration', () => {
         value: {
           electronAPI: mockElectronAPI,
         },
+        writable: true,
+      });
+
+      const result1 = IPCService.onOpenHolidayModal(() => {});
+      const result2 = IPCService.onStatusChanged(() => {});
+
+      expect(typeof result1).toBe('function');
+      expect(typeof result2).toBe('function');
+
+      Object.defineProperty(global, 'window', {
+        value: originalWindow,
+        writable: true,
+      });
+    });
+
+    it('should return undefined when not in Electron', () => {
+      const originalWindow = global.window;
+      Object.defineProperty(global, 'window', {
+        value: {},
         writable: true,
       });
 

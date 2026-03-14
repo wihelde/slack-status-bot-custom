@@ -67,21 +67,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * On daemon status change
    */
   onDaemonStatusChange: (callback) => {
-    ipcRenderer.on('daemon-status-changed', (event, data) => callback(data));
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('daemon-status-changed', handler);
+    return () => ipcRenderer.removeListener('daemon-status-changed', handler);
   },
 
   /**
    * On source status change
    */
   onSourceStatusChange: (callback) => {
-    ipcRenderer.on('source-status-changed', (event, data) => callback(data));
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('source-status-changed', handler);
+    return () => ipcRenderer.removeListener('source-status-changed', handler);
   },
 
   /**
    * On Slack status change
    */
   onSlackStatusChange: (callback) => {
-    ipcRenderer.on('slack-status-changed', (event, data) => callback(data));
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('slack-status-changed', handler);
+    return () => ipcRenderer.removeListener('slack-status-changed', handler);
   },
 
   /**
@@ -128,14 +134,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * Listen for status changes from daemon
    */
   onStatusChanged: (callback) => {
-    ipcRenderer.on('status-changed', (event, statusData) => callback(statusData));
+    const handler = (event, statusData) => callback(statusData);
+    ipcRenderer.on('status-changed', handler);
+    return () => ipcRenderer.removeListener('status-changed', handler);
   },
 
   /**
    * Listen for open-holiday-modal event
    */
   onOpenHolidayModal: (callback) => {
-    ipcRenderer.on('open-holiday-modal', (event) => callback());
+    const handler = () => callback();
+    ipcRenderer.on('open-holiday-modal', handler);
+    return () => ipcRenderer.removeListener('open-holiday-modal', handler);
   },
 
   /**
@@ -162,7 +172,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * Listen for update available event
    */
   onUpdateAvailable: (callback) => {
-    ipcRenderer.on('update-available', (event, updateInfo) => callback(updateInfo));
+    const handler = (event, updateInfo) => callback(updateInfo);
+    ipcRenderer.on('update-available', handler);
+    return () => ipcRenderer.removeListener('update-available', handler);
   },
 
   /**

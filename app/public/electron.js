@@ -78,6 +78,15 @@ let config = {}; // Will be loaded in app.whenReady()
 
 // Note: Squirrel startup handler not needed for modern electron-builder
 
+async function showWindow() {
+  if (!mainWindow) return;
+  if (process.platform === 'darwin') {
+    await app.dock.show();
+  }
+  mainWindow.show();
+  mainWindow.focus();
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -134,19 +143,12 @@ function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
+    showWindow();
   });
 
-  // Dock-Verhalten: Verstecken beim Minimieren, Anzeigen beim Öffnen
   mainWindow.on('hide', () => {
     if (process.platform === 'darwin') {
       app.dock.hide();
-    }
-  });
-
-  mainWindow.on('show', () => {
-    if (process.platform === 'darwin') {
-      app.dock.show();
     }
   });
 }
@@ -243,10 +245,7 @@ function createTray() {
         {
           label: 'Show',
           click: () => {
-            if (mainWindow) {
-              mainWindow.show();
-              mainWindow.focus();
-            }
+            showWindow();
           },
         },
         {
@@ -280,8 +279,7 @@ function createTray() {
                 if (status.id === 'holiday') {
                   // Holiday-Special: Fenster öffnen und Modal triggern
                   if (mainWindow) {
-                    mainWindow.show();
-                    mainWindow.focus();
+                    await showWindow();
                     // Event an Renderer senden
                     mainWindow.webContents.send('open-holiday-modal');
                   }
@@ -509,15 +507,9 @@ if (!gotTheLock) {
 } else {
   // Wenn jemand versucht eine zweite Instanz zu starten,
   // das Fenster der ersten Instanz fokussieren
-  app.on('second-instance', (event, commandLine, workingDirectory) => {
+  app.on('second-instance', () => {
     logToFile('[App] Second instance attempted - focusing existing window');
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) {
-        mainWindow.restore();
-      }
-      mainWindow.show();
-      mainWindow.focus();
-    }
+    showWindow();
   });
 
 app.whenReady().then(() => {
@@ -582,9 +574,10 @@ app.whenReady().then(() => {
           }
         }
       });
-      daemon.start().catch(err => console.error('Error starting daemon:', err));
-      // Tray-Menü aktualisieren, nachdem Daemon initialisiert wurde
-      updateTrayMenu();
+      daemon.start().then(() => {
+        // Tray-Menü aktualisieren, nachdem Daemon initialisiert wurde
+        updateTrayMenu();
+      }).catch(err => console.error('Error starting daemon:', err));
     } else {
       console.log('[Daemon] No tokens configured, daemon will start after tokens are saved');
     }
@@ -605,7 +598,7 @@ app.on('activate', () => {
     createWindow();
     // Tray wird bereits in app.whenReady() erstellt, also nicht nochmal hier erstellen
   } else {
-    mainWindow.show();
+    showWindow();
   }
 });
 

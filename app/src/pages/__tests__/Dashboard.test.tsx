@@ -32,6 +32,10 @@ describe('Dashboard', () => {
     mockIPCService.onStatusChanged = vi.fn(() => () => {});
     mockIPCService.onSourceStatusChange = vi.fn(() => () => {});
     mockIPCService.onDaemonStatusChange = vi.fn(() => () => {});
+    mockIPCService.onOpenHolidayModal = vi.fn(() => () => {});
+    mockIPCService.onUpdateAvailable = vi.fn(() => () => {});
+    mockIPCService.getUpdateAvailable = vi.fn().mockResolvedValue(null);
+    mockIPCService.getStatusConfiguration = vi.fn().mockResolvedValue(null);
   });
 
   describe('Status Update Events', () => {

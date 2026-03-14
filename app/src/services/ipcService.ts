@@ -41,9 +41,9 @@ declare global {
         data?: { configured: boolean };
         error?: string;
       }>;
-      onDaemonStatusChange: (callback: (data: any) => void) => void;
-      onSourceStatusChange: (callback: (data: any) => void) => void;
-      onSlackStatusChange: (callback: (data: any) => void) => void;
+      onDaemonStatusChange: (callback: (data: any) => void) => () => void;
+      onSourceStatusChange: (callback: (data: any) => void) => () => void;
+      onSlackStatusChange: (callback: (data: any) => void) => () => void;
       getLogs: (lines?: number) => Promise<{ success: boolean; data?: string; error?: string }>;
       clearLogs: () => Promise<{ success: boolean; error?: string }>;
       setLogLevel: (level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR') => Promise<{ success: boolean; logLevel?: string; error?: string }>;
@@ -52,13 +52,13 @@ declare global {
       updateStatusConfiguration: (config: CustomStatusConfig[]) => Promise<{ success: boolean; error?: string }>;
       resetStatusConfiguration: () => Promise<{ success: boolean; error?: string }>;
       setHoliday: (returnDate: string) => Promise<{ success: boolean; data?: boolean; error?: string }>;
-      onStatusChanged: (callback: (statusData: any) => void) => void;
-      onOpenHolidayModal: (callback: () => void) => void;
+      onStatusChanged: (callback: (statusData: any) => void) => () => void;
+      onOpenHolidayModal: (callback: () => void) => () => void;
       setAutoLaunch: (enabled: boolean) => Promise<{ success: boolean; verified?: boolean; error?: string }>;
       getAutoLaunch: () => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
       isFirstRun: () => Promise<{ success: boolean; isFirstRun?: boolean; error?: string }>;
       completeFirstRun: () => Promise<{ success: boolean; error?: string }>;
-      onUpdateAvailable: (callback: (updateInfo: { version: string; releaseDate: string }) => void) => void;
+      onUpdateAvailable: (callback: (updateInfo: { version: string; releaseDate: string }) => void) => () => void;
       getUpdateAvailable: () => Promise<{ success: boolean; updateAvailable?: { version: string; releaseDate: string } | null; error?: string }>;
     };
   }
@@ -296,34 +296,34 @@ export class IPCService {
   /**
    * Listen for daemon status changes
    */
-  static onDaemonStatusChange(callback: (data: any) => void): void {
+  static onDaemonStatusChange(callback: (data: any) => void): (() => void) | undefined {
     if (!this.isElectron()) {
       console.warn('Not running in Electron');
       return;
     }
-    window.electronAPI.onDaemonStatusChange(callback);
+    return window.electronAPI.onDaemonStatusChange(callback);
   }
 
   /**
    * Listen for source status changes
    */
-  static onSourceStatusChange(callback: (data: any) => void): void {
+  static onSourceStatusChange(callback: (data: any) => void): (() => void) | undefined {
     if (!this.isElectron()) {
       console.warn('Not running in Electron');
       return;
     }
-    window.electronAPI.onSourceStatusChange(callback);
+    return window.electronAPI.onSourceStatusChange(callback);
   }
 
   /**
    * Listen for Slack status changes
    */
-  static onSlackStatusChange(callback: (data: any) => void): void {
+  static onSlackStatusChange(callback: (data: any) => void): (() => void) | undefined {
     if (!this.isElectron()) {
       console.warn('Not running in Electron');
       return;
     }
-    window.electronAPI.onSlackStatusChange(callback);
+    return window.electronAPI.onSlackStatusChange(callback);
   }
 
   /**
@@ -467,23 +467,23 @@ export class IPCService {
   /**
    * Listen for status changes from daemon
    */
-  static onStatusChanged(callback: (statusData: any) => void): void {
+  static onStatusChanged(callback: (statusData: any) => void): (() => void) | undefined {
     if (!this.isElectron()) {
       console.warn('Not running in Electron');
       return;
     }
-    window.electronAPI.onStatusChanged(callback);
+    return window.electronAPI.onStatusChanged(callback);
   }
 
   /**
    * Listen for open-holiday-modal event
    */
-  static onOpenHolidayModal(callback: () => void): void {
+  static onOpenHolidayModal(callback: () => void): (() => void) | undefined {
     if (!this.isElectron()) {
       console.warn('Not running in Electron');
       return;
     }
-    window.electronAPI.onOpenHolidayModal(callback);
+    return window.electronAPI.onOpenHolidayModal(callback);
   }
 
   /**
@@ -555,12 +555,12 @@ export class IPCService {
   /**
    * Listen for update available event
    */
-  static onUpdateAvailable(callback: (updateInfo: { version: string; releaseDate: string }) => void): void {
+  static onUpdateAvailable(callback: (updateInfo: { version: string; releaseDate: string }) => void): (() => void) | undefined {
     if (!this.isElectron()) {
       console.warn('Not running in Electron');
       return;
     }
-    window.electronAPI.onUpdateAvailable(callback);
+    return window.electronAPI.onUpdateAvailable(callback);
   }
 
   /**

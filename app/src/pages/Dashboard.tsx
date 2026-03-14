@@ -37,24 +37,23 @@ const Dashboard: React.FC = () => {
     };
     checkUpdates();
     
-    // Listen for update available event
-    IPCService.onUpdateAvailable((updateInfo) => {
+    const cleanupUpdate = IPCService.onUpdateAvailable((updateInfo) => {
       setUpdateAvailable(updateInfo);
     });
-    
+
     // Initial load
     loadStatus();
     loadStatusConfiguration();
-    
+
     // Listen for status changes from daemon (event-based, not polling)
-    IPCService.onStatusChanged((statusData) => {
+    const cleanupStatus = IPCService.onStatusChanged((statusData) => {
       console.log('[Dashboard] Status changed event received:', statusData);
       // Update current status with the new data
-      setCurrentStatus({ 
-        emoji: statusData.emoji || '', 
-        text: statusData.message || '' 
+      setCurrentStatus({
+        emoji: statusData.emoji || '',
+        text: statusData.message || ''
       });
-      
+
       // If the change is due to an active/inactive source, reload source statuses
       if (statusData.stateValue === 'activeSource' || statusData.stateValue === 'sourceInactive') {
         console.log('[Dashboard] Source status changed, reloading source statuses', { stateValue: statusData.stateValue });
@@ -96,10 +95,16 @@ const Dashboard: React.FC = () => {
     });
 
     // Listen for open-holiday-modal event from tray menu
-    IPCService.onOpenHolidayModal(() => {
+    const cleanupHoliday = IPCService.onOpenHolidayModal(() => {
       console.log('[Dashboard] Received open-holiday-modal event from tray');
       setShowHolidayModal(true);
     });
+
+    return () => {
+      cleanupUpdate?.();
+      cleanupStatus?.();
+      cleanupHoliday?.();
+    };
   }, []);
 
   const loadStatusConfiguration = async () => {

@@ -49,10 +49,10 @@ export class SlackService {
         return response.data.profile;
       }
 
-      console.error('Slack API error:', response.data.error);
+      logger.error('[slack] getProfile API error', { error: response.data.error });
       return null;
     } catch (error) {
-      console.error('Failed to get Slack profile:', error);
+      logger.error('[slack] getProfile failed', { error: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }
@@ -173,7 +173,7 @@ export class SlackService {
 
       return null;
     } catch (error) {
-      console.error('Failed to get presence:', error);
+      logger.error('[slack] getPresence failed', { error: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }
@@ -188,7 +188,7 @@ export class SlackService {
     }
 
     try {
-      console.log(`[DND] Enabling DND for ${minutes} minutes...`);
+      logger.info(`[slack] Enabling DND for ${minutes} minutes...`);
       const results = [];
       
       for (const token of this.tokens) {
@@ -209,11 +209,10 @@ export class SlackService {
       }
 
       const success = results.every(r => r.data.ok);
-      console.log(`[DND] DND enabled successfully: ${success}`);
-      console.log('[DND] Responses:', results.map(r => r.data));
+      logger.info(`[slack] DND enabled: ${success}`);
       return success;
     } catch (error) {
-      console.error('Failed to enable DND:', error);
+      logger.error('[slack] enableDND failed', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -246,7 +245,7 @@ export class SlackService {
 
       return results.every(r => r.data.ok);
     } catch (error) {
-      console.error('Failed to disable DND:', error);
+      logger.error('[slack] disableDND failed', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }

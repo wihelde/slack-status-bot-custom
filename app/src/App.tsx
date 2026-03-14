@@ -14,33 +14,32 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initApp = async () => {
-      // Check if this is first run
-      try {
-        const isFirstRun = await IPCService.isFirstRun();
-        if (isFirstRun) {
-          setShowFirstRun(true);
-        }
-      } catch (err) {
-        console.error('Error checking first run:', err);
-      } finally {
-        setLoading(false);
+    // Check if this is first run
+    IPCService.isFirstRun().then((isFirstRun) => {
+      if (isFirstRun) {
+        setShowFirstRun(true);
       }
+    }).catch((err) => {
+      console.error('Error checking first run:', err);
+    }).finally(() => {
+      setLoading(false);
+    });
 
-      // Get initial daemon status
-      IPCService.getDaemonStatus().then((status) => {
-        if (status?.running) {
-          setIsOnline(true);
-        }
-      });
+    // Get initial daemon status
+    IPCService.getDaemonStatus().then((status) => {
+      if (status?.running) {
+        setIsOnline(true);
+      }
+    });
 
-      // Listen for daemon status changes
-      IPCService.onDaemonStatusChange((data) => {
-        setIsOnline(data.running || false);
-      });
+    // Listen for daemon status changes
+    const cleanupDaemon = IPCService.onDaemonStatusChange((data) => {
+      setIsOnline(data.running || false);
+    });
+
+    return () => {
+      cleanupDaemon?.();
     };
-
-    initApp();
   }, []);
 
   if (loading) {
