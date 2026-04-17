@@ -3,7 +3,15 @@
  * Provides type-safe communication between React UI and Electron Main Process
  */
 
+import {
+  AppSnapshot,
+  AppDaemonSnapshot,
+  AppSourceSnapshot,
+  AppStatusSnapshot,
+  AppUpdateSnapshot,
+} from '../contracts/appSnapshot';
 import { CustomStatusConfig } from '../config/statusConfig';
+import { SourceName } from '../config/sourceCatalog';
 
 declare global {
   interface Window {
@@ -11,18 +19,9 @@ declare global {
       saveTokens: (tokens: string | string[]) => Promise<{ success: boolean; error?: string }>;
       getTokens: () => Promise<{ success: boolean; tokens?: string[]; count?: number; error?: string }>;
       deleteTokens: () => Promise<{ success: boolean; error?: string }>;
-      getSlackStatus: () => Promise<{
+      getAppSnapshot: () => Promise<{
         success: boolean;
-        data?: {
-          emoji: string;
-          text: string;
-          stateCheckValue: string;
-        };
-        error?: string;
-      }>;
-      getSourceStatuses: () => Promise<{
-        success: boolean;
-        data?: Record<string, any>;
+        data?: AppSnapshot;
         error?: string;
       }>;
       setStatus: (emoji: string, message: string) => Promise<{ success: boolean; data?: boolean; error?: string }>;
@@ -31,11 +30,6 @@ declare global {
       toggleSource: (source: string, enabled: boolean) => Promise<{ success: boolean; error?: string }>;
       setSourceOrder: (sourceOrder: string[]) => Promise<{ success: boolean; error?: string }>;
       getSourceOrder: () => Promise<{ success: boolean; sourceOrder?: string[]; error?: string }>;
-      getDaemonStatus: () => Promise<{
-        success: boolean;
-        data?: { running: boolean };
-        error?: string;
-      }>;
       getTokenStatus: () => Promise<{
         success: boolean;
         data?: { configured: boolean };
@@ -58,8 +52,8 @@ declare global {
       getAutoLaunch: () => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
       isFirstRun: () => Promise<{ success: boolean; isFirstRun?: boolean; error?: string }>;
       completeFirstRun: () => Promise<{ success: boolean; error?: string }>;
-      onUpdateAvailable: (callback: (updateInfo: { version: string; releaseDate: string }) => void) => () => void;
-      getUpdateAvailable: () => Promise<{ success: boolean; updateAvailable?: { version: string; releaseDate: string } | null; error?: string }>;
+      onUpdateAvailable: (callback: (updateInfo: AppUpdateSnapshot) => void) => () => void;
+      getUpdateAvailable: () => Promise<{ success: boolean; updateAvailable?: AppUpdateSnapshot | null; error?: string }>;
     };
   }
 }
@@ -92,16 +86,24 @@ export class IPCService {
   /**
    * Get current Slack status
    */
-  static async getSlackStatus() {
+  static async getSlackStatus(): Promise<AppStatusSnapshot | null> {
+    const snapshot = await this.getAppSnapshot();
+    return snapshot?.status ?? null;
+  }
+
+  /**
+   * Get the consolidated app snapshot for renderer bootstrap.
+   */
+  static async getAppSnapshot(): Promise<AppSnapshot | null> {
     if (!this.isElectron()) {
       console.warn('Not running in Electron');
       return null;
     }
     try {
-      const result = await window.electronAPI.getSlackStatus();
-      return result.success ? result.data : null;
+      const result = await window.electronAPI.getAppSnapshot();
+      return result.success ? result.data ?? null : null;
     } catch (error) {
-      console.error('Error getting Slack status:', error);
+      console.error('Error getting app snapshot:', error);
       return null;
     }
   }
@@ -109,18 +111,18 @@ export class IPCService {
   /**
    * Get status of all sources
    */
-  static async getSourceStatuses() {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+  static async getSourceStatuses(): Promise<Record<SourceName, Omit<AppSourceSnapshot, 'name'>> | null> {
+    const snapshot = await this.getAppSnapshot();
+    if (!snapshot) {
       return null;
     }
-    try {
-      const result = await window.electronAPI.getSourceStatuses();
-      return result.success ? result.data : null;
-    } catch (error) {
-      console.error('Error getting source statuses:', error);
-      return null;
-    }
+
+    return Object.fromEntries(
+      Object.entries(snapshot.sources).map(([name, source]) => {
+        const { name: _ignoredName, ...sourceStatus } = source;
+        return [name, sourceStatus];
+      })
+    ) as Record<SourceName, Omit<AppSourceSnapshot, 'name'>>;
   }
 
   /**
@@ -228,18 +230,9 @@ export class IPCService {
   /**
    * Get daemon status
    */
-  static async getDaemonStatus() {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
-      return null;
-    }
-    try {
-      const result = await window.electronAPI.getDaemonStatus();
-      return result.success ? result.data : null;
-    } catch (error) {
-      console.error('Error getting daemon status:', error);
-      return null;
-    }
+  static async getDaemonStatus(): Promise<AppDaemonSnapshot | null> {
+    const snapshot = await this.getAppSnapshot();
+    return snapshot?.daemon ?? null;
   }
 
   /**
@@ -566,7 +559,7 @@ export class IPCService {
   /**
    * Get current update availability status
    */
-  static async getUpdateAvailable(): Promise<{ version: string; releaseDate: string } | null> {
+  static async getUpdateAvailable(): Promise<AppUpdateSnapshot | null> {
     if (!this.isElectron()) {
       return null;
     }

@@ -20,14 +20,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteTokens: () => ipcRenderer.invoke('delete-tokens'),
 
   /**
-   * Get current Slack status
+   * Get the consolidated app snapshot for renderer bootstrap.
    */
-  getSlackStatus: () => ipcRenderer.invoke('get-slack-status'),
-
-  /**
-   * Get status of all sources
-   */
-  getSourceStatuses: () => ipcRenderer.invoke('get-source-statuses'),
+  getAppSnapshot: () => ipcRenderer.invoke('get-app-snapshot'),
 
   /**
    * Set custom status
@@ -52,11 +47,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   toggleSource: (source, enabled) => ipcRenderer.invoke('toggle-source', source, enabled),
   setSourceOrder: (sourceOrder) => ipcRenderer.invoke('set-source-order', sourceOrder),
   getSourceOrder: () => ipcRenderer.invoke('get-source-order'),
-
-  /**
-   * Get daemon status
-   */
-  getDaemonStatus: () => ipcRenderer.invoke('get-daemon-status'),
 
   /**
    * Check if tokens are configured

@@ -25,10 +25,9 @@ const App: React.FC = () => {
       setLoading(false);
     });
 
-    // Get initial daemon status
-    IPCService.getDaemonStatus().then((status) => {
-      if (status?.running) {
-        setIsOnline(true);
+    IPCService.getAppSnapshot().then((snapshot) => {
+      if (snapshot) {
+        setIsOnline(snapshot.daemon.running);
       }
     });
 
@@ -84,4 +83,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-

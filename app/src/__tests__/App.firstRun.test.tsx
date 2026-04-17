@@ -32,7 +32,7 @@ describe('App - First Run Integration', () => {
   it('should show FirstRunDialog when isFirstRun is true', async () => {
     const mockIPCService = IPCService as any;
     mockIPCService.isFirstRun = vi.fn().mockResolvedValue(true);
-    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
     mockIPCService.onDaemonStatusChange = vi.fn();
 
     render(<App />);
@@ -48,7 +48,7 @@ describe('App - First Run Integration', () => {
   it('should show Dashboard when isFirstRun is false', async () => {
     const mockIPCService = IPCService as any;
     mockIPCService.isFirstRun = vi.fn().mockResolvedValue(false);
-    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
     mockIPCService.onDaemonStatusChange = vi.fn();
 
     render(<App />);
@@ -64,7 +64,7 @@ describe('App - First Run Integration', () => {
   it('should hide FirstRunDialog when onComplete is called', async () => {
     const mockIPCService = IPCService as any;
     mockIPCService.isFirstRun = vi.fn().mockResolvedValue(true);
-    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
     mockIPCService.onDaemonStatusChange = vi.fn();
 
     render(<App />);
@@ -90,7 +90,7 @@ describe('App - First Run Integration', () => {
   it('should call isFirstRun on mount', async () => {
     const mockIPCService = IPCService as any;
     mockIPCService.isFirstRun = vi.fn().mockResolvedValue(false);
-    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
     mockIPCService.onDaemonStatusChange = vi.fn();
 
     render(<App />);
@@ -104,7 +104,7 @@ describe('App - First Run Integration', () => {
     const mockIPCService = IPCService as any;
     // isFirstRun catches errors internally and returns false, so we just test that false works
     mockIPCService.isFirstRun = vi.fn().mockResolvedValue(false);
-    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
     mockIPCService.onDaemonStatusChange = vi.fn();
 
     render(<App />);
@@ -121,7 +121,7 @@ describe('App - First Run Integration', () => {
     mockIPCService.isFirstRun = vi.fn(() => 
       new Promise(resolve => setTimeout(() => resolve(false), 100))
     );
-    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
     mockIPCService.onDaemonStatusChange = vi.fn();
 
     render(<App />);

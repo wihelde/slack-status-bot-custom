@@ -27,6 +27,7 @@ console.log('[Electron] isDev:', isDev);
 // For now, we'll import from dist if available
 let daemon;
 let createDaemon;
+let createAppSnapshotProvider;
 
 let mainWindow;
 let tray;
@@ -75,6 +76,52 @@ const saveConfig = (config) => {
 };
 
 let config = {}; // Will be loaded in app.whenReady()
+
+function hasConfiguredTokens() {
+  return Array.isArray(config.slackTokens) && config.slackTokens.length > 0;
+}
+
+function getSetupSnapshot() {
+  return {
+    tokensConfigured: hasConfiguredTokens(),
+    isFirstRun: !config.hasCompletedFirstRun,
+  };
+}
+
+function buildAppSnapshotProvider() {
+  if (typeof createAppSnapshotProvider !== 'function') {
+    throw new Error('App snapshot provider is not available');
+  }
+
+  return createAppSnapshotProvider({
+    getSlackStatus: async () => {
+      if (!daemon) {
+        return {
+          emoji: '',
+          text: '',
+          stateCheckValue: '',
+        };
+      }
+      return daemon.getSlackStatus();
+    },
+    getSourceStatuses: async () => {
+      if (!daemon) {
+        return {};
+      }
+      return daemon.getSourceStatuses();
+    },
+    getDaemonSnapshot: () => ({
+      running: daemon ? daemon.isRunning() : false,
+    }),
+    getUpdateSnapshot: () => updateAvailable,
+    getSetupSnapshot,
+  });
+}
+
+async function getAppSnapshot() {
+  const provider = buildAppSnapshotProvider();
+  return provider.getSnapshot();
+}
 
 // Note: Squirrel startup handler not needed for modern electron-builder
 
@@ -562,8 +609,15 @@ app.whenReady().then(() => {
     console.log('[Daemon] Loaded daemon module:', Object.keys(daemonModule));
     createDaemon = daemonModule.createDaemon;
     console.log('[Daemon] createDaemon function available:', typeof createDaemon);
+
+    const appSnapshotProviderPath = isDev
+      ? path.resolve(__dirname, '../dist/main/appSnapshotProvider')
+      : path.join(path.resolve(__dirname, '..'), 'dist', 'main', 'appSnapshotProvider');
+    const appSnapshotProviderModule = require(appSnapshotProviderPath);
+    createAppSnapshotProvider = appSnapshotProviderModule.createAppSnapshotProvider;
+    console.log('[Snapshot] createAppSnapshotProvider function available:', typeof createAppSnapshotProvider);
     
-    if (config.slackTokens && Array.isArray(config.slackTokens) && config.slackTokens.length > 0) {
+    if (hasConfiguredTokens()) {
       console.log('[Daemon] Starting daemon with stored tokens:', config.slackTokens.length);
       daemon = createDaemon({ 
         slackTokens: config.slackTokens,
@@ -710,38 +764,6 @@ ipcMain.handle('delete-tokens', async (event) => {
 });
 
 /**
- * Get current Slack status
- */
-ipcMain.handle('get-slack-status', async (event) => {
-  try {
-    if (!daemon) {
-      return { success: false, error: 'Daemon not initialized' };
-    }
-    const status = await daemon.getSlackStatus();
-    return { success: true, data: status };
-  } catch (error) {
-    console.error('Error getting status:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Get source statuses
- */
-ipcMain.handle('get-source-statuses', async (event) => {
-  try {
-    if (!daemon) {
-      return { success: false, error: 'Daemon not initialized' };
-    }
-    const statuses = await daemon.getSourceStatuses();
-    return { success: true, data: statuses };
-  } catch (error) {
-    console.error('Error getting source statuses:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
  * Set custom status
  */
 ipcMain.handle('set-status', async (event, emoji, message) => {
@@ -835,22 +857,12 @@ ipcMain.handle('get-source-order', async (event) => {
   }
 });
 
-/**
- * Get daemon status
- */
-ipcMain.handle('get-daemon-status', async (event) => {
+ipcMain.handle('get-app-snapshot', async (event) => {
   try {
-    if (!daemon) {
-      return { success: false, data: { running: false, error: 'Daemon not initialized' } };
-    }
-    return {
-      success: true,
-      data: {
-        running: daemon.isRunning(),
-      },
-    };
+    const snapshot = await getAppSnapshot();
+    return { success: true, data: snapshot };
   } catch (error) {
-    console.error('Error getting daemon status:', error);
+    console.error('Error getting app snapshot:', error);
     return { success: false, error: error.message };
   }
 });

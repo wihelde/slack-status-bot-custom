@@ -3,6 +3,7 @@ import '../styles/Settings.css';
 import { IPCService } from '../services/ipcService';
 import LogViewer from '../components/LogViewer';
 import { StatusConfigEditor } from '../components/StatusConfigEditor';
+import { DEFAULT_SOURCE_ORDER, SOURCE_CATALOG } from '../config/sourceCatalog';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'config' | 'logs' | 'system'>('config');
@@ -12,7 +13,7 @@ const Settings: React.FC = () => {
   const [error, setError] = useState('');
   const [tokens, setTokens] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [sourceOrder, setSourceOrder] = useState<string[]>(['spotify', 'appleMusic', 'zoom', 'teams', 'huddle']);
+  const [sourceOrder, setSourceOrder] = useState<string[]>([...DEFAULT_SOURCE_ORDER]);
   const [draggedSource, setDraggedSource] = useState<string | null>(null);
   const [logLevel, setLogLevelState] = useState<'DEBUG' | 'INFO' | 'WARN' | 'ERROR'>('ERROR');
   const [logLevelSaving, setLogLevelSaving] = useState(false);
@@ -176,13 +177,9 @@ const Settings: React.FC = () => {
     }
   };
 
-  const sourceLabels: Record<string, { name: string; emoji: string }> = {
-    spotify: { name: 'Spotify', emoji: '🎵' },
-    appleMusic: { name: 'Apple Music', emoji: '🎶' },
-    zoom: { name: 'Zoom', emoji: '📹' },
-    teams: { name: 'Microsoft Teams', emoji: '👥' },
-    huddle: { name: 'Slack Huddle', emoji: '🎧' },
-  };
+  const sourceLabels: Record<string, { name: string; emoji: string }> = Object.fromEntries(
+    SOURCE_CATALOG.map(source => [source.id, { name: source.displayName, emoji: source.icon }])
+  );
 
   if (loading) {
     return <div className="settings"><p>Loading...</p></div>;

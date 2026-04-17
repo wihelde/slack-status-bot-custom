@@ -51,7 +51,8 @@ describe('StatusManager', () => {
       expect(result).toBe(true);
       expect(mockSlackService.setProfile).toHaveBeenCalledWith(
         STATUS_MESSAGES.OFF_EMOJI,
-        expect.any(String)
+        expect.any(String),
+        0
       );
       expect(mockSlackService.setPresence).toHaveBeenCalledWith('away');
     });
@@ -61,6 +62,13 @@ describe('StatusManager', () => {
       
       const state = statusManager.getStatusCheckState();
       expect(state.value).toBe('not working');
+    });
+
+    it('should not mark goAway as manual activeSource', async () => {
+      await statusManager.goAway();
+
+      const state = statusManager.getStatusCheckState();
+      expect(state.activeSource).toBeUndefined();
     });
   });
 
@@ -114,6 +122,32 @@ describe('StatusManager', () => {
       
       const state = statusManager.getStatusCheckState();
       expect(state.value).toBe('not working');
+    });
+
+    it('should mark manual custom statuses as activeSource manual', async () => {
+      await statusManager.setCustomStatus(
+        STATUS_MESSAGES.BREAK_EMOJI,
+        'On a break'
+      );
+
+      const state = statusManager.getStatusCheckState();
+      expect(state.activeSource).toBe('manual');
+    });
+  });
+
+  describe('setHoliday()', () => {
+    it('should mark holiday as manual activeSource and protected state', async () => {
+      const result = await statusManager.setHoliday('14.04.2026');
+
+      expect(result).toBe(true);
+      const state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+      expect(state.activeSource).toBe('manual');
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith(
+        STATUS_MESSAGES.HOLIDAY_EMOJI,
+        expect.stringContaining('back on'),
+        expect.any(Number)
+      );
     });
   });
 
@@ -621,6 +655,22 @@ describe('StatusManager', () => {
       // Should be true - no longer in 'not working' mode
       expect(isClean).toBe(true);
     });
+
+    it('should clear activeSource manual when user goes online after a manual status', async () => {
+      await statusManager.setCustomStatus(
+        STATUS_MESSAGES.HOLIDAY_EMOJI,
+        'strong vacationing'
+      );
+
+      let state = statusManager.getStatusCheckState();
+      expect(state.activeSource).toBe('manual');
+
+      await statusManager.goOnline();
+
+      state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('');
+      expect(state.activeSource).toBeUndefined();
+    });
   });
 
   describe('reset() on weekends with user configuration', () => {
@@ -650,7 +700,7 @@ describe('StatusManager', () => {
       
       vi.useRealTimers();
 
-      expect(mockSlackService.setProfile).toHaveBeenCalledWith(':smile:', 'Weekend vibes');
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith(':smile:', 'Weekend vibes', 0);
     });
 
     it('should set empty status on weekend when user has no configuration', async () => {
@@ -677,7 +727,7 @@ describe('StatusManager', () => {
       
       vi.useRealTimers();
 
-      expect(mockSlackService.setProfile).toHaveBeenCalledWith('', '');
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith('', '', 0);
     });
 
     it('should reset Spotify status on weekend when music stops', async () => {
