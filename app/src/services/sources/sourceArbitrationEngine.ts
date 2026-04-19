@@ -169,8 +169,8 @@ export class SourceArbitrationEngine {
     return null;
   }
 
-  private isActive(status: RegisteredSourceStatus): boolean {
-    return !!status.enabled && !!status.isActive;
+  private isActive(status?: RegisteredSourceStatus): boolean {
+    return !!status?.enabled && !!status?.isActive;
   }
 
   private ensureTrackingState(sourceNames: SourceName[]): void {

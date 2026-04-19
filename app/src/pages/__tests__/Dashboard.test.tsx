@@ -3,7 +3,7 @@ import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom';
 import Dashboard from '../Dashboard';
 import { IPCService } from '../../services/ipcService';
-import type { AppSnapshot } from '../../contracts/appSnapshot';
+import type { AppSnapshot, AppSnapshotRefreshSignal } from '../../contracts/appSnapshot';
 
 vi.mock('../../services/ipcService');
 
@@ -63,12 +63,6 @@ describe('Dashboard', () => {
     vi.clearAllMocks();
 
     mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue(createAppSnapshot());
-    mockIPCService.getSlackStatus = vi.fn().mockResolvedValue(createStatus());
-    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({ running: true });
-    mockIPCService.getSourceStatuses = vi
-      .fn()
-      .mockResolvedValue(createSourceStatuses());
-    mockIPCService.getUpdateAvailable = vi.fn().mockResolvedValue(null);
     mockIPCService.getStatusConfiguration = vi.fn().mockResolvedValue(null);
 
     mockIPCService.goOnline = vi.fn().mockResolvedValue(true);
@@ -77,11 +71,8 @@ describe('Dashboard', () => {
     mockIPCService.setHoliday = vi.fn().mockResolvedValue(true);
     mockIPCService.toggleSource = vi.fn().mockResolvedValue(true);
 
-    mockIPCService.onStatusChanged = vi.fn(() => () => {});
-    mockIPCService.onSourceStatusChange = vi.fn(() => () => {});
-    mockIPCService.onDaemonStatusChange = vi.fn(() => () => {});
+    mockIPCService.onAppSnapshotChanged = vi.fn(() => () => {});
     mockIPCService.onOpenHolidayModal = vi.fn(() => () => {});
-    mockIPCService.onUpdateAvailable = vi.fn(() => () => {});
   });
 
   it('bootstraps the dashboard from the current IPC-backed renderer state', async () => {
@@ -141,10 +132,10 @@ describe('Dashboard', () => {
   });
 
   it('applies event-driven status changes and refreshes sources through the same renderer model', async () => {
-    let statusChangedCallback: ((statusData: any) => void) | undefined;
+    let snapshotChangedCallback: ((signal: AppSnapshotRefreshSignal) => void) | undefined;
 
-    mockIPCService.onStatusChanged = vi.fn((callback: (statusData: any) => void) => {
-      statusChangedCallback = callback;
+    mockIPCService.onAppSnapshotChanged = vi.fn((callback: (signal: AppSnapshotRefreshSignal) => void) => {
+      snapshotChangedCallback = callback;
       return () => {};
     });
 
@@ -173,11 +164,7 @@ describe('Dashboard', () => {
     await screen.findAllByText('Playing Music');
 
     await act(async () => {
-      statusChangedCallback?.({
-        emoji: ':zoom:',
-        message: 'In a meeting',
-        stateValue: 'activeSource',
-      });
+      snapshotChangedCallback?.({ reason: 'daemon-status' });
     });
 
     await waitFor(() => {

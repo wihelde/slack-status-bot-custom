@@ -124,3 +124,13 @@ Wichtig ist dabei: Der Snapshot soll das bevorzugte UI-Modell werden, nicht nur 
 - The core success criterion is not "having a snapshot object" but making that snapshot the clear, preferred renderer-facing state model.
 - A successful outcome would make it obvious where renderer boot state comes from, how live updates map back to that same model, and which flows are intentionally outside the snapshot.
 - The main architectural risk is letting the snapshot become either too weak to be useful or too broad to stay intentional; the implementation should actively steer between those extremes.
+
+## Decision Log
+
+The implementation has now fixed the most important open boundary choices:
+
+- First-run belongs to the renderer-facing app snapshot as a setup flag.
+- App-shell and dashboard bootstrap from the same canonical snapshot read.
+- Runtime events are modeled primarily as refresh signals for that canonical snapshot.
+- Status-configuration editing remains intentionally outside the lightweight runtime snapshot.
+- The main-process snapshot provider is the preferred owner for normalizing renderer-visible runtime data before it crosses the Electron boundary.

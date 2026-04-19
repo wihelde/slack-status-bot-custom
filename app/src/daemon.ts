@@ -3,16 +3,17 @@ import { SlackStatusExecutor } from './services/slackStatusExecutor';
 import { StatusManager } from './services/statusManager';
 import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS } from './config/statusConfig';
 import { DEFAULT_SOURCE_ORDER, MEETING_SOURCE_NAMES, SourceName } from './config/sourceCatalog';
+import { AppConfigStore, createAppConfigStore } from './config/appConfigStore';
 import { SourceArbitrationEngine, TrackedSourceChange } from './services/sources/sourceArbitrationEngine';
 import { SourceRegistry } from './services/sources/sourceRegistry';
 import { logger } from './utils/logger';
-import fs from 'fs';
 import path from 'path';
 
 export interface DaemonConfig {
   slackTokens: string | string[];
   configDir?: string;
-  onStatusChanged?: (statusData: any) => void; // Callback for status changes
+  configStore?: AppConfigStore;
+  onAppStateChanged?: (statusData: any) => void; // Callback for renderer-facing runtime changes
 }
 
 export class SlackStatusBotDaemon {
@@ -27,7 +28,8 @@ export class SlackStatusBotDaemon {
   private sourceOrder: SourceName[] = [...DEFAULT_SOURCE_ORDER];
   private lastResetBlockedTime: number = 0; // Track when reset was last blocked
   private readonly RESET_BLOCKED_COOLDOWN = 30000; // Don't retry reset for 30 seconds if blocked
-  private onStatusChanged?: (statusData: any) => void; // Callback for status changes (IPC)
+  private onAppStateChanged?: (statusData: any) => void; // Callback for renderer-facing runtime changes
+  private configStore: AppConfigStore;
   private lastProfileSetTime: number = 0; // Track when we last set a profile
   private readonly PROFILE_SET_COOLDOWN = 2000; // Minimum 2 seconds between profile updates to avoid rate limiting
   private isPolling: boolean = false; // Prevent concurrent polling cycles
@@ -39,17 +41,17 @@ export class SlackStatusBotDaemon {
     this.statusManager = new StatusManager(this.slackService);
     this.sourceRegistry = new SourceRegistry();
     this.sourceArbitrationEngine = new SourceArbitrationEngine();
-    this.onStatusChanged = config.onStatusChanged;
+    this.onAppStateChanged = config.onAppStateChanged;
 
     this.configDir = config.configDir || this.getDefaultConfigDir();
-    this.ensureConfigDir();
+    this.configStore = config.configStore || createAppConfigStore({ configDir: this.configDir });
     this.loadConfig();
     
     // Listen for status changes from StatusManager and forward them via IPC callback
     this.statusManager.on('statusChanged', (statusData) => {
       logger.info(`[daemon] Status changed event`, statusData);
-      if (this.onStatusChanged) {
-        this.onStatusChanged(statusData);
+      if (this.onAppStateChanged) {
+        this.onAppStateChanged(statusData);
       }
     });
   }
@@ -535,105 +537,26 @@ export class SlackStatusBotDaemon {
     }
   }
 
-  private ensureConfigDir(): void {
-    if (!fs.existsSync(this.configDir)) {
-      fs.mkdirSync(this.configDir, { recursive: true });
-    }
-  }
-
-  private getConfigFilePath(): string {
-    return path.join(this.configDir, 'config.json');
-  }
-
   private loadConfig(): void {
-    const configFile = this.getConfigFilePath();
-    let isNewConfig = false; // Track if we're creating a new config
-    
-    if (fs.existsSync(configFile)) {
-      try {
-        const config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
-        
-        if (config.sources) {
-          this.sourceRegistry.applyEnabledConfig(config.sources);
-        }
+    const config = this.configStore.getDaemonSettings();
 
-        // Load source order
-        if (config.sourceOrder && Array.isArray(config.sourceOrder)) {
-          this.sourceOrder = config.sourceOrder;
-        }
-
-        // Load status configuration from config file
-        if (config.statusConfiguration && Array.isArray(config.statusConfiguration.customStatuses)) {
-          // Load exactly what's in the config file, without merging with defaults
-          // If user deleted default statuses, they should stay deleted
-          this.statusManager.setCustomStatuses(config.statusConfiguration.customStatuses);
-        } else {
-          // Initialize with defaults only if config doesn't exist
-          this.statusManager.setCustomStatuses(getDefaultStatusConfiguration());
-          isNewConfig = true;
-        }
-
-        // Load overridable patterns from config file
-        if (config.statusConfiguration && Array.isArray(config.statusConfiguration.overridablePatterns)) {
-          this.statusManager.setOverridablePatterns(config.statusConfiguration.overridablePatterns);
-        } else {
-          // Initialize with defaults if not in config
-          this.statusManager.setOverridablePatterns(DEFAULT_OVERRIDABLE_PATTERNS);
-          isNewConfig = true;
-        }
-      } catch (error) {
-        console.error('Error loading config:', error);
-        // Initialize with defaults on error
-        this.statusManager.setCustomStatuses(getDefaultStatusConfiguration());
-        this.statusManager.setOverridablePatterns(DEFAULT_OVERRIDABLE_PATTERNS);
-        isNewConfig = true;
-      }
-
-      // Save config if we loaded defaults to persist them
-      if (isNewConfig) {
-        this.saveConfig();
-      }
-    } else {
-      // Initialize with defaults if config file doesn't exist
-      this.statusManager.setCustomStatuses(getDefaultStatusConfiguration());
-      this.statusManager.setOverridablePatterns(DEFAULT_OVERRIDABLE_PATTERNS);
-      
-      // Save default config on first run
-      this.saveConfig();
-    }
+    this.sourceRegistry.applyEnabledConfig(config.sources);
+    this.sourceOrder = [...config.sourceOrder];
+    this.statusManager.setCustomStatuses(config.statusConfiguration.customStatuses);
+    this.statusManager.setOverridablePatterns(
+      config.statusConfiguration.overridablePatterns || DEFAULT_OVERRIDABLE_PATTERNS
+    );
   }
 
   private saveConfig(): void {
-    const configFile = this.getConfigFilePath();
-    
-    // Read existing config to preserve slackTokens
-    let existingConfig: any = {};
-    try {
-      if (fs.existsSync(configFile)) {
-        existingConfig = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
-      }
-    } catch (error) {
-      console.error('Error reading existing config:', error);
-    }
-
-    const config = {
-      ...existingConfig, // Keep existing fields like slackTokens
-      sources: {
-        ...this.sourceRegistry.getEnabledConfig(),
-      },
+    this.configStore.updateDaemonSettings({
+      sources: this.sourceRegistry.getEnabledConfig(),
       sourceOrder: this.sourceOrder,
       statusConfiguration: {
         customStatuses: this.statusManager.getCustomStatuses(),
         overridablePatterns: this.statusManager.getOverridablePatterns(),
       },
-      lastUpdated: new Date().toISOString(),
-    };
-
-    try {
-      fs.writeFileSync(configFile, JSON.stringify(config, null, 2), 'utf-8');
-    } catch (error) {
-      console.error('Error saving config:', error);
-    }
+    });
   }
 
   /**

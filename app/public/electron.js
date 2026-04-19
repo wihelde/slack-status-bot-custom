@@ -28,51 +28,53 @@ console.log('[Electron] isDev:', isDev);
 let daemon;
 let createDaemon;
 let createAppSnapshotProvider;
+let configStore;
 
 let mainWindow;
 let tray;
 let buildContextMenu; // Wird in createTray() definiert
 let updateAvailable = null; // Speichert Update-Info { version, releaseDate }
 
-// Simple config storage in user app data
-const getConfigPath = () => {
-  const appData = app.getPath('userData');
-  return path.join(appData, 'config.json');
+const getDistModulePath = (modulePath) => {
+  if (isDev) {
+    return path.resolve(__dirname, '../dist', modulePath);
+  }
+
+  return path.join(path.resolve(__dirname, '..'), 'dist', modulePath);
+};
+
+const getConfigStore = () => {
+  if (!configStore) {
+    const configStoreModule = require(getDistModulePath('config/appConfigStore'));
+    configStore = configStoreModule.createAppConfigStore({
+      configDir: app.getPath('userData'),
+    });
+  }
+
+  return configStore;
 };
 
 const loadConfig = () => {
   try {
-    const configPath = getConfigPath();
+    const configPath = getConfigStore().getConfigPath();
     console.log('[Config] Loading config from:', configPath);
     console.log('[Config] File exists:', fs.existsSync(configPath));
-    if (fs.existsSync(configPath)) {
-      const content = fs.readFileSync(configPath, 'utf-8');
-      console.log('[Config] File content:', content);
-      const config = JSON.parse(content);
-      console.log('[Config] Parsed config:', JSON.stringify(config, null, 2));
-      console.log('[Config] Loaded config:', { hasTokens: !!config.slackTokens, tokenCount: config.slackTokens?.length });
-      return config;
-    }
-    console.log('[Config] Config file does not exist');
+    const persistedConfig = getConfigStore().load();
+    console.log('[Config] Loaded config:', {
+      hasTokens: !!persistedConfig.slackTokens,
+      tokenCount: persistedConfig.slackTokens?.length,
+    });
+    return persistedConfig;
   } catch (e) {
     console.error('Error loading config:', e);
   }
   return {};
 };
 
-const saveConfig = (config) => {
-  try {
-    const configPath = getConfigPath();
-    const dir = path.dirname(configPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    console.log('[Config] Saving config to:', configPath, { hasTokens: !!config.slackTokens });
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
-    console.log('[Config] Config saved successfully');
-  } catch (e) {
-    console.error('Error saving config:', e);
-  }
+const refreshConfig = () => {
+  config = loadConfig();
+  currentLogLevel = config.logLevel || 'ERROR';
+  return config;
 };
 
 let config = {}; // Will be loaded in app.whenReady()
@@ -121,6 +123,12 @@ function buildAppSnapshotProvider() {
 async function getAppSnapshot() {
   const provider = buildAppSnapshotProvider();
   return provider.getSnapshot();
+}
+
+function emitAppSnapshotChanged(reason = 'manual') {
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send('app-snapshot-changed', { reason });
+  }
 }
 
 // Note: Squirrel startup handler not needed for modern electron-builder
@@ -452,9 +460,7 @@ function checkForUpdates() {
                 };
                 
                 // Send to renderer
-                if (mainWindow && mainWindow.webContents) {
-                  mainWindow.webContents.send('update-available', updateAvailable);
-                }
+                emitAppSnapshotChanged('update');
                 
                 // Update tray
                 if (tray && buildContextMenu) {
@@ -517,10 +523,8 @@ function setupUpdateListeners() {
     };
     
     // Benachrichtige Renderer Process
-    if (mainWindow && mainWindow.webContents) {
-      logToFile('[Updates] Sending update-available to renderer');
-      mainWindow.webContents.send('update-available', updateAvailable);
-    }
+    logToFile('[Updates] Sending app-snapshot refresh signal to renderer');
+    emitAppSnapshotChanged('update');
     
     // Update Tray Menu
     if (tray && buildContextMenu) {
@@ -565,7 +569,7 @@ app.whenReady().then(() => {
   logToFile('[App] __dirname: ' + __dirname);
   
   // Load config now that app is ready
-  config = loadConfig();
+  refreshConfig();
   logToFile('[App] Config loaded');
   
   // Note: Logger is part of the React bundle, not available in main process at startup.
@@ -591,17 +595,7 @@ app.whenReady().then(() => {
 
   // Initialize daemon if available
   try {
-    let daemonPath;
-    
-    if (isDev) {
-      // Dev: regular dist folder
-      daemonPath = path.resolve(__dirname, '../dist/daemon');
-    } else {
-      // Production: asar is disabled, dist is at /Applications/App.app/Contents/Resources/app/dist
-      // __dirname is /Applications/App.app/Contents/Resources/app/build
-      const appPath = path.resolve(__dirname, '..');
-      daemonPath = path.join(appPath, 'dist', 'daemon');
-    }
+    const daemonPath = getDistModulePath('daemon');
     
     console.log('[Daemon] Loading daemon from:', daemonPath);
     
@@ -610,9 +604,7 @@ app.whenReady().then(() => {
     createDaemon = daemonModule.createDaemon;
     console.log('[Daemon] createDaemon function available:', typeof createDaemon);
 
-    const appSnapshotProviderPath = isDev
-      ? path.resolve(__dirname, '../dist/main/appSnapshotProvider')
-      : path.join(path.resolve(__dirname, '..'), 'dist', 'main', 'appSnapshotProvider');
+    const appSnapshotProviderPath = getDistModulePath('main/appSnapshotProvider');
     const appSnapshotProviderModule = require(appSnapshotProviderPath);
     createAppSnapshotProvider = appSnapshotProviderModule.createAppSnapshotProvider;
     console.log('[Snapshot] createAppSnapshotProvider function available:', typeof createAppSnapshotProvider);
@@ -621,13 +613,14 @@ app.whenReady().then(() => {
       console.log('[Daemon] Starting daemon with stored tokens:', config.slackTokens.length);
       daemon = createDaemon({ 
         slackTokens: config.slackTokens,
-        onStatusChanged: (statusData) => {
+        onAppStateChanged: (statusData) => {
           console.log('[Daemon] Status changed, sending to UI:', statusData);
-          if (mainWindow && mainWindow.webContents) {
-            mainWindow.webContents.send('status-changed', statusData);
-          }
+          emitAppSnapshotChanged('daemon-status');
         }
       });
+      if (daemon.setLogLevel) {
+        daemon.setLogLevel(currentLogLevel);
+      }
       daemon.start().then(() => {
         // Tray-Menü aktualisieren, nachdem Daemon initialisiert wurde
         updateTrayMenu();
@@ -707,9 +700,9 @@ ipcMain.handle('get-tokens', async (event) => {
 ipcMain.handle('save-tokens', async (event, tokens) => {
   try {
     console.log('[IPC] save-tokens called with tokens:', Array.isArray(tokens) ? `${tokens.length} token(s)` : '1 token');
-    config.slackTokens = tokens;
-    console.log('[IPC] Updated config.slackTokens');
-    saveConfig(config);
+    getConfigStore().updateSlackTokens(tokens);
+    refreshConfig();
+    console.log('[IPC] Updated persisted slack tokens');
     console.log('[IPC] Config saved to disk');
     
     // Restart daemon with new tokens
@@ -720,19 +713,21 @@ ipcMain.handle('save-tokens', async (event, tokens) => {
     if (createDaemon) {
       daemon = createDaemon({ 
         slackTokens: tokens,
-        onStatusChanged: (statusData) => {
+        onAppStateChanged: (statusData) => {
           console.log('[Daemon] Status changed, sending to UI:', statusData);
-          if (mainWindow && mainWindow.webContents) {
-            mainWindow.webContents.send('status-changed', statusData);
-          }
+          emitAppSnapshotChanged('daemon-status');
         }
       });
+      if (daemon.setLogLevel) {
+        daemon.setLogLevel(currentLogLevel);
+      }
       await daemon.start();
       console.log('[IPC] Daemon started with new tokens');
       // Tray-Menü aktualisieren, nachdem Daemon gestartet wurde
       updateTrayMenu();
     }
-    
+
+    emitAppSnapshotChanged('setup');
     return { success: true };
   } catch (error) {
     console.error('Error saving tokens:', error);
@@ -746,8 +741,8 @@ ipcMain.handle('save-tokens', async (event, tokens) => {
 ipcMain.handle('delete-tokens', async (event) => {
   try {
     console.log('[IPC] delete-tokens called');
-    config.slackTokens = [];
-    saveConfig(config);
+    getConfigStore().clearSlackTokens();
+    refreshConfig();
     console.log('[IPC] Tokens deleted');
     
     // Stop daemon if running
@@ -755,7 +750,8 @@ ipcMain.handle('delete-tokens', async (event) => {
       await daemon.stop();
       daemon = null;
     }
-    
+
+    emitAppSnapshotChanged('setup');
     return { success: true };
   } catch (error) {
     console.error('Error deleting tokens:', error);
@@ -820,6 +816,7 @@ ipcMain.handle('toggle-source', async (event, source, enabled) => {
       return { success: false, error: 'Daemon not initialized' };
     }
     daemon.toggleSource(source, enabled);
+    emitAppSnapshotChanged('source-status');
     return { success: true };
   } catch (error) {
     console.error('Error toggling source:', error);
@@ -829,16 +826,16 @@ ipcMain.handle('toggle-source', async (event, source, enabled) => {
 
 ipcMain.handle('set-source-order', async (event, sourceOrder) => {
   try {
-    config.sourceOrder = sourceOrder;
-    saveConfig(config);
-    console.log('[IPC] Source order updated:', sourceOrder);
-    
     // Update daemon's source order in real-time if running
     if (daemon) {
       await daemon.setSourceOrder(sourceOrder);
       console.log('[IPC] Daemon source order updated and re-evaluated in real-time');
+    } else {
+      getConfigStore().updateSourceOrder(sourceOrder);
     }
-    
+
+    refreshConfig();
+    console.log('[IPC] Source order updated:', sourceOrder);
     return { success: true };
   } catch (error) {
     console.error('Error setting source order:', error);
@@ -927,9 +924,8 @@ ipcMain.handle('clear-logs', async (event) => {
  */
 ipcMain.handle('set-log-level', async (event, level) => {
   try {
-    currentLogLevel = level;
-    config.logLevel = level;
-    saveConfig(config);
+    getConfigStore().updateLogLevel(level);
+    refreshConfig();
     
     // If daemon is running, update its logger
     if (daemon && daemon.setLogLevel) {
@@ -1174,45 +1170,17 @@ ipcMain.handle('get-auto-launch', async (event) => {
 });
 
 /**
- * Check if this is the first run (for onboarding)
- */
-ipcMain.handle('is-first-run', async (event) => {
-  try {
-    const isFirstRun = !config.hasCompletedFirstRun;
-    logToFile('[FirstRun] is-first-run: ' + isFirstRun);
-    return { success: true, isFirstRun };
-  } catch (error) {
-    console.error('Error checking first run:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
  * Mark first run as complete
  */
 ipcMain.handle('complete-first-run', async (event) => {
   try {
-    config.hasCompletedFirstRun = true;
-    saveConfig(config);
+    getConfigStore().markFirstRunCompleted();
+    refreshConfig();
     logToFile('[FirstRun] First run marked as complete');
+    emitAppSnapshotChanged('setup');
     return { success: true };
   } catch (error) {
     console.error('Error completing first run:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Get update availability status
- */
-ipcMain.handle('get-update-available', async (event) => {
-  try {
-    if (updateAvailable) {
-      return { success: true, updateAvailable };
-    }
-    return { success: true, updateAvailable: null };
-  } catch (error) {
-    console.error('Error getting update status:', error);
     return { success: false, error: error.message };
   }
 });

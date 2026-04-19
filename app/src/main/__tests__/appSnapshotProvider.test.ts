@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   createAppSnapshotProvider,
   createEmptyAppSnapshot,
+  normalizeAppDaemonSnapshot,
+  normalizeAppSetupSnapshot,
+  normalizeAppStatusSnapshot,
+  normalizeAppUpdateSnapshot,
   normalizeAppSourcesSnapshot,
 } from '../appSnapshotProvider';
 
@@ -85,6 +89,99 @@ describe('AppSnapshotProvider', () => {
         tokensConfigured: false,
         isFirstRun: false,
       },
+    });
+  });
+
+  it('normalizes partial dependency data into the canonical runtime model', async () => {
+    const provider = createAppSnapshotProvider({
+      getSlackStatus: async () => ({
+        text: 'Heads down',
+      }),
+      getSourceStatuses: async () => ({
+        spotify: {
+          enabled: false,
+          isActive: true,
+          message: '',
+        },
+      }),
+      getDaemonSnapshot: () => null,
+      getUpdateSnapshot: () => ({
+        version: '',
+        releaseDate: '2026-04-19T09:00:00.000Z',
+      }),
+      getSetupSnapshot: () => ({
+        tokensConfigured: true,
+      }),
+    });
+
+    await expect(provider.getSnapshot()).resolves.toEqual({
+      status: {
+        emoji: '',
+        text: 'Heads down',
+        stateCheckValue: '',
+      },
+      daemon: {
+        running: false,
+      },
+      sources: {
+        spotify: {
+          name: 'spotify',
+          enabled: false,
+          isActive: true,
+        },
+        appleMusic: {
+          name: 'appleMusic',
+          enabled: true,
+          isActive: false,
+        },
+        zoom: {
+          name: 'zoom',
+          enabled: true,
+          isActive: false,
+        },
+        teams: {
+          name: 'teams',
+          enabled: true,
+          isActive: false,
+        },
+        huddle: {
+          name: 'huddle',
+          enabled: true,
+          isActive: false,
+        },
+      },
+      update: null,
+      setup: {
+        tokensConfigured: true,
+        isFirstRun: false,
+      },
+    });
+  });
+
+  it('exposes focused normalizers for the canonical app-state fields', () => {
+    expect(normalizeAppStatusSnapshot({ emoji: ':wave:' })).toEqual({
+      emoji: ':wave:',
+      text: '',
+      stateCheckValue: '',
+    });
+
+    expect(normalizeAppDaemonSnapshot(undefined)).toEqual({
+      running: false,
+    });
+
+    expect(normalizeAppSetupSnapshot({ isFirstRun: true })).toEqual({
+      tokensConfigured: false,
+      isFirstRun: true,
+    });
+
+    expect(
+      normalizeAppUpdateSnapshot({
+        version: '2.2.0',
+        releaseDate: '2026-04-19T09:00:00.000Z',
+      })
+    ).toEqual({
+      version: '2.2.0',
+      releaseDate: '2026-04-19T09:00:00.000Z',
     });
   });
 });

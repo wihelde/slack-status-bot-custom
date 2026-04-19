@@ -86,16 +86,14 @@ describe('IPCService - Tray Integration', () => {
 
   describe('Integration with other IPC methods', () => {
     it('should return cleanup functions consistently', () => {
-      // Verify that onOpenHolidayModal has same pattern as onStatusChanged
       expect(typeof IPCService.onOpenHolidayModal).toBe('function');
-      expect(typeof IPCService.onStatusChanged).toBe('function');
+      expect(typeof IPCService.onAppSnapshotChanged).toBe('function');
 
-      // Both should return cleanup functions
       const mockCleanup1 = vi.fn();
       const mockCleanup2 = vi.fn();
       const mockElectronAPI = {
         onOpenHolidayModal: vi.fn(() => mockCleanup1),
-        onStatusChanged: vi.fn(() => mockCleanup2),
+        onAppSnapshotChanged: vi.fn(() => mockCleanup2),
       };
 
       const originalWindow = global.window;
@@ -107,7 +105,7 @@ describe('IPCService - Tray Integration', () => {
       });
 
       const result1 = IPCService.onOpenHolidayModal(() => {});
-      const result2 = IPCService.onStatusChanged(() => {});
+      const result2 = IPCService.onAppSnapshotChanged(() => {});
 
       expect(typeof result1).toBe('function');
       expect(typeof result2).toBe('function');
@@ -126,7 +124,7 @@ describe('IPCService - Tray Integration', () => {
       });
 
       const result1 = IPCService.onOpenHolidayModal(() => {});
-      const result2 = IPCService.onStatusChanged(() => {});
+      const result2 = IPCService.onAppSnapshotChanged(() => {});
 
       expect(result1).toBeUndefined();
       expect(result2).toBeUndefined();

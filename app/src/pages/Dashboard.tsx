@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/Dashboard.css';
 import { IPCService } from '../services/ipcService';
-import { STATUS_MESSAGES, CustomStatusConfig, getDefaultStatusConfiguration } from '../config/statusConfig';
+import { CustomStatusConfig, getDefaultStatusConfiguration } from '../config/statusConfig';
 import { buildSourceDisplayStates, SOURCE_ICONS, SOURCE_LABELS, SourceDisplayState } from '../config/sourceCatalog';
 import type { AppSnapshot } from '../contracts/appSnapshot';
 import HolidayModal from '../components/HolidayModal';
@@ -26,38 +26,36 @@ const Dashboard: React.FC = () => {
     setUpdateAvailable(snapshot.update);
   };
 
-  useEffect(() => {
-    const cleanupUpdate = IPCService.onUpdateAvailable((updateInfo) => {
-      setUpdateAvailable(updateInfo);
-    });
+  const refreshDashboardState = async () => {
+    try {
+      const appSnapshot = await IPCService.getAppSnapshot();
+      if (!appSnapshot) {
+        throw new Error('App snapshot unavailable');
+      }
+      applyAppSnapshot(appSnapshot);
+    } catch (error) {
+      console.error('Error loading dashboard snapshot:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Initial load
-    loadDashboardState();
+  useEffect(() => {
+    void refreshDashboardState();
     loadStatusConfiguration();
 
-    // Listen for status changes from daemon (event-based, not polling)
-    const cleanupStatus = IPCService.onStatusChanged((statusData) => {
-      console.log('[Dashboard] Status changed event received:', statusData);
-      setCurrentStatus({
-        emoji: statusData.emoji || '',
-        text: statusData.message || ''
-      });
-
-      console.log('[Dashboard] Refreshing dashboard state from snapshot after status event', {
-        stateValue: statusData.stateValue,
-      });
-      void loadDashboardState();
+    const cleanupSnapshot = IPCService.onAppSnapshotChanged((signal) => {
+      console.log('[Dashboard] Refreshing renderer state from app snapshot', signal);
+      void refreshDashboardState();
     });
 
-    // Listen for open-holiday-modal event from tray menu
     const cleanupHoliday = IPCService.onOpenHolidayModal(() => {
       console.log('[Dashboard] Received open-holiday-modal event from tray');
       setShowHolidayModal(true);
     });
 
     return () => {
-      cleanupUpdate?.();
-      cleanupStatus?.();
+      cleanupSnapshot?.();
       cleanupHoliday?.();
     };
   }, []);
@@ -85,50 +83,32 @@ const Dashboard: React.FC = () => {
     return found;
   };
 
-  const loadStatus = async () => {
-    try {
-      const appSnapshot = await IPCService.getAppSnapshot();
-      if (!appSnapshot) {
-        throw new Error('App snapshot unavailable');
-      }
-      applyAppSnapshot(appSnapshot);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading status:', error);
-      setLoading(false);
-    }
-  };
-
-  const loadDashboardState = async () => {
-    await loadStatus();
-  };
-
   const handleToggleSource = async (sourceName: string) => {
     const source = sources.find(s => s.name === sourceName);
     if (source) {
       await IPCService.toggleSource(sourceName as any, !source.enabled);
-      loadDashboardState();
+      await refreshDashboardState();
     }
   };
 
   const handleGoOnline = async () => {
     await IPCService.goOnline();
-    loadDashboardState();
+    await refreshDashboardState();
   };
 
   const handleGoAway = async () => {
     await IPCService.goAway();
-    loadDashboardState();
+    await refreshDashboardState();
   };
 
   const handleSetStatus = async (emoji: string, message: string) => {
     await IPCService.setStatus(emoji, message);
-    loadDashboardState();
+    await refreshDashboardState();
   };
 
   const handleSetHoliday = async (returnDate: string) => {
     await IPCService.setHoliday(returnDate);
-    loadDashboardState();
+    await refreshDashboardState();
   };
 
   if (loading) {

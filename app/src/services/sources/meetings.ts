@@ -1,172 +1,109 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { ISourceAdapter, SourceStatus } from './sourceAdapter';
+import { DelegatingSourceAdapter } from './sourceAdapter';
 import { STATUS_MESSAGES } from '../../config/statusConfig';
-
-const execAsync = promisify(exec);
+import { hasMacUdpConnectionMatch } from './probes/networkProbe';
+import { isWindowsProcessRunning } from './probes/processProbe';
+import { MeetingDetector } from './detectors/meetingDetector';
 
 /**
  * Meeting Detection Adapters
  * Detects Zoom, Teams, and Slack Huddle meetings
  */
 
+async function isZoomMeetingActive(): Promise<boolean> {
+  if (process.platform === 'darwin') {
+    return hasMacUdpConnectionMatch('zoom', '([0-9]{1,3})$');
+  }
+
+  if (process.platform === 'win32') {
+    return isWindowsProcessRunning('Zoom.exe');
+  }
+
+  return false;
+}
+
+async function isTeamsMeetingActive(): Promise<boolean> {
+  if (process.platform === 'darwin') {
+    return hasMacUdpConnectionMatch('MSTeams', '([0-9]{1,3}[.]){3}[0-9]{1,3}[:](500[0-9]{2})$');
+  }
+
+  if (process.platform === 'win32') {
+    return isWindowsProcessRunning('Teams.exe');
+  }
+
+  return false;
+}
+
+async function isHuddleActive(): Promise<boolean> {
+  if (process.platform === 'darwin') {
+    return hasMacUdpConnectionMatch('Slack', '([0-9]{5})$');
+  }
+
+  if (process.platform === 'win32') {
+    return isWindowsProcessRunning('slack.exe');
+  }
+
+  return false;
+}
+
 /**
  * Zoom Meeting Detector
  */
-export class ZoomAdapter implements ISourceAdapter {
-  private enabled: boolean = true;
-
-  async getStatus(): Promise<SourceStatus> {
-    if (!this.enabled) {
-      return { name: 'Zoom', isActive: false };
-    }
-
-    const isInMeeting = await this.isInMeeting();
-    return {
+export class ZoomAdapter extends DelegatingSourceAdapter {
+  constructor() {
+    const detector = new MeetingDetector({
       name: 'Zoom',
-      isActive: isInMeeting,
       emoji: STATUS_MESSAGES.ZOOM_EMOJI,
-      message: isInMeeting ? 'In a meeting - will answer later' : undefined,
-    };
-  }
+      activeMessage: 'In a meeting - will answer later',
+      isAvailable: () => true,
+      probe: isZoomMeetingActive,
+    });
 
-  isAvailable(): boolean {
-    return true; // Works on all platforms
-  }
-
-  setEnabled(enabled: boolean): void {
-    this.enabled = enabled;
-  }
-
-  isEnabled(): boolean {
-    return this.enabled;
-  }
-
-  private async isInMeeting(): Promise<boolean> {
-    try {
-      if (process.platform === 'darwin') {
-        // macOS: exact regex from bash version with proper escaping for Node.js
-        // grep returns exit code 1 if no match found, so we use || true to ignore that
-        const { stdout } = await execAsync(
-          'lsof -i -P -n 2>&1 | grep zoom | grep UDP | grep -E "([0-9]{1,3})$" || true'
-        );
-        return !!stdout.trim();
-      } else if (process.platform === 'win32') {
-        // Windows: check for Zoom process
-        const { stdout } = await execAsync('tasklist | findstr Zoom.exe || exit /b 1');
-        return !!stdout.trim();
-      }
-      return false;
-    } catch {
-      return false;
-    }
+    super({
+      name: 'Zoom',
+      isAvailable: () => true,
+      getStatus: () => detector.getStatus(),
+    });
   }
 }
 
 /**
  * Microsoft Teams Meeting Detector
  */
-export class TeamsAdapter implements ISourceAdapter {
-  private enabled: boolean = true;
-
-  async getStatus(): Promise<SourceStatus> {
-    if (!this.enabled) {
-      return { name: 'Microsoft Teams', isActive: false };
-    }
-
-    const isInMeeting = await this.isInMeeting();
-    return {
+export class TeamsAdapter extends DelegatingSourceAdapter {
+  constructor() {
+    const detector = new MeetingDetector({
       name: 'Microsoft Teams',
-      isActive: isInMeeting,
       emoji: STATUS_MESSAGES.TEAMS_EMOJI,
-      message: isInMeeting ? 'In a meeting - will answer later' : undefined,
-    };
-  }
+      activeMessage: 'In a meeting - will answer later',
+      isAvailable: () => true,
+      probe: isTeamsMeetingActive,
+    });
 
-  isAvailable(): boolean {
-    return true;
-  }
-
-  setEnabled(enabled: boolean): void {
-    this.enabled = enabled;
-  }
-
-  isEnabled(): boolean {
-    return this.enabled;
-  }
-
-  private async isInMeeting(): Promise<boolean> {
-    try {
-      if (process.platform === 'darwin') {
-        // macOS: exact regex from bash version with proper escaping for Node.js
-        // grep returns exit code 1 if no match found, so we use || true to ignore that
-        const { stdout } = await execAsync(
-          'lsof -i -P -n 2>&1 | grep MSTeams | grep UDP | grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}[\:](500[0-9]{2})$" || true'
-        );
-        return !!stdout.trim();
-      } else if (process.platform === 'win32') {
-        // Windows: check for Teams process
-        const { stdout } = await execAsync('tasklist | findstr Teams.exe || exit /b 1');
-        return !!stdout.trim();
-      }
-      return false;
-    } catch {
-      return false;
-    }
+    super({
+      name: 'Microsoft Teams',
+      isAvailable: () => true,
+      getStatus: () => detector.getStatus(),
+    });
   }
 }
 
 /**
  * Slack Huddle Detector
  */
-export class HuddleAdapter implements ISourceAdapter {
-  private enabled: boolean = true;
-
-  async getStatus(): Promise<SourceStatus> {
-    if (!this.enabled) {
-      return { name: 'Slack Huddle', isActive: false };
-    }
-
-    const isInHuddle = await this.isInHuddle();
-    return {
+export class HuddleAdapter extends DelegatingSourceAdapter {
+  constructor() {
+    const detector = new MeetingDetector({
       name: 'Slack Huddle',
-      isActive: isInHuddle,
       emoji: STATUS_MESSAGES.HUDDLE_EMOJI,
-      message: isInHuddle ? 'In a huddle - will answer later' : undefined,
-    };
-  }
+      activeMessage: 'In a huddle - will answer later',
+      isAvailable: () => true,
+      probe: isHuddleActive,
+    });
 
-  isAvailable(): boolean {
-    return true;
-  }
-
-  setEnabled(enabled: boolean): void {
-    this.enabled = enabled;
-  }
-
-  isEnabled(): boolean {
-    return this.enabled;
-  }
-
-  private async isInHuddle(): Promise<boolean> {
-    try {
-      if (process.platform === 'darwin') {
-        // macOS: detect Slack Huddle by finding UDP connections with 5-digit port numbers
-        // This matches the bash version: lsof -i -P -n 2>&1 | grep Slack | grep UDP | grep -E "([0-9]{5})$"
-        // 5-digit ports are specific to Huddle, reducing false positives
-        const { stdout } = await execAsync(
-          'lsof -i -P -n 2>&1 | grep Slack | grep UDP | grep -E "([0-9]{5})$" || true'
-        );
-        return !!stdout.trim();
-      } else if (process.platform === 'win32') {
-        // Windows: check for Slack process with UDP
-        const { stdout } = await execAsync('tasklist | findstr slack.exe || exit /b 1');
-        return !!stdout.trim();
-      }
-      return false;
-    } catch {
-      return false;
-    }
+    super({
+      name: 'Slack Huddle',
+      isAvailable: () => true,
+      getStatus: () => detector.getStatus(),
+    });
   }
 }
-

@@ -8,7 +8,7 @@ import {
   AppDaemonSnapshot,
   AppSourceSnapshot,
   AppStatusSnapshot,
-  AppUpdateSnapshot,
+  AppSnapshotRefreshSignal,
 } from '../contracts/appSnapshot';
 import { CustomStatusConfig } from '../config/statusConfig';
 import { SourceName } from '../config/sourceCatalog';
@@ -24,6 +24,9 @@ declare global {
         data?: AppSnapshot;
         error?: string;
       }>;
+      onAppSnapshotChanged: (
+        callback: (signal: AppSnapshotRefreshSignal) => void
+      ) => () => void;
       setStatus: (emoji: string, message: string) => Promise<{ success: boolean; data?: boolean; error?: string }>;
       goOnline: () => Promise<{ success: boolean; data?: boolean; error?: string }>;
       goAway: () => Promise<{ success: boolean; data?: boolean; error?: string }>;
@@ -35,9 +38,6 @@ declare global {
         data?: { configured: boolean };
         error?: string;
       }>;
-      onDaemonStatusChange: (callback: (data: any) => void) => () => void;
-      onSourceStatusChange: (callback: (data: any) => void) => () => void;
-      onSlackStatusChange: (callback: (data: any) => void) => () => void;
       getLogs: (lines?: number) => Promise<{ success: boolean; data?: string; error?: string }>;
       clearLogs: () => Promise<{ success: boolean; error?: string }>;
       setLogLevel: (level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR') => Promise<{ success: boolean; logLevel?: string; error?: string }>;
@@ -46,14 +46,10 @@ declare global {
       updateStatusConfiguration: (config: CustomStatusConfig[]) => Promise<{ success: boolean; error?: string }>;
       resetStatusConfiguration: () => Promise<{ success: boolean; error?: string }>;
       setHoliday: (returnDate: string) => Promise<{ success: boolean; data?: boolean; error?: string }>;
-      onStatusChanged: (callback: (statusData: any) => void) => () => void;
       onOpenHolidayModal: (callback: () => void) => () => void;
       setAutoLaunch: (enabled: boolean) => Promise<{ success: boolean; verified?: boolean; error?: string }>;
       getAutoLaunch: () => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
-      isFirstRun: () => Promise<{ success: boolean; isFirstRun?: boolean; error?: string }>;
       completeFirstRun: () => Promise<{ success: boolean; error?: string }>;
-      onUpdateAvailable: (callback: (updateInfo: AppUpdateSnapshot) => void) => () => void;
-      getUpdateAvailable: () => Promise<{ success: boolean; updateAvailable?: AppUpdateSnapshot | null; error?: string }>;
     };
   }
 }
@@ -106,6 +102,19 @@ export class IPCService {
       console.error('Error getting app snapshot:', error);
       return null;
     }
+  }
+
+  /**
+   * Listen for renderer-facing runtime changes that should be reloaded from the app snapshot.
+   */
+  static onAppSnapshotChanged(
+    callback: (signal: AppSnapshotRefreshSignal) => void
+  ): (() => void) | undefined {
+    if (!this.isElectron()) {
+      console.warn('Not running in Electron');
+      return;
+    }
+    return window.electronAPI.onAppSnapshotChanged(callback);
   }
 
   /**
@@ -287,39 +296,6 @@ export class IPCService {
   }
 
   /**
-   * Listen for daemon status changes
-   */
-  static onDaemonStatusChange(callback: (data: any) => void): (() => void) | undefined {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
-      return;
-    }
-    return window.electronAPI.onDaemonStatusChange(callback);
-  }
-
-  /**
-   * Listen for source status changes
-   */
-  static onSourceStatusChange(callback: (data: any) => void): (() => void) | undefined {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
-      return;
-    }
-    return window.electronAPI.onSourceStatusChange(callback);
-  }
-
-  /**
-   * Listen for Slack status changes
-   */
-  static onSlackStatusChange(callback: (data: any) => void): (() => void) | undefined {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
-      return;
-    }
-    return window.electronAPI.onSlackStatusChange(callback);
-  }
-
-  /**
    * Get recent logs
    */
   static async getLogs(lines: number = 200): Promise<string> {
@@ -458,17 +434,6 @@ export class IPCService {
   }
 
   /**
-   * Listen for status changes from daemon
-   */
-  static onStatusChanged(callback: (statusData: any) => void): (() => void) | undefined {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
-      return;
-    }
-    return window.electronAPI.onStatusChanged(callback);
-  }
-
-  /**
    * Listen for open-holiday-modal event
    */
   static onOpenHolidayModal(callback: () => void): (() => void) | undefined {
@@ -514,22 +479,6 @@ export class IPCService {
   }
 
   /**
-   * Check if this is the first run
-   */
-  static async isFirstRun(): Promise<boolean> {
-    if (!this.isElectron()) {
-      return false;
-    }
-    try {
-      const result = await window.electronAPI.isFirstRun();
-      return result.success ? (result.isFirstRun || false) : false;
-    } catch (error) {
-      console.error('Error checking first run:', error);
-      return false;
-    }
-  }
-
-  /**
    * Mark first run as complete
    */
   static async completeFirstRun(): Promise<boolean> {
@@ -545,30 +494,4 @@ export class IPCService {
     }
   }
 
-  /**
-   * Listen for update available event
-   */
-  static onUpdateAvailable(callback: (updateInfo: { version: string; releaseDate: string }) => void): (() => void) | undefined {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
-      return;
-    }
-    return window.electronAPI.onUpdateAvailable(callback);
-  }
-
-  /**
-   * Get current update availability status
-   */
-  static async getUpdateAvailable(): Promise<AppUpdateSnapshot | null> {
-    if (!this.isElectron()) {
-      return null;
-    }
-    try {
-      const result = await window.electronAPI.getUpdateAvailable();
-      return result.success ? (result.updateAvailable ?? null) : null;
-    } catch (error) {
-      console.error('Error getting update status:', error);
-      return null;
-    }
-  }
 }

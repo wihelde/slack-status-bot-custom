@@ -27,6 +27,17 @@ export interface AppSetupSnapshot {
   isFirstRun: boolean;
 }
 
+export type AppSnapshotRefreshReason =
+  | 'daemon-status'
+  | 'source-status'
+  | 'setup'
+  | 'update'
+  | 'manual';
+
+export interface AppSnapshotRefreshSignal {
+  reason: AppSnapshotRefreshReason;
+}
+
 export type AppSourcesSnapshot = Record<SourceName, AppSourceSnapshot>;
 
 export interface AppSnapshot {

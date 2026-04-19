@@ -209,4 +209,19 @@ describe('SourceArbitrationEngine', () => {
       lastMessage: '',
     });
   });
+
+  it('should safely ignore unknown source names when picking a winner', () => {
+    const winner = engine.pickWinner(
+      ['invalid' as SourceName, 'zoom', 'spotify'],
+      buildStatuses({
+        zoom: { isActive: true, message: 'In a meeting' },
+      })
+    );
+
+    expect(winner).toEqual(
+      expect.objectContaining({
+        sourceName: 'zoom',
+      })
+    );
+  });
 });

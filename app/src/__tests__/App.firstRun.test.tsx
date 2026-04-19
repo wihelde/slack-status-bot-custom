@@ -3,6 +3,7 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from '../App';
 import { IPCService } from '../services/ipcService';
+import type { AppSnapshot, AppSnapshotRefreshSignal } from '../contracts/appSnapshot';
 
 // Mock IPCService
 vi.mock('../services/ipcService');
@@ -25,15 +26,40 @@ vi.mock('../pages/Settings', () => ({
 }));
 
 describe('App - First Run Integration', () => {
+  const createAppSnapshot = (overrides: Partial<AppSnapshot> = {}): AppSnapshot => ({
+    status: {
+      emoji: '',
+      text: '',
+      stateCheckValue: '',
+    },
+    daemon: { running: true },
+    sources: {
+      spotify: { name: 'spotify', enabled: true, isActive: false },
+      appleMusic: { name: 'appleMusic', enabled: true, isActive: false },
+      zoom: { name: 'zoom', enabled: true, isActive: false },
+      teams: { name: 'teams', enabled: true, isActive: false },
+      huddle: { name: 'huddle', enabled: true, isActive: false },
+    },
+    update: null,
+    setup: {
+      tokensConfigured: true,
+      isFirstRun: false,
+    },
+    ...overrides,
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('should show FirstRunDialog when isFirstRun is true', async () => {
     const mockIPCService = IPCService as any;
-    mockIPCService.isFirstRun = vi.fn().mockResolvedValue(true);
-    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
-    mockIPCService.onDaemonStatusChange = vi.fn();
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue(
+      createAppSnapshot({
+        setup: { tokensConfigured: false, isFirstRun: true },
+      })
+    );
+    mockIPCService.onAppSnapshotChanged = vi.fn(() => () => {});
 
     render(<App />);
 
@@ -47,9 +73,8 @@ describe('App - First Run Integration', () => {
 
   it('should show Dashboard when isFirstRun is false', async () => {
     const mockIPCService = IPCService as any;
-    mockIPCService.isFirstRun = vi.fn().mockResolvedValue(false);
-    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
-    mockIPCService.onDaemonStatusChange = vi.fn();
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue(createAppSnapshot());
+    mockIPCService.onAppSnapshotChanged = vi.fn(() => () => {});
 
     render(<App />);
 
@@ -63,9 +88,12 @@ describe('App - First Run Integration', () => {
 
   it('should hide FirstRunDialog when onComplete is called', async () => {
     const mockIPCService = IPCService as any;
-    mockIPCService.isFirstRun = vi.fn().mockResolvedValue(true);
-    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
-    mockIPCService.onDaemonStatusChange = vi.fn();
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue(
+      createAppSnapshot({
+        setup: { tokensConfigured: false, isFirstRun: true },
+      })
+    );
+    mockIPCService.onAppSnapshotChanged = vi.fn(() => () => {});
 
     render(<App />);
 
@@ -87,29 +115,25 @@ describe('App - First Run Integration', () => {
     });
   });
 
-  it('should call isFirstRun on mount', async () => {
+  it('should bootstrap the app shell from the shared app snapshot', async () => {
     const mockIPCService = IPCService as any;
-    mockIPCService.isFirstRun = vi.fn().mockResolvedValue(false);
-    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
-    mockIPCService.onDaemonStatusChange = vi.fn();
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue(createAppSnapshot());
+    mockIPCService.onAppSnapshotChanged = vi.fn(() => () => {});
 
     render(<App />);
 
     await waitFor(() => {
-      expect(mockIPCService.isFirstRun).toHaveBeenCalled();
+      expect(mockIPCService.getAppSnapshot).toHaveBeenCalled();
     });
   });
 
-  it('should handle isFirstRun error gracefully', async () => {
+  it('should handle app snapshot errors gracefully', async () => {
     const mockIPCService = IPCService as any;
-    // isFirstRun catches errors internally and returns false, so we just test that false works
-    mockIPCService.isFirstRun = vi.fn().mockResolvedValue(false);
-    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
-    mockIPCService.onDaemonStatusChange = vi.fn();
+    mockIPCService.getAppSnapshot = vi.fn().mockRejectedValue(new Error('snapshot failed'));
+    mockIPCService.onAppSnapshotChanged = vi.fn(() => () => {});
 
     render(<App />);
 
-    // Should show dashboard when isFirstRun returns false (which happens on error)
     await waitFor(() => {
       expect(screen.getByTestId('dashboard')).toBeInTheDocument();
     }, { timeout: 3000 });
@@ -117,12 +141,10 @@ describe('App - First Run Integration', () => {
 
   it('should show loading state initially', async () => {
     const mockIPCService = IPCService as any;
-    // Verzögere den resolve
-    mockIPCService.isFirstRun = vi.fn(() => 
-      new Promise(resolve => setTimeout(() => resolve(false), 100))
+    mockIPCService.getAppSnapshot = vi.fn(() =>
+      new Promise(resolve => setTimeout(() => resolve(createAppSnapshot()), 100))
     );
-    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue({ daemon: { running: true } });
-    mockIPCService.onDaemonStatusChange = vi.fn();
+    mockIPCService.onAppSnapshotChanged = vi.fn(() => () => {});
 
     render(<App />);
 
@@ -132,6 +154,39 @@ describe('App - First Run Integration', () => {
     await waitFor(() => {
       // Nach loading sollte Dashboard sichtbar sein
       expect(screen.getByTestId('dashboard')).toBeInTheDocument();
+    });
+  });
+
+  it('should refresh first-run and daemon state from snapshot change notifications', async () => {
+    const mockIPCService = IPCService as any;
+    let snapshotChangedCallback: ((signal: AppSnapshotRefreshSignal) => void) | undefined;
+
+    mockIPCService.getAppSnapshot = vi
+      .fn()
+      .mockResolvedValueOnce(createAppSnapshot({ daemon: { running: false } }))
+      .mockResolvedValueOnce(
+        createAppSnapshot({
+          daemon: { running: true },
+          setup: { tokensConfigured: false, isFirstRun: true },
+        })
+      );
+    mockIPCService.onAppSnapshotChanged = vi.fn((callback: (signal: AppSnapshotRefreshSignal) => void) => {
+      snapshotChangedCallback = callback;
+      return () => {};
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Inactive')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      snapshotChangedCallback?.({ reason: 'setup' });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('first-run-dialog')).toBeInTheDocument();
     });
   });
 });

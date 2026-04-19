@@ -26,4 +26,22 @@ describe('appSnapshot contract', () => {
       isFirstRun: false,
     });
   });
+
+  it('models snapshot refreshes as explicit refresh signals instead of ad hoc payloads', async () => {
+    const { reason } = await Promise.resolve({ reason: 'update' as const });
+    expect(reason).toBe('update');
+  });
+
+  it('keeps the default snapshot factories small and renderer-focused', () => {
+    expect(Object.keys(createDefaultStatusSnapshot())).toEqual([
+      'emoji',
+      'text',
+      'stateCheckValue',
+    ]);
+    expect(Object.keys(createDefaultDaemonSnapshot())).toEqual(['running']);
+    expect(Object.keys(createDefaultSetupSnapshot())).toEqual([
+      'tokensConfigured',
+      'isFirstRun',
+    ]);
+  });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { IPCService } from '../ipcService';
+import type { AppSnapshotRefreshSignal } from '../../contracts/appSnapshot';
 
 describe('IPCService - App Snapshot', () => {
   beforeEach(() => {
@@ -92,6 +93,34 @@ describe('IPCService - App Snapshot', () => {
     });
 
     expect(mockGetAppSnapshot).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(global, 'window', {
+      value: originalWindow,
+      writable: true,
+    });
+  });
+
+  it('subscribes to snapshot refresh signals through the preload boundary', () => {
+    const mockCleanup = vi.fn();
+    const callback = vi.fn();
+    const mockOnAppSnapshotChanged = vi.fn(() => mockCleanup);
+
+    const originalWindow = global.window;
+    Object.defineProperty(global, 'window', {
+      value: {
+        electronAPI: {
+          onAppSnapshotChanged: mockOnAppSnapshotChanged,
+        },
+      },
+      writable: true,
+    });
+
+    const cleanup = IPCService.onAppSnapshotChanged(callback);
+    const signal: AppSnapshotRefreshSignal = { reason: 'update' };
+
+    expect(mockOnAppSnapshotChanged).toHaveBeenCalledTimes(1);
+    expect(mockOnAppSnapshotChanged).toHaveBeenCalledWith(callback);
+    expect(cleanup).toBe(mockCleanup);
 
     Object.defineProperty(global, 'window', {
       value: originalWindow,

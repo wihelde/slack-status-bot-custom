@@ -1052,13 +1052,13 @@ describe('SlackStatusBotDaemon', () => {
   });
 
   describe('Status Change Events', () => {
-    it('should emit statusChanged event when callback is provided', () => {
-      const onStatusChanged = vi.fn();
+    it('should accept an app-state callback when configured', () => {
+      const onAppStateChanged = vi.fn();
       
       const daemonWithCallback = new SlackStatusBotDaemon({
         slackTokens: 'test-token',
         configDir: '/tmp/test-daemon-config-events',
-        onStatusChanged,
+        onAppStateChanged,
       });
       
       expect(daemonWithCallback).toBeDefined();
@@ -1066,13 +1066,13 @@ describe('SlackStatusBotDaemon', () => {
       // This is tested implicitly through the polling and status change methods
     });
 
-    it('should trigger onStatusChanged callback when status is updated', async () => {
+    it('should trigger onAppStateChanged callback when status is updated', async () => {
       const mockCallback = vi.fn();
       
       const daemonWithCallback = new SlackStatusBotDaemon({
         slackTokens: 'test-token',
         configDir: '/tmp/test-daemon-config-events',
-        onStatusChanged: mockCallback,
+        onAppStateChanged: mockCallback,
       });
 
       const slackService = (daemonWithCallback as any).slackService;

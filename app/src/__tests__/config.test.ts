@@ -1,189 +1,98 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { createAppConfigStore } from '../config/appConfigStore';
+import { DEFAULT_SOURCE_ORDER } from '../config/sourceCatalog';
+import { DEFAULT_OVERRIDABLE_PATTERNS } from '../config/statusConfig';
 
-describe('Config Storage', () => {
+describe('AppConfigStore', () => {
   let testConfigDir: string;
-  let testConfigPath: string;
 
   beforeEach(() => {
-    // Create temporary directory for tests
-    testConfigDir = path.join(os.tmpdir(), 'slack-status-bot-test-' + Date.now());
-    testConfigPath = path.join(testConfigDir, 'config.json');
-    
-    if (!fs.existsSync(testConfigDir)) {
-      fs.mkdirSync(testConfigDir, { recursive: true });
-    }
+    testConfigDir = path.join(os.tmpdir(), `slack-status-bot-test-${Date.now()}-${Math.random()}`);
+    fs.mkdirSync(testConfigDir, { recursive: true });
   });
 
   afterEach(() => {
-    // Clean up test files
-    if (fs.existsSync(testConfigPath)) {
-      fs.unlinkSync(testConfigPath);
-    }
-    if (fs.existsSync(testConfigDir)) {
-      fs.rmdirSync(testConfigDir);
-    }
+    fs.rmSync(testConfigDir, { recursive: true, force: true });
   });
 
-  describe('Token Persistence', () => {
-    it('should save tokens to config file', () => {
-      const config = {
-        sources: {
-          spotify: true,
-          appleMusic: true,
-          zoom: true,
-          teams: true,
-          huddle: true,
-        },
-        slackTokens: ['xoxp-test-token-123'],
-        lastUpdated: new Date().toISOString(),
-      };
+  it('persists slack tokens without losing daemon-managed fields', () => {
+    const store = createAppConfigStore({ configDir: testConfigDir });
 
-      fs.writeFileSync(testConfigPath, JSON.stringify(config, null, 2), 'utf-8');
-      
-      const saved = fs.readFileSync(testConfigPath, 'utf-8');
-      const parsed = JSON.parse(saved);
-
-      expect(parsed.slackTokens).toEqual(['xoxp-test-token-123']);
+    store.updateDaemonSettings({
+      sources: {
+        spotify: false,
+        appleMusic: true,
+        zoom: true,
+        teams: true,
+        huddle: true,
+      },
+      sourceOrder: ['zoom', 'spotify', 'appleMusic', 'teams', 'huddle'],
     });
 
-    it('should preserve tokens when updating sources', () => {
-      const config = {
-        sources: {
-          spotify: true,
-          appleMusic: true,
-          zoom: true,
-          teams: true,
-          huddle: true,
-        },
-        slackTokens: ['xoxp-test-token-123'],
-        lastUpdated: new Date().toISOString(),
-      };
+    const savedConfig = store.updateSlackTokens(['xoxp-test-token-123']);
 
-      fs.writeFileSync(testConfigPath, JSON.stringify(config, null, 2), 'utf-8');
-
-      // Simulate daemon updating only sources
-      const existingConfig = JSON.parse(fs.readFileSync(testConfigPath, 'utf-8'));
-      const updatedConfig = {
-        ...existingConfig,
-        sources: {
-          spotify: false, // Changed
-          appleMusic: true,
-          zoom: true,
-          teams: true,
-          huddle: true,
-        },
-        lastUpdated: new Date().toISOString(),
-      };
-
-      fs.writeFileSync(testConfigPath, JSON.stringify(updatedConfig, null, 2), 'utf-8');
-
-      const final = JSON.parse(fs.readFileSync(testConfigPath, 'utf-8'));
-
-      expect(final.slackTokens).toEqual(['xoxp-test-token-123']);
-      expect(final.sources.spotify).toBe(false);
-    });
-
-    it('should support multiple tokens', () => {
-      const config = {
-        sources: {
-          spotify: true,
-          appleMusic: true,
-          zoom: true,
-          teams: true,
-          huddle: true,
-        },
-        slackTokens: [
-          'xoxp-token-workspace-1',
-          'xoxp-token-workspace-2',
-          'xoxp-token-workspace-3',
-        ],
-        lastUpdated: new Date().toISOString(),
-      };
-
-      fs.writeFileSync(testConfigPath, JSON.stringify(config, null, 2), 'utf-8');
-
-      const saved = JSON.parse(fs.readFileSync(testConfigPath, 'utf-8'));
-
-      expect(saved.slackTokens).toHaveLength(3);
-      expect(saved.slackTokens[1]).toBe('xoxp-token-workspace-2');
-    });
-
-    it('should handle empty tokens array', () => {
-      const config = {
-        sources: {
-          spotify: true,
-          appleMusic: true,
-          zoom: true,
-          teams: true,
-          huddle: true,
-        },
-        slackTokens: [],
-        lastUpdated: new Date().toISOString(),
-      };
-
-      fs.writeFileSync(testConfigPath, JSON.stringify(config, null, 2), 'utf-8');
-
-      const saved = JSON.parse(fs.readFileSync(testConfigPath, 'utf-8'));
-
-      expect(saved.slackTokens).toEqual([]);
-      expect(saved.slackTokens.length).toBe(0);
-    });
+    expect(savedConfig.slackTokens).toEqual(['xoxp-test-token-123']);
+    expect(savedConfig.sources.spotify).toBe(false);
+    expect(savedConfig.sourceOrder[0]).toBe('zoom');
   });
 
-  describe('Config Structure', () => {
-    it('should maintain correct config structure', () => {
-      const config = {
-        sources: {
-          spotify: true,
-          appleMusic: false,
-          zoom: true,
-          teams: false,
-          huddle: true,
-        },
-        slackTokens: ['xoxp-test'],
-        lastUpdated: new Date().toISOString(),
-      };
+  it('normalizes missing and partial config files through the persistence boundary', () => {
+    const configPath = path.join(testConfigDir, 'config.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        slackTokens: 'xoxp-legacy-token',
+        sources: { spotify: false },
+      }),
+      'utf-8'
+    );
 
-      fs.writeFileSync(testConfigPath, JSON.stringify(config, null, 2), 'utf-8');
+    const store = createAppConfigStore({ configDir: testConfigDir });
+    const config = store.load();
 
-      const saved = JSON.parse(fs.readFileSync(testConfigPath, 'utf-8'));
+    expect(config.slackTokens).toEqual(['xoxp-legacy-token']);
+    expect(config.sources.spotify).toBe(false);
+    expect(config.sources.appleMusic).toBe(true);
+    expect(config.sourceOrder).toEqual(DEFAULT_SOURCE_ORDER);
+    expect(config.statusConfiguration.customStatuses.length).toBeGreaterThan(0);
+    expect(config.statusConfiguration.overridablePatterns).toEqual(DEFAULT_OVERRIDABLE_PATTERNS);
+  });
 
-      expect(saved).toHaveProperty('sources');
-      expect(saved).toHaveProperty('slackTokens');
-      expect(saved).toHaveProperty('lastUpdated');
-      
-      expect(Object.keys(saved.sources)).toEqual([
-        'spotify',
-        'appleMusic',
-        'zoom',
-        'teams',
-        'huddle',
-      ]);
-    });
+  it('recovers from corrupted config files and writes back defaults', () => {
+    const configPath = path.join(testConfigDir, 'config.json');
+    fs.writeFileSync(configPath, '{not-valid-json', 'utf-8');
 
-    it('should preserve lastUpdated timestamp', () => {
-      const now = new Date().toISOString();
-      const config = {
-        sources: {
-          spotify: true,
-          appleMusic: true,
-          zoom: true,
-          teams: true,
-          huddle: true,
-        },
-        slackTokens: ['xoxp-test'],
-        lastUpdated: now,
-      };
+    const store = createAppConfigStore({ configDir: testConfigDir });
+    const config = store.load();
+    const persisted = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 
-      fs.writeFileSync(testConfigPath, JSON.stringify(config, null, 2), 'utf-8');
+    expect(config.slackTokens).toEqual([]);
+    expect(config.sourceOrder).toEqual(DEFAULT_SOURCE_ORDER);
+    expect(persisted.statusConfiguration.customStatuses.length).toBeGreaterThan(0);
+    expect(persisted.statusConfiguration.overridablePatterns).toEqual(DEFAULT_OVERRIDABLE_PATTERNS);
+  });
 
-      const saved = JSON.parse(fs.readFileSync(testConfigPath, 'utf-8'));
+  it('preserves unknown persisted fields through intentional merge rules', () => {
+    const configPath = path.join(testConfigDir, 'config.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        customNote: 'keep-me',
+        slackTokens: ['old-token'],
+      }),
+      'utf-8'
+    );
 
-      expect(saved.lastUpdated).toBe(now);
-    });
+    const store = createAppConfigStore({ configDir: testConfigDir });
+    store.updateLogLevel('INFO');
+
+    const persisted = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+
+    expect(persisted.customNote).toBe('keep-me');
+    expect(persisted.logLevel).toBe('INFO');
+    expect(persisted.slackTokens).toEqual(['old-token']);
   });
 });
-

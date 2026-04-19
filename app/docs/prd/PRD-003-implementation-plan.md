@@ -170,6 +170,25 @@ Diese Punkte muessen waehrend der Implementierung bewusst entschieden werden:
 - Wie weit Status-Konfiguration und andere editorartige Flows bewusst ausserhalb des Runtime-Snapshot bleiben sollen.
 - Welche bestehenden IPC-Methoden nur migriert und welche danach wirklich entfernt oder entwertet werden sollen.
 
+## Getroffene Entscheidungen
+
+Stand der Umsetzung am 19. April 2026:
+
+- First-Run ist Teil des kanonischen App-Snapshots.
+  `App.tsx` liest Setup-Gating aus `snapshot.setup.isFirstRun` statt ueber einen separaten Boot-Call.
+
+- Events dienen bevorzugt als Snapshot-Refresh-Signale.
+  Die Renderer-Boundary verwendet einen kleinen `app-snapshot-changed`-Event mit typisiertem Grund statt fachlich ueberlappender Einzelpayloads.
+
+- App-Shell und Dashboard booten aus derselben Snapshot-Quelle.
+  Beide Renderer-Flaechen starten aus `getAppSnapshot()`; die App-Shell konsumiert davon nur den kleineren Setup-/Daemon-Ausschnitt.
+
+- Status-Konfiguration bleibt bewusst ausserhalb des Runtime-Snapshots.
+  `getStatusConfiguration()` bleibt ein separater Editor-Pfad, damit der App-Snapshot ein leichtgewichtiges Runtime-Read-Model bleibt.
+
+- Alte IPC-Pfade werden inkrementell entwertet.
+  Redundante Renderer-Listener und separate Boot-Reads wurden aus Preload und `ipcService` entfernt; Main-Process-seitige Alt-Handler koennen zunaechst als Kompatibilitaetsrest stehen bleiben, solange keine Renderer-Flaeche mehr davon abhaengt.
+
 ## Erfolgskriterien
 
 - Der Snapshot ist der klare bevorzugte Read-Pfad fuer renderer-relevanten Runtime-Zustand.
@@ -177,4 +196,3 @@ Diese Punkte muessen waehrend der Implementierung bewusst entschieden werden:
 - Preload und `ipcService` bilden eine kleinere und besser typisierte Boundary.
 - Post-Action-Refresh und Live-Update-Verhalten folgen wenigen klaren Mustern.
 - Neue Renderer-Flaechen koennen auf dem bestehenden App-Modell aufbauen statt neue IPC-Boot-Pfade zu erfinden.
-
