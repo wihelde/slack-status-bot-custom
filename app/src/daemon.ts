@@ -1,61 +1,61 @@
 import { SlackService } from './services/slack';
+import { SlackStatusExecutor } from './services/slackStatusExecutor';
 import { StatusManager } from './services/statusManager';
-import { SpotifyAdapter } from './services/sources/spotify';
-import { AppleMusicAdapter } from './services/sources/appleMusic';
-import { ZoomAdapter, TeamsAdapter, HuddleAdapter } from './services/sources/meetings';
-import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration, OverridableStatusPattern, DEFAULT_OVERRIDABLE_PATTERNS } from './config/statusConfig';
+import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS } from './config/statusConfig';
+import { DEFAULT_SOURCE_ORDER, SourceName } from './config/sourceCatalog';
+import { AppConfigStore, createAppConfigStore } from './config/appConfigStore';
+import { SourceArbitrationEngine } from './services/sources/sourceArbitrationEngine';
+import { SourceRegistry } from './services/sources/sourceRegistry';
+import { RuntimeOrchestrator } from './services/runtimeOrchestrator';
+import type { AppStatusChangedEvent } from './contracts/ipc';
 import { logger } from './utils/logger';
-import fs from 'fs';
 import path from 'path';
 
 export interface DaemonConfig {
   slackTokens: string | string[];
   configDir?: string;
-  onStatusChanged?: (statusData: any) => void; // Callback for status changes
+  configStore?: AppConfigStore;
+  onAppStateChanged?: (statusData: AppStatusChangedEvent) => void;
 }
 
 export class SlackStatusBotDaemon {
   private slackService: SlackService;
+  private slackExecutor: SlackStatusExecutor;
   private statusManager: StatusManager;
-  private spotify: SpotifyAdapter;
-  private appleMusic: AppleMusicAdapter;
-  private zoom: ZoomAdapter;
-  private teams: TeamsAdapter;
-  private huddle: HuddleAdapter;
+  private sourceRegistry: SourceRegistry;
+  private sourceArbitrationEngine: SourceArbitrationEngine;
+  private runtimeOrchestrator: RuntimeOrchestrator;
   private running: boolean = false;
   private intervals: NodeJS.Timeout[] = [];
   private configDir: string;
-  private sourceOrder: string[] = ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'];
-  private statusConfiguration: CustomStatusConfig[] = [];
-  private overridablePatterns: OverridableStatusPattern[] = [];
-  private lastResetBlockedTime: number = 0; // Track when reset was last blocked
-  private readonly RESET_BLOCKED_COOLDOWN = 30000; // Don't retry reset for 30 seconds if blocked
-  private onStatusChanged?: (statusData: any) => void; // Callback for status changes (IPC)
-  private lastProfileSetTime: number = 0; // Track when we last set a profile
-  private readonly PROFILE_SET_COOLDOWN = 2000; // Minimum 2 seconds between profile updates to avoid rate limiting
+  private sourceOrder: SourceName[] = [...DEFAULT_SOURCE_ORDER];
+  private onAppStateChanged?: (statusData: AppStatusChangedEvent) => void;
+  private configStore: AppConfigStore;
   private isPolling: boolean = false; // Prevent concurrent polling cycles
   private pollTimeoutId: NodeJS.Timeout | null = null; // Track polling timeout for cleanup
 
   constructor(config: DaemonConfig) {
     this.slackService = new SlackService(config.slackTokens);
+    this.slackExecutor = new SlackStatusExecutor(this.slackService);
     this.statusManager = new StatusManager(this.slackService);
-    this.onStatusChanged = config.onStatusChanged;
-    
-    this.spotify = new SpotifyAdapter();
-    this.appleMusic = new AppleMusicAdapter();
-    this.zoom = new ZoomAdapter();
-    this.teams = new TeamsAdapter();
-    this.huddle = new HuddleAdapter();
+    this.sourceRegistry = new SourceRegistry();
+    this.sourceArbitrationEngine = new SourceArbitrationEngine();
+    this.runtimeOrchestrator = new RuntimeOrchestrator({
+      statusManager: this.statusManager,
+      slackExecutor: this.slackExecutor,
+      sourceArbitrationEngine: this.sourceArbitrationEngine,
+    });
+    this.onAppStateChanged = config.onAppStateChanged;
 
     this.configDir = config.configDir || this.getDefaultConfigDir();
-    this.ensureConfigDir();
+    this.configStore = config.configStore || createAppConfigStore({ configDir: this.configDir });
     this.loadConfig();
     
     // Listen for status changes from StatusManager and forward them via IPC callback
     this.statusManager.on('statusChanged', (statusData) => {
       logger.info(`[daemon] Status changed event`, statusData);
-      if (this.onStatusChanged) {
-        this.onStatusChanged(statusData);
+      if (this.onAppStateChanged) {
+        this.onAppStateChanged(statusData);
       }
     });
   }
@@ -116,35 +116,14 @@ export class SlackStatusBotDaemon {
    * Get current source statuses
    */
   async getSourceStatuses() {
-    return {
-      spotify: {
-        ...await this.spotify.getStatus(),
-        enabled: this.spotify.isEnabled(),
-      },
-      appleMusic: {
-        ...await this.appleMusic.getStatus(),
-        enabled: this.appleMusic.isEnabled(),
-      },
-      zoom: {
-        ...await this.zoom.getStatus(),
-        enabled: this.zoom.isEnabled(),
-      },
-      teams: {
-        ...await this.teams.getStatus(),
-        enabled: this.teams.isEnabled(),
-      },
-      huddle: {
-        ...await this.huddle.getStatus(),
-        enabled: this.huddle.isEnabled(),
-      },
-    };
+    return this.sourceRegistry.getStatuses();
   }
 
   /**
    * Get current Slack status
    */
   async getSlackStatus() {
-    const profile = await this.slackService.getProfile();
+    const profile = await this.slackExecutor.getProfile();
     return {
       emoji: profile?.status_emoji || '',
       text: profile?.status_text || '',
@@ -184,7 +163,7 @@ export class SlackStatusBotDaemon {
    * Get current status configuration
    */
   getStatusConfiguration(): CustomStatusConfig[] {
-    return this.statusConfiguration;
+    return this.statusManager.getCustomStatuses();
   }
 
   /**
@@ -192,11 +171,8 @@ export class SlackStatusBotDaemon {
    */
   async updateStatusConfiguration(config: CustomStatusConfig[]): Promise<boolean> {
     try {
-      this.statusConfiguration = config;
-      this.saveConfig();
-      
-      // Update StatusManager with new custom statuses so allowedEmojis is refreshed
       this.statusManager.setCustomStatuses(config);
+      this.saveConfig();
       
       logger.info('[daemon] Status configuration updated', { count: config.length });
       return true;
@@ -211,11 +187,8 @@ export class SlackStatusBotDaemon {
    */
   async resetStatusConfiguration(): Promise<boolean> {
     try {
-      this.statusConfiguration = getDefaultStatusConfiguration();
+      this.statusManager.setCustomStatuses(getDefaultStatusConfiguration());
       this.saveConfig();
-      
-      // Update StatusManager with default statuses so allowedEmojis is refreshed
-      this.statusManager.setCustomStatuses(this.statusConfiguration);
       
       logger.info('[daemon] Status configuration reset to defaults');
       return true;
@@ -228,69 +201,33 @@ export class SlackStatusBotDaemon {
   /**
    * Toggle source enable/disable
    */
-  toggleSource(source: 'spotify' | 'appleMusic' | 'zoom' | 'teams' | 'huddle', enabled: boolean): void {
-    switch (source) {
-      case 'spotify':
-        this.spotify.setEnabled(enabled);
-        break;
-      case 'appleMusic':
-        this.appleMusic.setEnabled(enabled);
-        break;
-      case 'zoom':
-        this.zoom.setEnabled(enabled);
-        break;
-      case 'teams':
-        this.teams.setEnabled(enabled);
-        break;
-      case 'huddle':
-        this.huddle.setEnabled(enabled);
-        break;
-    }
+  toggleSource(source: SourceName, enabled: boolean): void {
+    this.sourceRegistry.setEnabled(source, enabled);
     this.saveConfig();
   }
 
   /**
    * Get current source priority order
    */
-  getSourceOrder(): string[] {
-    return this.sourceOrder;
+  getSourceOrder(): SourceName[] {
+    return [...this.sourceOrder];
   }
 
   /**
    * Update source priority order at runtime
    */
-  async setSourceOrder(newOrder: string[]): Promise<void> {
-    this.sourceOrder = newOrder;
+  async setSourceOrder(newOrder: SourceName[]): Promise<void> {
+    this.sourceOrder = [...newOrder];
+    this.saveConfig();
     console.log('[Daemon] Source order updated at runtime:', this.sourceOrder);
     
     // Re-evaluate current status based on new priority order
     try {
       const sourceStatuses = await this.getSourceStatuses();
-      const activeStatuses: Record<string, boolean> = {
-        spotify: sourceStatuses?.spotify?.isActive && this.spotify.isEnabled(),
-        appleMusic: sourceStatuses?.appleMusic?.isActive && this.appleMusic.isEnabled(),
-        zoom: sourceStatuses?.zoom?.isActive && this.zoom.isEnabled(),
-        teams: sourceStatuses?.teams?.isActive && this.teams.isEnabled(),
-        huddle: sourceStatuses?.huddle?.isActive && this.huddle.isEnabled(),
-      };
-
-      // Find the first active source in new priority order
-      const highestPrioritySource = this.sourceOrder.find(s => activeStatuses[s]);
-
-      if (highestPrioritySource) {
-        const status = sourceStatuses[highestPrioritySource as keyof typeof sourceStatuses];
-        if (status && status.message) {
-          console.log(`[Daemon] Re-evaluating status with new priority: switching to ${highestPrioritySource}`);
-          const canChange = await this.statusManager.isStatusClean();
-          if (canChange) {
-            await this.slackService.setProfile(status.emoji!, status.message!);
-          }
-        }
-      } else {
-        // No active source, reset
-        console.log(`[Daemon] No active source with new priority, resetting status`);
-        await this.statusManager.reset();
-      }
+      await this.runtimeOrchestrator.handleReprioritization({
+        sourceOrder: this.sourceOrder,
+        sourceStatuses,
+      });
     } catch (error) {
       console.error('[Daemon] Error re-evaluating status after priority change:', error);
     }
@@ -299,14 +236,7 @@ export class SlackStatusBotDaemon {
   // Private helpers
 
   private startSourcePolling(): void {
-    // Track state for each source
-    const sourceState: Record<string, { wasActive: boolean; lastMessage: string }> = {
-      spotify: { wasActive: false, lastMessage: '' },
-      appleMusic: { wasActive: false, lastMessage: '' },
-      zoom: { wasActive: false, lastMessage: '' },
-      teams: { wasActive: false, lastMessage: '' },
-      huddle: { wasActive: false, lastMessage: '' },
-    };
+    this.sourceArbitrationEngine.resetTrackingState(this.sourceRegistry.getSourceNames());
 
     // Poll all sources - use recursive setTimeout instead of setInterval to ensure
     // no concurrent polling cycles (setInterval doesn't wait for async operations to complete)
@@ -320,233 +250,24 @@ export class SlackStatusBotDaemon {
 
       try {
         const sourceStatuses = await this.getSourceStatuses();
-
-        // Get current active status for each source
-        const activeStatuses: Record<string, boolean> = {
-          spotify: sourceStatuses.spotify.isActive && this.spotify.isEnabled(),
-          appleMusic: sourceStatuses.appleMusic.isActive && this.appleMusic.isEnabled(),
-          zoom: sourceStatuses.zoom.isActive && this.zoom.isEnabled(),
-          teams: sourceStatuses.teams.isActive && this.teams.isEnabled(),
-          huddle: sourceStatuses.huddle.isActive && this.huddle.isEnabled(),
-        };
-
-        // Debug: Log active statuses
-        const activeSourcesDebug = Object.entries(activeStatuses)
-          .filter(([_, isActive]) => isActive)
-          .map(([name]) => name);
+        const arbitrationSnapshot = this.sourceArbitrationEngine.evaluate(this.sourceOrder, sourceStatuses);
+        const { winningSource, activeSources: activeSourcesDebug, changes, trackingState } = arbitrationSnapshot;
         if (activeSourcesDebug.length > 0) {
           logger.debug(`[polling] Active sources: ${activeSourcesDebug.join(', ')}`);
         }
+        await this.runtimeOrchestrator.handlePollingSnapshot({
+          sourceOrder: this.sourceOrder,
+          sourceStatuses,
+          snapshot: arbitrationSnapshot,
+        });
 
-        // Track which status was set (last active source in priority order wins)
-        let statusWasSet = false;
-        let currentActiveSource: string | null = null;
-
-        // Process sources in priority order (sourceOrder defines the priority)
-        for (const sourceName of this.sourceOrder) {
-          const isActive = activeStatuses[sourceName];
-          const wasActive = sourceState[sourceName].wasActive;
-          const status = sourceStatuses[sourceName as keyof typeof sourceStatuses];
-
-          if (!status) continue;
-
-          // Check if this is a state transition (active <-> inactive)
-          const isStateTransition = isActive !== wasActive;
-          
-          // Check if message changed while source is still active (e.g., song changed)
-          const messageChanged = isActive && wasActive && status.message && status.message !== sourceState[sourceName].lastMessage;
-
-          // Skip if no state change AND no message change
-          if (!isStateTransition && !messageChanged) {
-            continue;
-          }
-
-          // Debug: Log state transitions or message changes
-          if (isStateTransition) {
-            logger.debug(`[polling] ${sourceName} state changed: ${wasActive} → ${isActive}`, {
-              lastMessage: sourceState[sourceName].lastMessage,
-              newMessage: status.message,
-            });
-          } else if (messageChanged) {
-            logger.debug(`[polling] ${sourceName} message changed while active`, {
-              lastMessage: sourceState[sourceName].lastMessage,
-              newMessage: status.message,
-            });
-          }
-
-          // Update state IMMEDIATELY to prevent race conditions
-          sourceState[sourceName].wasActive = isActive;
-
-          // Handle source becoming active OR message changed while active
-          if (isActive && !statusWasSet) {
-            currentActiveSource = sourceName;
-            
-            // Update statusCheckState to track active source
-            // This prevents correctStatus() from trying to reset to day-based status while a source is active
-            const currentState = this.statusManager.getStatusCheckState();
-            this.statusManager.setStatusCheckState({ ...currentState, activeSource: sourceName });
-            logger.debug(`[polling] Marked source as active in statusCheckState`, { activeSource: sourceName });
-            
-            // Only set status if message changed (covers both new activation and song changes)
-            if (status.message !== sourceState[sourceName].lastMessage) {
-              const canChange = await this.statusManager.isStatusClean();
-              if (canChange) {
-                // Change detection: Only call setProfile if the status has actually changed
-                const lastProfile = await this.statusManager.getLastKnownProfile();
-                const statusChanged = !lastProfile || 
-                  lastProfile.status_emoji !== status.emoji || 
-                  lastProfile.status_text !== status.message;
-                
-                if (statusChanged) {
-                  // Check cooldown to avoid rate limiting
-                  const now = Date.now();
-                  const timeSinceLastSet = now - this.lastProfileSetTime;
-                  
-                  if (timeSinceLastSet >= this.PROFILE_SET_COOLDOWN) {
-                    sourceState[sourceName].lastMessage = status.message || '';
-                    const logReason = isStateTransition ? 'became active' : 'message changed';
-                    logger.info(`[polling] ${sourceName} ${logReason}, setting status`, { emoji: status.emoji, message: status.message });
-                    await this.slackService.setProfile(status.emoji!, status.message!);
-                    this.lastProfileSetTime = now;
-                    
-                    // Emit status changed event for UI update
-                    this.statusManager.emit('statusChanged', { 
-                      emoji: status.emoji, 
-                      message: status.message,
-                      stateValue: 'activeSource'
-                    });
-                    statusWasSet = true;
-                  } else {
-                    const remainingCooldown = Math.ceil((this.PROFILE_SET_COOLDOWN - timeSinceLastSet) / 1000);
-                    logger.debug(`[polling] ${sourceName} status changed but rate limited (${remainingCooldown}s cooldown remaining)`, { emoji: status.emoji, message: status.message });
-                  }
-                } else {
-                  // Status hasn't changed, just update lastMessage tracking
-                  sourceState[sourceName].lastMessage = status.message || '';
-                  logger.debug(`[polling] ${sourceName} status unchanged, skipping API call`);
-                }
-              } else {
-                logger.warn(`[polling] ${sourceName} became active but status is not clean, skipping status change`);
-              }
-            }
-
-            // Handle DND for meetings - ALWAYS enable when a meeting starts
-            // DND is independent of status text and should work even with custom statuses
-            if ((sourceName === 'zoom' || sourceName === 'teams' || sourceName === 'huddle') && !wasActive) {
-              logger.info(`[polling] ${sourceName} meeting started, ensuring DND is enabled...`);
-              await this.slackService.enableDND();
-            }
-          }
-          // Handle source becoming inactive
-          else if (!isActive && wasActive) {
-            sourceState[sourceName].lastMessage = '';
-            console.log(`[polling] ${sourceName} became inactive`);
-
-            // Clear activeSource from statusCheckState
-            const currentState = this.statusManager.getStatusCheckState();
-            if (currentState.activeSource === sourceName) {
-              this.statusManager.setStatusCheckState({ ...currentState, activeSource: undefined });
-              logger.debug(`[polling] Cleared activeSource from statusCheckState`, { wasActive: sourceName });
-            }
-
-            // Handle DND for meetings - only disable if NO other meeting is active
-            if (sourceName === 'zoom' || sourceName === 'teams' || sourceName === 'huddle') {
-              // Check if ANY other meeting source is still active
-              const otherMeetingActive = 
-                (sourceName !== 'zoom' && activeStatuses['zoom']) ||
-                (sourceName !== 'teams' && activeStatuses['teams']) ||
-                (sourceName !== 'huddle' && activeStatuses['huddle']);
-              
-              if (otherMeetingActive) {
-                const activeMeetings = ['zoom', 'teams', 'huddle']
-                  .filter(s => s !== sourceName && activeStatuses[s])
-                  .join(', ');
-                logger.info(`[polling] ${sourceName} meeting ended, but another meeting is active (${activeMeetings}), keeping DND enabled`);
-              } else {
-                logger.info(`[polling] ${sourceName} meeting ended and no other meetings active, disabling DND...`);
-                await this.slackService.disableDND();
-              }
-            }
-
-            // Check if another source is still active
-            const nextActiveSource = this.sourceOrder.find(
-              s => activeStatuses[s] && s !== sourceName
-            );
-
-            if (nextActiveSource && nextActiveSource !== sourceName) {
-              // Switch to next active source in priority order
-              const nextStatus = sourceStatuses[nextActiveSource as keyof typeof sourceStatuses];
-              if (nextStatus && nextStatus.message) {
-                console.log(`[polling] Switching status from ${sourceName} to ${nextActiveSource}`);
-                const canChange = await this.statusManager.isStatusClean();
-                if (canChange) {
-                  // Change detection: Only call setProfile if the status has actually changed
-                  const lastProfile = await this.statusManager.getLastKnownProfile();
-                  const statusChanged = !lastProfile || 
-                    lastProfile.status_emoji !== nextStatus.emoji || 
-                    lastProfile.status_text !== nextStatus.message;
-                  
-                  if (statusChanged) {
-                    // Check cooldown to avoid rate limiting
-                    const now = Date.now();
-                    const timeSinceLastSet = now - this.lastProfileSetTime;
-                    
-                    if (timeSinceLastSet >= this.PROFILE_SET_COOLDOWN) {
-                      sourceState[nextActiveSource].lastMessage = nextStatus.message;
-                      logger.info(`[polling] Switching status from ${sourceName} to ${nextActiveSource}, setting profile`, { emoji: nextStatus.emoji, message: nextStatus.message });
-                      await this.slackService.setProfile(nextStatus.emoji!, nextStatus.message!);
-                      this.lastProfileSetTime = now;
-                    } else {
-                      const remainingCooldown = Math.ceil((this.PROFILE_SET_COOLDOWN - timeSinceLastSet) / 1000);
-                      logger.debug(`[polling] Source switch deferred due to rate limit (${remainingCooldown}s cooldown remaining)`);
-                    }
-                  } else {
-                    logger.debug(`[polling] Next source status unchanged, skipping API call`);
-                  }
-                }
-              }
-            } else {
-              // No other source is active, reset status
-              const now = Date.now();
-              const timeSinceLastBlock = now - this.lastResetBlockedTime;
-              
-              // Emit status changed event to update UI about source deactivation
-              const currentStatus = await this.slackService.getProfile();
-              if (currentStatus) {
-                this.statusManager.emit('statusChanged', {
-                  emoji: currentStatus.status_emoji,
-                  message: currentStatus.status_text,
-                  stateValue: 'sourceInactive'
-                });
-              }
-              
-              // Only attempt reset if enough time has passed since last block
-              if (timeSinceLastBlock >= this.RESET_BLOCKED_COOLDOWN) {
-                logger.info(`[polling] ${sourceName} became inactive, no other source active - attempting reset`);
-                const resetSuccess = await this.statusManager.reset();
-                if (resetSuccess) {
-                  logger.info(`[polling] Status reset successful after ${sourceName} deactivation`);
-                  this.lastResetBlockedTime = 0; // Reset cooldown on success
-                } else {
-                  logger.warn(`[polling] Status reset failed after ${sourceName} deactivation (likely blocked by isStatusClean)`);
-                  this.lastResetBlockedTime = now; // Start cooldown
-                }
-              } else {
-                const remainingCooldown = Math.ceil((this.RESET_BLOCKED_COOLDOWN - timeSinceLastBlock) / 1000);
-                logger.debug(`[polling] Reset is blocked, cooldown active (${remainingCooldown}s remaining)`);
-              }
-            }
-          }
-        }
-
-        // If no source is active but one was before, reset status
-        const anyActive = Object.values(activeStatuses).some(v => v);
-        const anyWasActive = Object.values(sourceState).some(s => s.wasActive);
+        const anyActive = !!winningSource;
+        const anyWasActive = Object.values(trackingState).some(s => s.wasActive);
         
         logger.debug(`[polling] Polling cycle end`, {
           anyActive,
           anyWasActive,
-          currentState: Object.entries(sourceState).reduce(
+          currentState: Object.entries(trackingState).reduce(
             (acc, [name, state]) => ({ ...acc, [name]: state.wasActive }),
             {}
           ),
@@ -576,7 +297,7 @@ export class SlackStatusBotDaemon {
     // Correct status every 60 seconds
     const interval = setInterval(async () => {
       try {
-        await this.statusManager.correctStatus();
+        await this.statusManager.runCorrectionCycle();
       } catch (error) {
         console.error('Error correcting status:', error);
       }
@@ -595,118 +316,26 @@ export class SlackStatusBotDaemon {
     }
   }
 
-  private ensureConfigDir(): void {
-    if (!fs.existsSync(this.configDir)) {
-      fs.mkdirSync(this.configDir, { recursive: true });
-    }
-  }
-
-  private getConfigFilePath(): string {
-    return path.join(this.configDir, 'config.json');
-  }
-
   private loadConfig(): void {
-    const configFile = this.getConfigFilePath();
-    let isNewConfig = false; // Track if we're creating a new config
-    
-    if (fs.existsSync(configFile)) {
-      try {
-        const config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
-        
-        // Restore source enabled states
-        if (config.sources) {
-          this.spotify.setEnabled(config.sources.spotify !== false);
-          this.appleMusic.setEnabled(config.sources.appleMusic !== false);
-          this.zoom.setEnabled(config.sources.zoom !== false);
-          this.teams.setEnabled(config.sources.teams !== false);
-          this.huddle.setEnabled(config.sources.huddle !== false);
-        }
+    const config = this.configStore.getDaemonSettings();
 
-        // Load source order
-        if (config.sourceOrder && Array.isArray(config.sourceOrder)) {
-          this.sourceOrder = config.sourceOrder;
-        }
-
-        // Load status configuration from config file
-        if (config.statusConfiguration && Array.isArray(config.statusConfiguration.customStatuses)) {
-          // Load exactly what's in the config file, without merging with defaults
-          // If user deleted default statuses, they should stay deleted
-          this.statusConfiguration = config.statusConfiguration.customStatuses;
-        } else {
-          // Initialize with defaults only if config doesn't exist
-          this.statusConfiguration = getDefaultStatusConfiguration();
-          isNewConfig = true;
-        }
-
-        // Load overridable patterns from config file
-        if (config.statusConfiguration && Array.isArray(config.statusConfiguration.overridablePatterns)) {
-          this.overridablePatterns = config.statusConfiguration.overridablePatterns;
-        } else {
-          // Initialize with defaults if not in config
-          this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
-          isNewConfig = true;
-        }
-      } catch (error) {
-        console.error('Error loading config:', error);
-        // Initialize with defaults on error
-        this.statusConfiguration = getDefaultStatusConfiguration();
-        this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
-        isNewConfig = true;
-      }
-      
-      // Update StatusManager with loaded configuration so allowedEmojis includes user-defined emojis
-      this.statusManager.setCustomStatuses(this.statusConfiguration);
-      this.statusManager.setOverridablePatterns(this.overridablePatterns);
-      
-      // Save config if we loaded defaults to persist them
-      if (isNewConfig) {
-        this.saveConfig();
-      }
-    } else {
-      // Initialize with defaults if config file doesn't exist
-      this.statusConfiguration = getDefaultStatusConfiguration();
-      this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
-      
-      // Save default config on first run
-      this.saveConfig();
-    }
+    this.sourceRegistry.applyEnabledConfig(config.sources);
+    this.sourceOrder = [...config.sourceOrder];
+    this.statusManager.setCustomStatuses(config.statusConfiguration.customStatuses);
+    this.statusManager.setOverridablePatterns(
+      config.statusConfiguration.overridablePatterns || DEFAULT_OVERRIDABLE_PATTERNS
+    );
   }
 
   private saveConfig(): void {
-    const configFile = this.getConfigFilePath();
-    
-    // Read existing config to preserve slackTokens
-    let existingConfig: any = {};
-    try {
-      if (fs.existsSync(configFile)) {
-        existingConfig = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
-      }
-    } catch (error) {
-      console.error('Error reading existing config:', error);
-    }
-
-    const config = {
-      ...existingConfig, // Keep existing fields like slackTokens
-      sources: {
-        spotify: this.spotify.isEnabled(),
-        appleMusic: this.appleMusic.isEnabled(),
-        zoom: this.zoom.isEnabled(),
-        teams: this.teams.isEnabled(),
-        huddle: this.huddle.isEnabled(),
-      },
+    this.configStore.updateDaemonSettings({
+      sources: this.sourceRegistry.getEnabledConfig(),
       sourceOrder: this.sourceOrder,
       statusConfiguration: {
-        customStatuses: this.statusConfiguration,
-        overridablePatterns: this.overridablePatterns,
+        customStatuses: this.statusManager.getCustomStatuses(),
+        overridablePatterns: this.statusManager.getOverridablePatterns(),
       },
-      lastUpdated: new Date().toISOString(),
-    };
-
-    try {
-      fs.writeFileSync(configFile, JSON.stringify(config, null, 2), 'utf-8');
-    } catch (error) {
-      console.error('Error saving config:', error);
-    }
+    });
   }
 
   /**

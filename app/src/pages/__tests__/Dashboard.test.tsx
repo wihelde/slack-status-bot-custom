@@ -1,186 +1,200 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Dashboard from '../Dashboard';
 import { IPCService } from '../../services/ipcService';
+import type { AppSnapshot, AppSnapshotRefreshSignal } from '../../contracts/appSnapshot';
 
-// Mock IPCService
 vi.mock('../../services/ipcService');
 
+type StatusPayload = {
+  emoji: string;
+  text: string;
+  stateCheckValue: string;
+};
+
+type SourceStatusesPayload = Record<
+  'spotify' | 'appleMusic' | 'zoom' | 'teams' | 'huddle',
+  { enabled?: boolean; isActive?: boolean; message?: string }
+>;
+
 describe('Dashboard', () => {
+  const mockIPCService = IPCService as any;
+
+  const createSourceStatuses = (
+    overrides: Partial<SourceStatusesPayload> = {}
+  ): SourceStatusesPayload => ({
+    spotify: { enabled: true, isActive: true, message: 'Playing Music' },
+    appleMusic: { enabled: true, isActive: false },
+    zoom: { enabled: true, isActive: false },
+    teams: { enabled: true, isActive: false },
+    huddle: { enabled: true, isActive: false },
+    ...overrides,
+  });
+
+  const createStatus = (overrides: Partial<StatusPayload> = {}): StatusPayload => ({
+    emoji: ':spotify_2:',
+    text: 'Playing Music',
+    stateCheckValue: 'spotify',
+    ...overrides,
+  });
+
+  const createAppSnapshot = (
+    overrides: Partial<AppSnapshot> = {}
+  ): AppSnapshot => ({
+    status: createStatus(),
+    daemon: { running: true },
+    sources: {
+      spotify: { name: 'spotify', enabled: true, isActive: true, message: 'Playing Music' },
+      appleMusic: { name: 'appleMusic', enabled: true, isActive: false },
+      zoom: { name: 'zoom', enabled: true, isActive: false },
+      teams: { name: 'teams', enabled: true, isActive: false },
+      huddle: { name: 'huddle', enabled: true, isActive: false },
+    },
+    update: null,
+    setup: {
+      tokensConfigured: true,
+      isFirstRun: false,
+    },
+    ...overrides,
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Mock IPCService methods
-    const mockIPCService = IPCService as any;
-    mockIPCService.getSlackStatus = vi.fn().mockResolvedValue({
-      emoji: ':spotify_2:',
-      text: 'Playing Music',
-      stateCheckValue: 'spotify',
-    });
-    mockIPCService.getDaemonStatus = vi.fn().mockResolvedValue({
-      running: true,
-    });
-    mockIPCService.getSourceStatuses = vi.fn().mockResolvedValue({
-      spotify: { isActive: true, message: 'Playing Music' },
-      appleMusic: { isActive: false },
-      zoom: { isActive: false },
-      teams: { isActive: false },
-      huddle: { isActive: false },
-    });
-    // Mock the event listeners (event-based, not polling)
-    mockIPCService.onStatusChanged = vi.fn(() => () => {});
-    mockIPCService.onSourceStatusChange = vi.fn(() => () => {});
-    mockIPCService.onDaemonStatusChange = vi.fn(() => () => {});
+
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue(createAppSnapshot());
+    mockIPCService.getStatusConfiguration = vi.fn().mockResolvedValue(null);
+
+    mockIPCService.goOnline = vi.fn().mockResolvedValue(true);
+    mockIPCService.goAway = vi.fn().mockResolvedValue(true);
+    mockIPCService.setStatus = vi.fn().mockResolvedValue(true);
+    mockIPCService.setHoliday = vi.fn().mockResolvedValue(true);
+    mockIPCService.toggleSource = vi.fn().mockResolvedValue(true);
+
+    mockIPCService.onAppSnapshotChanged = vi.fn(() => () => {});
+    mockIPCService.onOpenHolidayModal = vi.fn(() => () => {});
   });
 
-  describe('Status Update Events', () => {
-    it('should load status on mount', async () => {
-      render(<Dashboard />);
-      
-      await waitFor(() => {
-        expect(IPCService.getSlackStatus).toHaveBeenCalled();
-      });
+  it('bootstraps the dashboard from the current IPC-backed renderer state', async () => {
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(mockIPCService.getAppSnapshot).toHaveBeenCalledTimes(1);
     });
 
-    it('should register event listener for status changes', async () => {
-      render(<Dashboard />);
-      
-      await waitFor(() => {
-        expect(IPCService.onStatusChanged).toHaveBeenCalled();
-      });
+    expect(screen.getByText('Slack Status Bot')).toBeInTheDocument();
+    expect(screen.getByText(':spotify_2:')).toBeInTheDocument();
+    expect(screen.getAllByText('Playing Music')).toHaveLength(2);
+    expect(screen.getByText('🟢 Running')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /spotify/i })).toBeInTheDocument();
+    expect(screen.getByText('✓ Active')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /holiday/i })).toBeInTheDocument();
+  });
+
+  it('refreshes the visible dashboard state after an action-driven status change', async () => {
+    mockIPCService.getAppSnapshot = vi
+      .fn()
+      .mockResolvedValueOnce(createAppSnapshot())
+      .mockResolvedValueOnce(
+        createAppSnapshot({
+          status: createStatus({
+            emoji: ':palm_tree:',
+            text: 'strong vacationing (back on 24.11.2025)',
+            stateCheckValue: 'not working',
+          }),
+          sources: {
+            spotify: { name: 'spotify', enabled: true, isActive: false },
+            appleMusic: { name: 'appleMusic', enabled: true, isActive: false },
+            zoom: { name: 'zoom', enabled: true, isActive: false },
+            teams: { name: 'teams', enabled: true, isActive: false },
+            huddle: { name: 'huddle', enabled: true, isActive: false },
+          },
+        })
+      );
+
+    render(<Dashboard />);
+
+    await screen.findAllByText('Playing Music');
+
+    fireEvent.click(screen.getByRole('button', { name: /away/i }));
+
+    await waitFor(() => {
+      expect(mockIPCService.goAway).toHaveBeenCalledTimes(1);
     });
 
-    it('should update status when event is received', async () => {
-      const mockIPCService = IPCService as any;
-      let eventCallback: any = null;
-      
-      mockIPCService.onStatusChanged = vi.fn((callback: any) => {
-        eventCallback = callback;
-        return () => {}; // Return unsubscribe function
-      });
-      
-      render(<Dashboard />);
-      
-      // Simulate status change event wrapped in act
-      if (eventCallback) {
-        await act(async () => {
-          eventCallback({ 
-            emoji: ':palm_tree:', 
-            message: 'strong vacationing (back on 24.11.2025)' 
-          });
-        });
-      }
-      
-      await waitFor(() => {
-        expect(IPCService.onStatusChanged).toHaveBeenCalled();
-      });
-    });
-
-    it('should display current status', async () => {
-      render(<Dashboard />);
-      
-      await waitFor(() => {
-        // Status should be displayed somewhere
-        expect(screen.getByText(/Slack Status Bot/i)).toBeInTheDocument();
-      });
+    await waitFor(() => {
+      expect(mockIPCService.getAppSnapshot).toHaveBeenCalledTimes(2);
+      expect(screen.getByText(':palm_tree:')).toBeInTheDocument();
+      expect(
+        screen.getByText('strong vacationing (back on 24.11.2025)')
+      ).toBeInTheDocument();
     });
   });
 
-  describe('Source Display', () => {
-    it('should display all sources', async () => {
-      render(<Dashboard />);
-      
-      await waitFor(() => {
-        expect(IPCService.getSourceStatuses).toHaveBeenCalled();
-      });
+  it('applies event-driven status changes and refreshes sources through the same renderer model', async () => {
+    let snapshotChangedCallback: ((signal: AppSnapshotRefreshSignal) => void) | undefined;
+
+    mockIPCService.onAppSnapshotChanged = vi.fn((callback: (signal: AppSnapshotRefreshSignal) => void) => {
+      snapshotChangedCallback = callback;
+      return () => {};
     });
+
+    mockIPCService.getAppSnapshot = vi
+      .fn()
+      .mockResolvedValueOnce(createAppSnapshot())
+      .mockResolvedValueOnce(
+        createAppSnapshot({
+          status: createStatus({
+            emoji: ':zoom:',
+            text: 'In a meeting',
+            stateCheckValue: 'zoom',
+          }),
+          sources: {
+            spotify: { name: 'spotify', enabled: true, isActive: false },
+            appleMusic: { name: 'appleMusic', enabled: true, isActive: false },
+            zoom: { name: 'zoom', enabled: true, isActive: true, message: 'In a meeting' },
+            teams: { name: 'teams', enabled: true, isActive: false },
+            huddle: { name: 'huddle', enabled: true, isActive: false },
+          },
+        })
+      );
+
+    render(<Dashboard />);
+
+    await screen.findAllByText('Playing Music');
+
+    await act(async () => {
+      snapshotChangedCallback?.({ reason: 'daemon-status' });
+    });
+
+    await waitFor(() => {
+      expect(mockIPCService.getAppSnapshot).toHaveBeenCalledTimes(2);
+      expect(screen.getByText(':zoom:')).toBeInTheDocument();
+      expect(screen.getAllByText('In a meeting')).toHaveLength(2);
+    });
+
+    const activeLabels = screen.getAllByText('✓ Active');
+    expect(activeLabels).toHaveLength(1);
   });
 
-  describe('Quick Actions', () => {
-    it('should have Holiday quick action', async () => {
-      render(<Dashboard />);
-      
-      // Wait for loading to complete
-      await waitFor(() => {
-        expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
-      });
-      
-      // Find by title or role with text
-      const holidayBtn = screen.getByRole('button', { name: /🏖️|holiday/i });
-      expect(holidayBtn).toBeInTheDocument();
+  it('opens the holiday modal when the tray event arrives', async () => {
+    let openHolidayModalCallback: (() => void) | undefined;
+
+    mockIPCService.onOpenHolidayModal = vi.fn((callback: () => void) => {
+      openHolidayModalCallback = callback;
+      return () => {};
     });
 
-    it('should have Online and Away buttons', async () => {
-      render(<Dashboard />);
-      
-      // Wait for loading to complete
-      await waitFor(() => {
-        expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
-      });
-      
-      expect(screen.getByRole('button', { name: /🟢|online/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /🟡|away/i })).toBeInTheDocument();
-    });
-  });
+    render(<Dashboard />);
 
-  describe('Tray Integration - Holiday Modal', () => {
-    it('should register listener for open-holiday-modal event', async () => {
-      const mockIPCService = IPCService as any;
-      mockIPCService.onOpenHolidayModal = vi.fn();
-      
-      render(<Dashboard />);
-      
-      await waitFor(() => {
-        expect(mockIPCService.onOpenHolidayModal).toHaveBeenCalled();
-      });
+    await waitFor(() => {
+      expect(mockIPCService.onOpenHolidayModal).toHaveBeenCalledTimes(1);
     });
 
-    it('should open holiday modal when tray event is received', async () => {
-      const mockIPCService = IPCService as any;
-      let eventCallback: any = null;
-      
-      mockIPCService.onOpenHolidayModal = vi.fn((callback: any) => {
-        eventCallback = callback;
-        return () => {}; // Return unsubscribe function
-      });
-      
-      render(<Dashboard />);
-      
-      // Verify the listener was registered
-      await waitFor(() => {
-        expect(mockIPCService.onOpenHolidayModal).toHaveBeenCalled();
-      });
-      
-      // Simulate the tray event
-      if (eventCallback) {
-        await act(async () => {
-          eventCallback();
-        });
-      }
-      
-      // Holiday modal should now be open
-      // Note: The modal might not be visible immediately depending on implementation
-      // This test verifies the event handler is called
-      expect(eventCallback).toBeDefined();
+    await act(async () => {
+      openHolidayModalCallback?.();
     });
-  });
 
-  describe('Daemon Status Display', () => {
-    it('should show daemon running status', async () => {
-      render(<Dashboard />);
-      
-      // Wait for the loading to be done
-      await waitFor(() => {
-        expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
-      });
-      
-      // Then check for running status
-      expect(screen.getByText(/🟢 Running/)).toBeInTheDocument();
-    });
+    expect(screen.getByText(/set holiday status/i)).toBeInTheDocument();
   });
 });
-
-
-
-

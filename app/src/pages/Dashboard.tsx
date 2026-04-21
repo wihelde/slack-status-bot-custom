@@ -1,24 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/Dashboard.css';
 import { IPCService } from '../services/ipcService';
-import { STATUS_MESSAGES, CustomStatusConfig, getDefaultStatusConfiguration } from '../config/statusConfig';
+import { CustomStatusConfig, getDefaultStatusConfiguration } from '../config/statusConfig';
+import { buildSourceDisplayStates, SOURCE_ICONS, SOURCE_LABELS, SourceDisplayState } from '../config/sourceCatalog';
+import type { AppSnapshot } from '../contracts/appSnapshot';
 import HolidayModal from '../components/HolidayModal';
 
-interface SourceStatus {
-  name: string;
-  enabled: boolean;
-  isActive: boolean;
-  message?: string;
-}
-
 const Dashboard: React.FC = () => {
-  const [sources, setSources] = useState<SourceStatus[]>([
-    { name: 'spotify', enabled: true, isActive: false },
-    { name: 'appleMusic', enabled: true, isActive: false },
-    { name: 'zoom', enabled: true, isActive: false },
-    { name: 'teams', enabled: true, isActive: false },
-    { name: 'huddle', enabled: true, isActive: false },
-  ]);
+  const [sources, setSources] = useState<SourceDisplayState[]>(buildSourceDisplayStates());
 
   const [currentStatus, setCurrentStatus] = useState({ emoji: '', text: '' });
   const [daemonRunning, setDaemonRunning] = useState(false);
@@ -27,79 +16,48 @@ const Dashboard: React.FC = () => {
   const [statusConfig, setStatusConfig] = useState<CustomStatusConfig[]>([]);
   const [updateAvailable, setUpdateAvailable] = useState<{ version: string; releaseDate: string } | null>(null);
 
-  useEffect(() => {
-    // Check for updates on load
-    const checkUpdates = async () => {
-      const update = await IPCService.getUpdateAvailable();
-      if (update) {
-        setUpdateAvailable(update);
-      }
-    };
-    checkUpdates();
-    
-    // Listen for update available event
-    IPCService.onUpdateAvailable((updateInfo) => {
-      setUpdateAvailable(updateInfo);
+  const applyAppSnapshot = (snapshot: AppSnapshot) => {
+    setCurrentStatus({
+      emoji: snapshot.status.emoji,
+      text: snapshot.status.text,
     });
-    
-    // Initial load
-    loadStatus();
-    loadStatusConfiguration();
-    
-    // Listen for status changes from daemon (event-based, not polling)
-    IPCService.onStatusChanged((statusData) => {
-      console.log('[Dashboard] Status changed event received:', statusData);
-      // Update current status with the new data
-      setCurrentStatus({ 
-        emoji: statusData.emoji || '', 
-        text: statusData.message || '' 
-      });
-      
-      // If the change is due to an active/inactive source, reload source statuses
-      if (statusData.stateValue === 'activeSource' || statusData.stateValue === 'sourceInactive') {
-        console.log('[Dashboard] Source status changed, reloading source statuses', { stateValue: statusData.stateValue });
-        (async () => {
-          const sourceStatuses = await IPCService.getSourceStatuses();
-          if (sourceStatuses) {
-            setSources([
-              {
-                name: 'spotify',
-                enabled: sourceStatuses.spotify?.enabled ?? true,
-                isActive: sourceStatuses.spotify?.isActive || false,
-                message: sourceStatuses.spotify?.message,
-              },
-              {
-                name: 'appleMusic',
-                enabled: sourceStatuses.appleMusic?.enabled ?? true,
-                isActive: sourceStatuses.appleMusic?.isActive || false,
-                message: sourceStatuses.appleMusic?.message,
-              },
-              {
-                name: 'zoom',
-                enabled: sourceStatuses.zoom?.enabled ?? true,
-                isActive: sourceStatuses.zoom?.isActive || false,
-              },
-              {
-                name: 'teams',
-                enabled: sourceStatuses.teams?.enabled ?? true,
-                isActive: sourceStatuses.teams?.isActive || false,
-              },
-              {
-                name: 'huddle',
-                enabled: sourceStatuses.huddle?.enabled ?? true,
-                isActive: sourceStatuses.huddle?.isActive || false,
-              },
-            ]);
-          }
-        })();
+    setDaemonRunning(snapshot.daemon.running);
+    setSources(buildSourceDisplayStates(snapshot.sources));
+    setUpdateAvailable(snapshot.update);
+  };
+
+  const refreshDashboardState = async () => {
+    try {
+      const appSnapshot = await IPCService.getAppSnapshot();
+      if (!appSnapshot) {
+        throw new Error('App snapshot unavailable');
       }
+      applyAppSnapshot(appSnapshot);
+    } catch (error) {
+      console.error('Error loading dashboard snapshot:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshDashboardState();
+    loadStatusConfiguration();
+
+    const cleanupSnapshot = IPCService.onAppSnapshotChanged((signal) => {
+      console.log('[Dashboard] Refreshing renderer state from app snapshot', signal);
+      void refreshDashboardState();
     });
 
-    // Listen for open-holiday-modal event from tray menu
-    IPCService.onOpenHolidayModal(() => {
+    const cleanupHoliday = IPCService.onOpenHolidayModal(() => {
       console.log('[Dashboard] Received open-holiday-modal event from tray');
       setShowHolidayModal(true);
     });
+
+    return () => {
+      cleanupSnapshot?.();
+      cleanupHoliday?.();
+    };
   }, []);
 
   const loadStatusConfiguration = async () => {
@@ -125,98 +83,32 @@ const Dashboard: React.FC = () => {
     return found;
   };
 
-  const loadStatus = async () => {
-    try {
-      const status = await IPCService.getSlackStatus();
-      if (status) {
-        setCurrentStatus({ emoji: status.emoji, text: status.text });
-      }
-
-      const daemonStatus = await IPCService.getDaemonStatus();
-      if (daemonStatus) {
-        setDaemonRunning(daemonStatus.running);
-      }
-
-      const sourceStatuses = await IPCService.getSourceStatuses();
-      if (sourceStatuses) {
-        setSources([
-          {
-            name: 'spotify',
-            enabled: sourceStatuses.spotify?.enabled ?? true,
-            isActive: sourceStatuses.spotify?.isActive || false,
-            message: sourceStatuses.spotify?.message,
-          },
-          {
-            name: 'appleMusic',
-            enabled: sourceStatuses.appleMusic?.enabled ?? true,
-            isActive: sourceStatuses.appleMusic?.isActive || false,
-            message: sourceStatuses.appleMusic?.message,
-          },
-          {
-            name: 'zoom',
-            enabled: sourceStatuses.zoom?.enabled ?? true,
-            isActive: sourceStatuses.zoom?.isActive || false,
-          },
-          {
-            name: 'teams',
-            enabled: sourceStatuses.teams?.enabled ?? true,
-            isActive: sourceStatuses.teams?.isActive || false,
-          },
-          {
-            name: 'huddle',
-            enabled: sourceStatuses.huddle?.enabled ?? true,
-            isActive: sourceStatuses.huddle?.isActive || false,
-          },
-        ]);
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading status:', error);
-    }
-  };
-
   const handleToggleSource = async (sourceName: string) => {
     const source = sources.find(s => s.name === sourceName);
     if (source) {
       await IPCService.toggleSource(sourceName as any, !source.enabled);
-      loadStatus();
+      await refreshDashboardState();
     }
   };
 
   const handleGoOnline = async () => {
     await IPCService.goOnline();
-    loadStatus();
+    await refreshDashboardState();
   };
 
   const handleGoAway = async () => {
     await IPCService.goAway();
-    loadStatus();
+    await refreshDashboardState();
   };
 
   const handleSetStatus = async (emoji: string, message: string) => {
     await IPCService.setStatus(emoji, message);
-    loadStatus();
+    await refreshDashboardState();
   };
 
   const handleSetHoliday = async (returnDate: string) => {
     await IPCService.setHoliday(returnDate);
-    loadStatus();
-  };
-
-  const sourceIcons: Record<string, string> = {
-    spotify: '🎵',
-    appleMusic: '🎶',
-    zoom: '📹',
-    teams: '👥',
-    huddle: '🎧',
-  };
-
-  const sourceLabels: Record<string, string> = {
-    spotify: 'Spotify',
-    appleMusic: 'Apple Music',
-    zoom: 'Zoom',
-    teams: 'Teams',
-    huddle: 'Huddle',
+    await refreshDashboardState();
   };
 
   if (loading) {
@@ -296,7 +188,7 @@ const Dashboard: React.FC = () => {
           {sources.map((source) => (
             <div key={source.name} className={`source-item ${source.isActive ? 'active' : ''}`}>
               <div className="source-header">
-                <h3>{sourceIcons[source.name]} {sourceLabels[source.name]}</h3>
+                <h3>{SOURCE_ICONS[source.name]} {SOURCE_LABELS[source.name]}</h3>
                 <label className={`toggle ${!daemonRunning ? 'disabled' : ''}`}>
                   <input
                     type="checkbox"

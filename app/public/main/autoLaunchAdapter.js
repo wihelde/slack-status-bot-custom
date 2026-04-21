@@ -1,0 +1,107 @@
+function createAutoLaunchAdapter({
+  app,
+  fs,
+  path,
+  platform,
+  homeDir,
+  execSync,
+  processExecPath,
+  log,
+}) {
+  function getLaunchAgentPath() {
+    return path.join(homeDir || '', 'Library/LaunchAgents/com.slack-status-bot.plist');
+  }
+
+  function getMacAppPath() {
+    let appPath = processExecPath;
+    const appMatch = appPath.match(/^(.+?\.app)/);
+    if (appMatch) {
+      appPath = appMatch[1];
+    }
+    return appPath;
+  }
+
+  async function setEnabled(enabled) {
+    log(`[AutoLaunch] Setting auto-launch to: ${enabled}`);
+
+    if (platform === 'darwin') {
+      const launchAgentPath = getLaunchAgentPath();
+      const appPath = getMacAppPath();
+
+      if (enabled) {
+        const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.slack-status-bot</string>
+  <key>Program</key>
+  <string>${appPath}/Contents/MacOS/Slack Status Bot</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>${homeDir}/Library/Logs/slack-status-bot.log</string>
+  <key>StandardErrorPath</key>
+  <string>${homeDir}/Library/Logs/slack-status-bot-error.log</string>
+</dict>
+</plist>`;
+
+        const launchAgentDir = path.dirname(launchAgentPath);
+        if (!fs.existsSync(launchAgentDir)) {
+          fs.mkdirSync(launchAgentDir, { recursive: true });
+        }
+
+        fs.writeFileSync(launchAgentPath, plistContent, 'utf-8');
+
+        try {
+          execSync(`launchctl load "${launchAgentPath}"`, { stdio: 'pipe' });
+        } catch (error) {
+          if (!String(error).includes('already loaded')) {
+            log(`[AutoLaunch] Error loading with launchctl: ${error.message}`);
+          }
+        }
+      } else if (fs.existsSync(launchAgentPath)) {
+        try {
+          execSync(`launchctl unload "${launchAgentPath}"`, { stdio: 'pipe' });
+        } catch (error) {
+          if (!String(error).includes('not loaded')) {
+            log(`[AutoLaunch] Error unloading: ${error.message}`);
+          }
+        }
+
+        fs.unlinkSync(launchAgentPath);
+      }
+
+      return { enabled };
+    }
+
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      openAsHidden: true,
+    });
+
+    return { enabled };
+  }
+
+  async function getStatus() {
+    if (platform === 'darwin') {
+      return {
+        enabled: fs.existsSync(getLaunchAgentPath()),
+      };
+    }
+
+    const settings = app.getLoginItemSettings();
+    return {
+      enabled: settings.openAtLogin,
+    };
+  }
+
+  return {
+    getStatus,
+    setEnabled,
+  };
+}
+
+module.exports = {
+  createAutoLaunchAdapter,
+};

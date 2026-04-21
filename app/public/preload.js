@@ -20,14 +20,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteTokens: () => ipcRenderer.invoke('delete-tokens'),
 
   /**
-   * Get current Slack status
+   * Get the consolidated app snapshot for renderer bootstrap.
    */
-  getSlackStatus: () => ipcRenderer.invoke('get-slack-status'),
+  getAppSnapshot: () => ipcRenderer.invoke('get-app-snapshot'),
 
   /**
-   * Get status of all sources
+   * Listen for renderer-facing runtime changes and reload via the canonical app snapshot.
    */
-  getSourceStatuses: () => ipcRenderer.invoke('get-source-statuses'),
+  onAppSnapshotChanged: (callback) => {
+    const handler = (event, signal) => callback(signal);
+    ipcRenderer.on('app-snapshot-changed', handler);
+    return () => ipcRenderer.removeListener('app-snapshot-changed', handler);
+  },
 
   /**
    * Set custom status
@@ -54,35 +58,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSourceOrder: () => ipcRenderer.invoke('get-source-order'),
 
   /**
-   * Get daemon status
-   */
-  getDaemonStatus: () => ipcRenderer.invoke('get-daemon-status'),
-
-  /**
    * Check if tokens are configured
    */
-  getTokenStatus: () => ipcRenderer.invoke('get-tokens'),
-
-  /**
-   * On daemon status change
-   */
-  onDaemonStatusChange: (callback) => {
-    ipcRenderer.on('daemon-status-changed', (event, data) => callback(data));
-  },
-
-  /**
-   * On source status change
-   */
-  onSourceStatusChange: (callback) => {
-    ipcRenderer.on('source-status-changed', (event, data) => callback(data));
-  },
-
-  /**
-   * On Slack status change
-   */
-  onSlackStatusChange: (callback) => {
-    ipcRenderer.on('slack-status-changed', (event, data) => callback(data));
-  },
+  getTokenStatus: () => ipcRenderer.invoke('get-token-status'),
 
   /**
    * Get recent logs
@@ -125,17 +103,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setHoliday: (returnDate) => ipcRenderer.invoke('set-holiday', returnDate),
 
   /**
-   * Listen for status changes from daemon
-   */
-  onStatusChanged: (callback) => {
-    ipcRenderer.on('status-changed', (event, statusData) => callback(statusData));
-  },
-
-  /**
    * Listen for open-holiday-modal event
    */
   onOpenHolidayModal: (callback) => {
-    ipcRenderer.on('open-holiday-modal', (event) => callback());
+    const handler = () => callback();
+    ipcRenderer.on('open-holiday-modal', handler);
+    return () => ipcRenderer.removeListener('open-holiday-modal', handler);
   },
 
   /**
@@ -149,24 +122,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch'),
 
   /**
-   * Check if this is the first run
-   */
-  isFirstRun: () => ipcRenderer.invoke('is-first-run'),
-
-  /**
    * Mark first run as complete
    */
   completeFirstRun: () => ipcRenderer.invoke('complete-first-run'),
-
-  /**
-   * Listen for update available event
-   */
-  onUpdateAvailable: (callback) => {
-    ipcRenderer.on('update-available', (event, updateInfo) => callback(updateInfo));
-  },
-
-  /**
-   * Get current update availability status
-   */
-  getUpdateAvailable: () => ipcRenderer.invoke('get-update-available'),
 });

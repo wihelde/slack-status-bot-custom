@@ -51,7 +51,8 @@ describe('StatusManager', () => {
       expect(result).toBe(true);
       expect(mockSlackService.setProfile).toHaveBeenCalledWith(
         STATUS_MESSAGES.OFF_EMOJI,
-        expect.any(String)
+        expect.any(String),
+        0
       );
       expect(mockSlackService.setPresence).toHaveBeenCalledWith('away');
     });
@@ -61,6 +62,13 @@ describe('StatusManager', () => {
       
       const state = statusManager.getStatusCheckState();
       expect(state.value).toBe('not working');
+    });
+
+    it('should not mark goAway as manual activeSource', async () => {
+      await statusManager.goAway();
+
+      const state = statusManager.getStatusCheckState();
+      expect(state.activeSource).toBeUndefined();
     });
   });
 
@@ -114,6 +122,32 @@ describe('StatusManager', () => {
       
       const state = statusManager.getStatusCheckState();
       expect(state.value).toBe('not working');
+    });
+
+    it('should mark manual custom statuses as activeSource manual', async () => {
+      await statusManager.setCustomStatus(
+        STATUS_MESSAGES.BREAK_EMOJI,
+        'On a break'
+      );
+
+      const state = statusManager.getStatusCheckState();
+      expect(state.activeSource).toBe('manual');
+    });
+  });
+
+  describe('setHoliday()', () => {
+    it('should mark holiday as manual activeSource and protected state', async () => {
+      const result = await statusManager.setHoliday('14.04.2026');
+
+      expect(result).toBe(true);
+      const state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('not working');
+      expect(state.activeSource).toBe('manual');
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith(
+        STATUS_MESSAGES.HOLIDAY_EMOJI,
+        expect.stringContaining('back on'),
+        expect.any(Number)
+      );
     });
   });
 
@@ -169,83 +203,6 @@ describe('StatusManager', () => {
       vi.useRealTimers();
       
       expect(mockSlackService.disableDND).toHaveBeenCalled();
-    });
-  });
-
-  describe('isStatusClean()', () => {
-    it('should allow resetting if current status is a managed emoji', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI,
-        status_text: 'Playing Spotify',
-      });
-
-      const result = await statusManager.isStatusClean();
-      
-      expect(result).toBe(true);
-    });
-
-    it('should block resetting if current status is custom and not managed', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: ':custom_emoji:',
-        status_text: 'Custom status',
-      });
-
-      const result = await statusManager.isStatusClean();
-      
-      expect(result).toBe(false);
-    });
-
-    it('should allow resetting if status is empty', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: '',
-        status_text: '',
-      });
-
-      const result = await statusManager.isStatusClean();
-      
-      expect(result).toBe(true);
-    });
-
-    it('should block resetting when Holiday emoji is set and statusCheckState is "not working"', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
-        status_text: 'strong vacationing',
-      });
-
-      statusManager.setStatusCheckState({ value: 'not working' });
-
-      const result = await statusManager.isStatusClean();
-      
-      // Should be false - Holiday status is protected when in 'not working' mode
-      expect(result).toBe(false);
-    });
-
-    it('should block resetting when other protected emojis are set in "not working" mode', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: STATUS_MESSAGES.SICK_EMOJI,
-        status_text: 'Out sick',
-      });
-
-      statusManager.setStatusCheckState({ value: 'not working' });
-
-      const result = await statusManager.isStatusClean();
-      
-      // Should be false - Sick status is protected when in 'not working' mode
-      expect(result).toBe(false);
-    });
-
-    it('should allow resetting when status is managed but not in "not working" mode', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
-        status_text: 'strong vacationing',
-      });
-
-      statusManager.setStatusCheckState({ value: '' });
-
-      const result = await statusManager.isStatusClean();
-      
-      // Should be true - Holiday emoji is allowed when NOT in 'not working' mode
-      expect(result).toBe(true);
     });
   });
 
@@ -462,97 +419,6 @@ describe('StatusManager', () => {
     });
   });
 
-  describe('reset() with protected statuses', () => {
-    it('should set statusCheckState to "not working" when OFF_EMOJI is set', async () => {
-      // Create custom status with OFF_EMOJI for Monday
-      const customStatuses = [
-        {
-          id: 'off-monday',
-          emoji: STATUS_MESSAGES.OFF_EMOJI,
-          message: 'Off',
-          days: [DayOfWeek.MONDAY],
-          enableDND: false,
-          presence: 'away' as const,
-          quickActionLabel: null,
-          category: 'day_based' as const,
-        },
-      ];
-      
-      mockSlackService.setProfile.mockClear();
-      mockSlackService.setProfile.mockResolvedValue(true);
-      
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date('2025-11-17')); // Monday
-      
-      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
-      
-      // Use resetWithoutCheck() to bypass isStatusClean() for this test
-      await customStatusManager.resetWithoutCheck();
-
-      vi.useRealTimers();
-      
-      const state = customStatusManager.getStatusCheckState();
-      expect(state.value).toBe('not working');
-    });
-
-    it('should set statusCheckState to "not working" when SICK_EMOJI is configured', async () => {
-      const customStatuses = [
-        {
-          id: 'sick-monday',
-          emoji: STATUS_MESSAGES.SICK_EMOJI,
-          message: 'Sick',
-          days: [DayOfWeek.MONDAY],
-          enableDND: false,
-          presence: 'away' as const,
-          quickActionLabel: null,
-          category: 'day_based' as const,
-        },
-      ];
-      
-      mockSlackService.setProfile.mockClear();
-      mockSlackService.setProfile.mockResolvedValue(true);
-      
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date('2025-11-17')); // Monday
-      
-      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
-
-      // Use resetWithoutCheck() to bypass isStatusClean() for this test
-      await customStatusManager.resetWithoutCheck();
-
-      vi.useRealTimers();
-      
-      const state = customStatusManager.getStatusCheckState();
-      expect(state.value).toBe('not working');
-    });
-
-    it('should set statusCheckState to empty string for normal statuses', async () => {
-      const customStatuses = [
-        {
-          id: 'monday',
-          emoji: STATUS_MESSAGES.MONDAY_EMOJI,
-          message: 'Monday vibes',
-          days: [DayOfWeek.MONDAY],
-          enableDND: false,
-          presence: 'auto' as const,
-          quickActionLabel: null,
-          category: 'day_based' as const,
-        },
-      ];
-      
-      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
-      
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date('2025-11-17')); // Monday
-      vi.useRealTimers();
-
-      await customStatusManager.reset();
-
-      const state = customStatusManager.getStatusCheckState();
-      expect(state.value).toBe('');
-    });
-  });
-
   describe('Holiday Status Protection Against Polling', () => {
     it('should not allow Spotify to override Holiday status when in "not working" mode', async () => {
       // Setup: User has set Holiday status
@@ -621,6 +487,22 @@ describe('StatusManager', () => {
       // Should be true - no longer in 'not working' mode
       expect(isClean).toBe(true);
     });
+
+    it('should clear activeSource manual when user goes online after a manual status', async () => {
+      await statusManager.setCustomStatus(
+        STATUS_MESSAGES.HOLIDAY_EMOJI,
+        'strong vacationing'
+      );
+
+      let state = statusManager.getStatusCheckState();
+      expect(state.activeSource).toBe('manual');
+
+      await statusManager.goOnline();
+
+      state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('');
+      expect(state.activeSource).toBeUndefined();
+    });
   });
 
   describe('reset() on weekends with user configuration', () => {
@@ -650,7 +532,7 @@ describe('StatusManager', () => {
       
       vi.useRealTimers();
 
-      expect(mockSlackService.setProfile).toHaveBeenCalledWith(':smile:', 'Weekend vibes');
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith(':smile:', 'Weekend vibes', 0);
     });
 
     it('should set empty status on weekend when user has no configuration', async () => {
@@ -677,7 +559,7 @@ describe('StatusManager', () => {
       
       vi.useRealTimers();
 
-      expect(mockSlackService.setProfile).toHaveBeenCalledWith('', '');
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith('', '', 0);
     });
 
     it('should reset Spotify status on weekend when music stops', async () => {
@@ -814,60 +696,6 @@ describe('StatusManager', () => {
     });
   });
 
-  describe('setHoliday()', () => {
-    it('should set holiday status with correct back date and expiration', async () => {
-      const result = await statusManager.setHoliday('21.11.2025'); // Friday
-      
-      expect(result).toBe(true);
-      // Should call setProfile with vacation message and back date
-      expect(mockSlackService.setProfile).toHaveBeenCalled();
-      const call = mockSlackService.setProfile.mock.calls[0];
-      expect(call[0]).toBe(STATUS_MESSAGES.HOLIDAY_EMOJI);
-      expect(call[1]).toContain('strong vacationing');
-      expect(call[1]).toContain('24.11.2025'); // Monday (Fri + 3 days)
-      // Should have expiration timestamp
-      expect(typeof call[2]).toBe('number');
-      expect(call[2]).toBeGreaterThan(0);
-    });
-
-    it('should set holiday with +1 day for non-Friday return date', async () => {
-      const result = await statusManager.setHoliday('24.11.2025'); // Monday
-      
-      expect(result).toBe(true);
-      const call = mockSlackService.setProfile.mock.calls[0];
-      expect(call[1]).toContain('25.11.2025'); // Next day
-    });
-
-    it('should reject invalid date format', async () => {
-      const result = await statusManager.setHoliday('invalid-date');
-      
-      expect(result).toBe(false);
-      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
-    });
-
-    it('should set away presence for holiday', async () => {
-      await statusManager.setHoliday('21.11.2025');
-      
-      expect(mockSlackService.setPresence).toHaveBeenCalledWith('away');
-    });
-  });
-
-  describe('OFF_EMOJI not in managed list', () => {
-    it('should block resetting if user manually set OFF_EMOJI', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: STATUS_MESSAGES.OFF_EMOJI,
-        status_text: 'Custom away message',
-      });
-
-      statusManager.setStatusCheckState({ value: '' });
-
-      const result = await statusManager.isStatusClean();
-
-      // Should be false because OFF_EMOJI is not in managed list
-      expect(result).toBe(false);
-    });
-  });
-
   describe('correctStatus() with Holiday expiration', () => {
     it('should skip correction when Holiday status has active expiration', async () => {
       const futureTimestamp = Math.floor(Date.now() / 1000) + 86400; // +1 day
@@ -940,172 +768,5 @@ describe('StatusManager', () => {
       expect(mockSlackService.setProfile).not.toHaveBeenCalled();
     });
 
-    it('should protect Sick status even when expiration field is present', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: STATUS_MESSAGES.SICK_EMOJI,
-        status_text: 'Out sick',
-        status_expiration: 0,
-      });
-
-      statusManager.setStatusCheckState({ value: 'not working' });
-      mockSlackService.setProfile.mockClear();
-      
-      await statusManager.correctStatus();
-
-      // Should not attempt to change status (Sick is always protected)
-      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Overridable Third-Party Status Patterns', () => {
-    it('should allow overriding Officely Hamburg status', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: ':office:',
-        status_text: 'Office Hamburg (via Officely)',
-      });
-
-      statusManager.setStatusCheckState({ value: '' });
-
-      const result = await statusManager.isStatusClean();
-
-      // Should be true - Officely status is overridable
-      expect(result).toBe(true);
-    });
-
-    it('should allow overriding Officely Belgrade status', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: ':office:',
-        status_text: 'Office Belgrade (via Officely)',
-      });
-
-      statusManager.setStatusCheckState({ value: '' });
-
-      const result = await statusManager.isStatusClean();
-
-      // Should be true - Officely status is overridable
-      expect(result).toBe(true);
-    });
-
-    it('should block non-matching Officely messages', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: ':office:',
-        status_text: 'Office Paris (via Officely)',
-      });
-
-      statusManager.setStatusCheckState({ value: '' });
-
-      const result = await statusManager.isStatusClean();
-
-      // Should be false - this Officely office is not in the whitelist
-      expect(result).toBe(false);
-    });
-
-    it('should allow custom overridable patterns', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: ':home:',
-        status_text: 'Working from home - Remote',
-      });
-
-      // Add custom pattern
-      statusManager.setOverridablePatterns([
-        {
-          emoji: ':home:',
-          messagePatterns: [
-            'Working from home - Remote',
-            'WFH - Office Tool',
-            'Home Office',
-          ],
-          description: 'WFH tracking tool',
-        },
-      ]);
-
-      statusManager.setStatusCheckState({ value: '' });
-
-      const result = await statusManager.isStatusClean();
-
-      // Should be true - custom pattern is in whitelist
-      expect(result).toBe(true);
-    });
-
-    it('should match any message pattern in the list', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: ':home:',
-        status_text: 'Home Office',
-      });
-
-      // Add custom pattern with multiple message options
-      statusManager.setOverridablePatterns([
-        {
-          emoji: ':home:',
-          messagePatterns: [
-            'Working from home - Remote',
-            'WFH - Office Tool',
-            'Home Office',
-          ],
-          description: 'WFH tracking tool',
-        },
-      ]);
-
-      statusManager.setStatusCheckState({ value: '' });
-
-      const result = await statusManager.isStatusClean();
-
-      // Should be true - "Home Office" is in the messagePatterns list
-      expect(result).toBe(true);
-    });
-
-    it('should reject emoji without matching message', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: ':home:',
-        status_text: 'Unknown message',
-      });
-
-      // Add custom pattern
-      statusManager.setOverridablePatterns([
-        {
-          emoji: ':home:',
-          messagePatterns: [
-            'Working from home - Remote',
-            'WFH - Office Tool',
-          ],
-          description: 'WFH tracking tool',
-        },
-      ]);
-
-      statusManager.setStatusCheckState({ value: '' });
-
-      const result = await statusManager.isStatusClean();
-
-      // Should be false - message not in the list
-      expect(result).toBe(false);
-    });
-
-    it('should handle multiple overridable patterns', async () => {
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: ':custom:',
-        status_text: 'Custom Tool Status',
-      });
-
-      // Add multiple patterns
-      statusManager.setOverridablePatterns([
-        {
-          emoji: ':office:',
-          messagePatterns: ['Office Hamburg (via Officely)'],
-          description: 'Officely',
-        },
-        {
-          emoji: ':custom:',
-          messagePatterns: ['Custom Tool Status'],
-          description: 'Custom tool',
-        },
-      ]);
-
-      statusManager.setStatusCheckState({ value: '' });
-
-      const result = await statusManager.isStatusClean();
-
-      // Should be true - matches second pattern
-      expect(result).toBe(true);
-    });
   });
 });

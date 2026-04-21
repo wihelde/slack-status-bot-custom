@@ -34,5 +34,39 @@ export interface ISourceAdapter {
   isEnabled(): boolean;
 }
 
+export interface DelegatingSourceAdapterConfig {
+  name: string;
+  isAvailable: () => boolean;
+  getStatus: () => Promise<SourceStatus>;
+}
+
+export class DelegatingSourceAdapter implements ISourceAdapter {
+  private enabled = true;
+
+  constructor(private readonly config: DelegatingSourceAdapterConfig) {}
+
+  async getStatus(): Promise<SourceStatus> {
+    if (!this.enabled) {
+      return {
+        name: this.config.name,
+        isActive: false,
+      };
+    }
+
+    return this.config.getStatus();
+  }
+
+  isAvailable(): boolean {
+    return this.config.isAvailable();
+  }
+
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+}
 
 

@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SlackStatusBotDaemon } from '../daemon';
 import { SlackService } from '../services/slack';
+import { STATUS_MESSAGES } from '../config/statusConfig';
+import { SourceName } from '../config/sourceCatalog';
 
 // Mock external dependencies
 vi.mock('../services/slack');
@@ -180,6 +182,19 @@ describe('SlackStatusBotDaemon', () => {
   let daemon: SlackStatusBotDaemon;
   let mockSlackService: any;
 
+  const getInternalSlackService = () => (daemon as any).slackService;
+  const getInternalStatusManager = () => (daemon as any).statusManager;
+  const getInternalSourceRegistry = () => (daemon as any).sourceRegistry;
+  const getInternalSource = (
+    source: 'spotify' | 'appleMusic' | 'zoom' | 'teams' | 'huddle'
+  ) => getInternalSourceRegistry().getAdapter(source) as any;
+  const setSourceActive = (
+    source: 'spotify' | 'appleMusic' | 'zoom' | 'teams' | 'huddle',
+    active: boolean
+  ) => {
+    getInternalSource(source).active = active;
+  };
+
   // Helper function to create complete mock source statuses with all 5 sources
   const createCompleteSourceStatusesMock = () => ({
     spotify: { isActive: false, message: '' },
@@ -212,6 +227,13 @@ describe('SlackStatusBotDaemon', () => {
       slackTokens: 'test-token',
       configDir: `/tmp/test-daemon-config-${Date.now()}-${Math.random()}`,
     });
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    if (daemon?.isRunning()) {
+      await daemon.stop();
+    }
   });
 
   describe('Daemon Lifecycle', () => {
@@ -396,7 +418,7 @@ describe('SlackStatusBotDaemon', () => {
         createCompleteSourceStatusesMock()
       );
       
-      const newOrder = ['teams', 'zoom', 'spotify', 'huddle', 'appleMusic'];
+      const newOrder: SourceName[] = ['teams', 'zoom', 'spotify', 'huddle', 'appleMusic'];
       await daemon.setSourceOrder(newOrder);
       
       expect(daemon.getSourceOrder()).toEqual(newOrder);
@@ -408,7 +430,7 @@ describe('SlackStatusBotDaemon', () => {
         createCompleteSourceStatusesMock()
       );
       
-      const invalidOrder = ['invalid', 'sources'];
+      const invalidOrder = ['invalid', 'sources'] as any;
       // Should not throw, but may not update
       try {
         await daemon.setSourceOrder(invalidOrder);
@@ -423,28 +445,91 @@ describe('SlackStatusBotDaemon', () => {
       mockSlackService.getSourceStatuses.mockResolvedValueOnce(
         createCompleteSourceStatusesMock()
       );
-      
-      const newOrder = ['spotify', 'teams', 'zoom', 'appleMusic', 'huddle'];
-      await daemon.setSourceOrder(newOrder);
-      
-      // Create new daemon to verify config was saved
+      const configDir = `/tmp/test-daemon-config-persist-order-${Date.now()}-${Math.random()}`;
+
+      const daemon1 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      const newOrder: SourceName[] = ['spotify', 'teams', 'zoom', 'appleMusic', 'huddle'];
+      await daemon1.setSourceOrder(newOrder);
+
       const daemon2 = new SlackStatusBotDaemon({
         slackTokens: 'test-token',
-        configDir: '/tmp/test-daemon-config',
+        configDir,
       });
-      
-      // New daemon should have same order if config was persisted
-      expect(daemon2).toBeDefined();
+
+      expect(daemon2.getSourceOrder()).toEqual(newOrder);
+    });
+
+    it('should reapply the new winning source when priority changes at runtime', async () => {
+      const slackService = getInternalSlackService();
+
+      setSourceActive('spotify', true);
+      setSourceActive('zoom', true);
+
+      await daemon.setSourceOrder(['zoom', 'spotify', 'teams', 'appleMusic', 'huddle']);
+
+      expect(slackService.setProfile).toHaveBeenCalledWith(':zoom:', 'In a meeting');
+    });
+
+    it('should switch to the new winner through the same runtime path after reprioritization', async () => {
+      vi.useFakeTimers();
+      const slackService = getInternalSlackService();
+
+      setSourceActive('spotify', true);
+      setSourceActive('zoom', true);
+
+      await daemon.start();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(slackService.setProfile).toHaveBeenCalledWith(':spotify:', 'Playing music');
+
+      slackService.setProfile.mockClear();
+      await vi.advanceTimersByTimeAsync(2100);
+      await daemon.setSourceOrder(['zoom', 'spotify', 'teams', 'appleMusic', 'huddle']);
+
+      expect(slackService.setProfile).toHaveBeenCalledTimes(1);
+      expect(slackService.setProfile).toHaveBeenCalledWith(':zoom:', 'In a meeting');
+
+      const state = getInternalStatusManager().getStatusCheckState();
+      expect(state.activeSource).toBe('zoom');
+    });
+
+    it('should reset through the shared reset path when reprioritization finds no active source', async () => {
+      vi.setSystemTime(new Date('2025-11-24T09:00:00Z'));
+      const slackService = getInternalSlackService();
+
+      await daemon.setSourceOrder(['zoom', 'spotify', 'teams', 'appleMusic', 'huddle']);
+
+      expect(slackService.setProfile).toHaveBeenCalled();
+      expect(slackService.setProfile.mock.calls.at(-1)?.[0]).toBe(':monday:');
+      expect(slackService.setProfile.mock.calls.at(-1)?.[1]).toContain('Monday');
     });
   });
 
   describe('Configuration & Persistence (PRIORITY 1)', () => {
-    it('should save config when toggling sources', () => {
-      // Toggle a source
-      daemon.toggleSource('spotify', false);
-      
-      // Should not throw during save
-      expect(true).toBe(true);
+    it('should save config when toggling sources', async () => {
+      const configDir = `/tmp/test-daemon-config-toggle-${Date.now()}-${Math.random()}`;
+      const daemon1 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      daemon1.toggleSource('spotify', false);
+      daemon1.toggleSource('teams', false);
+
+      const daemon2 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      await expect(daemon2.getSourceStatuses()).resolves.toMatchObject({
+        spotify: expect.objectContaining({ enabled: false }),
+        teams: expect.objectContaining({ enabled: false }),
+        appleMusic: expect.objectContaining({ enabled: true }),
+      });
     });
 
     it('should save config when updating source order', async () => {
@@ -453,23 +538,31 @@ describe('SlackStatusBotDaemon', () => {
         createCompleteSourceStatusesMock()
       );
       
-      const newOrder = ['zoom', 'teams', 'spotify', 'appleMusic', 'huddle'];
+      const newOrder: SourceName[] = ['zoom', 'teams', 'spotify', 'appleMusic', 'huddle'];
       
-      // Should not throw
-      try {
-        await daemon.setSourceOrder(newOrder);
-        expect(true).toBe(true);
-      } catch (e) {
-        throw new Error('Config save should not throw');
-      }
+      await expect(daemon.setSourceOrder(newOrder)).resolves.toBeUndefined();
     });
 
-    it('should preserve source enabled/disabled state', () => {
-      daemon.toggleSource('spotify', false);
-      daemon.toggleSource('appleMusic', false);
-      
-      // These should be persisted (verified by checking config on restart)
-      expect(true).toBe(true);
+    it('should preserve source enabled/disabled state', async () => {
+      const configDir = `/tmp/test-daemon-config-enabled-state-${Date.now()}-${Math.random()}`;
+      const daemon1 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      daemon1.toggleSource('spotify', false);
+      daemon1.toggleSource('appleMusic', false);
+
+      const daemon2 = new SlackStatusBotDaemon({
+        slackTokens: 'test-token',
+        configDir,
+      });
+
+      await expect(daemon2.getSourceStatuses()).resolves.toMatchObject({
+        spotify: expect.objectContaining({ enabled: false }),
+        appleMusic: expect.objectContaining({ enabled: false }),
+        zoom: expect.objectContaining({ enabled: true }),
+      });
     });
   });
 
@@ -495,27 +588,113 @@ describe('SlackStatusBotDaemon', () => {
     });
 
     it('should switch to next priority source when highest ends', async () => {
-      // This is complex logic that depends on actual source activation
-      // For now, verify the infrastructure is in place
+      vi.useFakeTimers();
+      const slackService = getInternalSlackService();
+
+      setSourceActive('zoom', true);
       await daemon.start();
-      
-      // Daemon should be polling and ready to switch
-      expect(daemon.isRunning()).toBe(true);
-      
-      await daemon.stop();
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(slackService.setProfile).toHaveBeenCalledWith(':zoom:', 'In a meeting');
+
+      slackService.setProfile.mockClear();
+      setSourceActive('zoom', false);
+      setSourceActive('spotify', true);
+
+      await vi.advanceTimersByTimeAsync(2100);
+
+      expect(slackService.setProfile).toHaveBeenCalledWith(':spotify:', 'Playing music');
+    });
+
+    it('should prefer the highest priority source when multiple sources are active', async () => {
+      vi.useFakeTimers();
+      const slackService = getInternalSlackService();
+
+      setSourceActive('spotify', true);
+      setSourceActive('zoom', true);
+
+      await daemon.start();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(slackService.setProfile).toHaveBeenCalledTimes(1);
+      expect(slackService.setProfile).toHaveBeenCalledWith(':spotify:', 'Playing music');
+
+      const state = getInternalStatusManager().getStatusCheckState();
+      expect(state.activeSource).toBe('spotify');
+    });
+
+    it('should update the winning source when its message changes', async () => {
+      vi.useFakeTimers();
+      const slackService = getInternalSlackService();
+      const spotify = getInternalSource('spotify');
+
+      spotify.getStatus = vi.fn()
+        .mockResolvedValueOnce({
+          name: 'Spotify',
+          isActive: true,
+          emoji: ':spotify:',
+          message: 'Track One',
+        })
+        .mockResolvedValueOnce({
+          name: 'Spotify',
+          isActive: true,
+          emoji: ':spotify:',
+          message: 'Track Two',
+        })
+        .mockResolvedValue({
+          name: 'Spotify',
+          isActive: true,
+          emoji: ':spotify:',
+          message: 'Track Two',
+        });
+
+      setSourceActive('spotify', true);
+      await daemon.start();
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(slackService.setProfile).toHaveBeenCalledWith(':spotify:', 'Track One');
+
+      slackService.setProfile.mockClear();
+      await vi.advanceTimersByTimeAsync(2000);
+
+      expect(slackService.setProfile).toHaveBeenCalledTimes(1);
+      expect(slackService.setProfile).toHaveBeenCalledWith(':spotify:', 'Track Two');
+    });
+
+    it('should ignore an active source when it is disabled and choose the next enabled source', async () => {
+      vi.useFakeTimers();
+      const slackService = getInternalSlackService();
+
+      daemon.toggleSource('spotify', false);
+      setSourceActive('spotify', true);
+      setSourceActive('zoom', true);
+
+      await daemon.start();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(slackService.setProfile).toHaveBeenCalledTimes(1);
+      expect(slackService.setProfile).toHaveBeenCalledWith(':zoom:', 'In a meeting');
+
+      const state = getInternalStatusManager().getStatusCheckState();
+      expect(state.activeSource).toBe('zoom');
     });
 
     it('should reset status when all sources become inactive', async () => {
-      // When no sources are active, status should reset
-      // This is triggered by startSourcePolling
+      vi.useFakeTimers();
+      const slackService = getInternalSlackService();
+
+      vi.setSystemTime(new Date('2025-11-24T09:00:00Z'));
+      setSourceActive('spotify', true);
       await daemon.start();
-      
-      mockSlackService.setProfile = vi.fn().mockResolvedValue(true);
-      
-      // After polling cycle, if no source is active, should reset
-      expect(daemon.isRunning()).toBe(true);
-      
-      await daemon.stop();
+
+      await vi.advanceTimersByTimeAsync(0);
+      slackService.setProfile.mockClear();
+
+      setSourceActive('spotify', false);
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(slackService.setProfile).toHaveBeenCalled();
+      expect(slackService.setProfile.mock.calls.at(-1)[0]).toBe( ':monday:' );
     });
 
     it('should respect source enabled/disabled state during polling', async () => {
@@ -651,7 +830,7 @@ describe('SlackStatusBotDaemon', () => {
     });
 
     it('should handle rapid source order changes', async () => {
-      const orders = [
+      const orders: SourceName[][] = [
         ['spotify', 'zoom', 'teams', 'huddle', 'appleMusic'],
         ['teams', 'spotify', 'zoom', 'appleMusic', 'huddle'],
         ['appleMusic', 'zoom', 'huddle', 'spotify', 'teams'],
@@ -815,11 +994,14 @@ describe('SlackStatusBotDaemon', () => {
 
   describe('Active Source Tracking', () => {
     it('should track activeSource in statusCheckState', async () => {
-      const state = daemon.getSlackStatus ? await daemon.getSlackStatus() : null;
-      
-      // activeSource should be tracked but this is internal to StatusManager
-      // which is tested in statusManager.test.ts
-      expect(daemon).toBeDefined();
+      vi.useFakeTimers();
+
+      setSourceActive('zoom', true);
+      await daemon.start();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const state = getInternalStatusManager().getStatusCheckState();
+      expect(state.activeSource).toBe('zoom');
     });
   });
 
@@ -833,25 +1015,26 @@ describe('SlackStatusBotDaemon', () => {
     });
 
     it('should enable DND for meeting emojis via custom status', async () => {
-      // Test that when we manually set a meeting status, DND is enabled
-      // This is handled by statusManager.setCustomStatus
-      await daemon.setStatus(':zoom:', 'In a meeting');
-      
-      // In real implementation, setCustomStatus would enable DND for meeting emojis
-      // This test verifies the infrastructure is in place
-      expect(daemon).toBeDefined();
+      const slackService = getInternalSlackService();
+      slackService.setProfile = vi.fn().mockResolvedValue(true);
+      slackService.enableDND = vi.fn().mockResolvedValue(true);
+      slackService.setPresence = vi.fn().mockResolvedValue(true);
+      slackService.disableDND = vi.fn().mockResolvedValue(true);
+
+      await daemon.setStatus(STATUS_MESSAGES.MEETING_EMOJI, 'In a meeting');
+
+      expect(slackService.enableDND).toHaveBeenCalled();
     });
 
     it('should handle DND control during daemon lifecycle', async () => {
-      // Start daemon - DND control should be functional
+      vi.useFakeTimers();
+      const slackService = getInternalSlackService();
+
+      setSourceActive('teams', true);
       await daemon.start();
-      expect(daemon.isRunning()).toBe(true);
-      
-      // DND methods should be available
-      expect(mockSlackService.enableDND).toBeDefined();
-      expect(mockSlackService.disableDND).toBeDefined();
-      
-      await daemon.stop();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(slackService.enableDND).toHaveBeenCalled();
     });
 
     it('should not break when DND operations fail', async () => {
@@ -869,13 +1052,13 @@ describe('SlackStatusBotDaemon', () => {
   });
 
   describe('Status Change Events', () => {
-    it('should emit statusChanged event when callback is provided', () => {
-      const onStatusChanged = vi.fn();
+    it('should accept an app-state callback when configured', () => {
+      const onAppStateChanged = vi.fn();
       
       const daemonWithCallback = new SlackStatusBotDaemon({
         slackTokens: 'test-token',
         configDir: '/tmp/test-daemon-config-events',
-        onStatusChanged,
+        onAppStateChanged,
       });
       
       expect(daemonWithCallback).toBeDefined();
@@ -883,26 +1066,29 @@ describe('SlackStatusBotDaemon', () => {
       // This is tested implicitly through the polling and status change methods
     });
 
-    it('should trigger onStatusChanged callback when status is updated', async () => {
+    it('should trigger onAppStateChanged callback when status is updated', async () => {
       const mockCallback = vi.fn();
       
       const daemonWithCallback = new SlackStatusBotDaemon({
         slackTokens: 'test-token',
         configDir: '/tmp/test-daemon-config-events',
-        onStatusChanged: mockCallback,
+        onAppStateChanged: mockCallback,
       });
-      
-      // When setStatus is called, it should eventually trigger a callback
-      mockSlackService.setProfile = vi.fn().mockResolvedValue(true);
-      mockSlackService.getProfile = vi.fn().mockResolvedValue({
-        status_emoji: ':test:',
-        status_text: 'Test Status',
-      });
-      
-      // The callback should be registered but verification of actual calls
-      // is complex due to async nature and source polling
-      // This test ensures the infrastructure is in place
-      expect(daemonWithCallback).toBeDefined();
+
+      const slackService = (daemonWithCallback as any).slackService;
+      slackService.setProfile = vi.fn().mockResolvedValue(true);
+      slackService.disableDND = vi.fn().mockResolvedValue(true);
+      slackService.enableDND = vi.fn().mockResolvedValue(true);
+      slackService.setPresence = vi.fn().mockResolvedValue(true);
+
+      await daemonWithCallback.setStatus(':test:', 'Test Status');
+
+      expect(mockCallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          emoji: ':test:',
+          message: 'Test Status',
+        })
+      );
     });
   });
 
@@ -1122,74 +1308,11 @@ describe('SlackStatusBotDaemon', () => {
 
       // The daemon's statusManager should have Officely patterns loaded by default
       const statusManager = daemon['statusManager'] as any;
-      const hasOfficelyPattern = statusManager.overridablePatterns.some(
+      const hasOfficelyPattern = statusManager.getOverridablePatterns().some(
         (p: any) => p.emoji === ':office:' && p.messagePatterns.includes('Office Hamburg (via Officely)')
       );
 
       expect(hasOfficelyPattern).toBe(true);
-
-      await daemon.stop();
-    });
-
-    it('should recognize Officely status with correct emoji and text', async () => {
-      await daemon.start();
-
-      const statusManager = daemon['statusManager'] as any;
-      
-      // Test the isOverridableThirdPartyStatus method (private, accessed via reflection)
-      const isOverridableThirdPartyStatus = statusManager.isOverridableThirdPartyStatus.bind(statusManager);
-      
-      // Should return true for Officely Hamburg
-      const result = isOverridableThirdPartyStatus(':office:', 'Office Hamburg (via Officely)');
-      expect(result).toBe(true);
-
-      // Should return false for wrong text
-      const resultWrongText = isOverridableThirdPartyStatus(':office:', 'Some other text');
-      expect(resultWrongText).toBe(false);
-
-      // Should return false for wrong emoji
-      const resultWrongEmoji = isOverridableThirdPartyStatus(':custom:', 'Office Hamburg (via Officely)');
-      expect(resultWrongEmoji).toBe(false);
-
-      await daemon.stop();
-    });
-
-    it('should recognize custom overridable pattern', async () => {
-      await daemon.start();
-
-      const statusManager = daemon['statusManager'] as any;
-      
-      // Add custom pattern
-      const customPatterns = [
-        {
-          emoji: ':custom_tool:',
-          messagePatterns: ['Status from Custom Tool'],
-          description: 'Custom tool status',
-        },
-      ];
-      statusManager.setOverridablePatterns([
-        ...statusManager.overridablePatterns,
-        ...customPatterns
-      ]);
-
-      const isOverridableThirdPartyStatus = statusManager.isOverridableThirdPartyStatus.bind(statusManager);
-      
-      // Should recognize custom pattern
-      const result = isOverridableThirdPartyStatus(':custom_tool:', 'Status from Custom Tool');
-      expect(result).toBe(true);
-
-      await daemon.stop();
-    });
-
-    it('should NOT recognize non-overridable custom status', async () => {
-      await daemon.start();
-
-      const statusManager = daemon['statusManager'] as any;
-      const isOverridableThirdPartyStatus = statusManager.isOverridableThirdPartyStatus.bind(statusManager);
-      
-      // Non-overridable status should return false
-      const result = isOverridableThirdPartyStatus(':custom_manual:', 'My custom status');
-      expect(result).toBe(false);
 
       await daemon.stop();
     });

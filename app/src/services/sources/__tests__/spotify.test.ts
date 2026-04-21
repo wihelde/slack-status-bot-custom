@@ -1,7 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SpotifyAdapter } from '../spotify';
 
-vi.mock('child_process');
+vi.mock('../probes/appleScriptProbe', () => ({
+  readAppleScriptOutput: vi.fn(),
+}));
+
+vi.mock('../probes/processProbe', () => ({
+  isMacProcessRunning: vi.fn(),
+}));
+
+import { readAppleScriptOutput } from '../probes/appleScriptProbe';
+import { isMacProcessRunning } from '../probes/processProbe';
 
 describe('SpotifyAdapter', () => {
   let adapter: SpotifyAdapter;
@@ -11,100 +20,99 @@ describe('SpotifyAdapter', () => {
     adapter = new SpotifyAdapter();
   });
 
-  describe('isAvailable', () => {
-    it('should be available on macOS', () => {
-      const originalPlatform = process.platform;
-      Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+  it('is only available on macOS', () => {
+    const originalPlatform = process.platform;
 
-      adapter = new SpotifyAdapter();
-      expect(adapter.isAvailable()).toBe(true);
+    Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+    expect(new SpotifyAdapter().isAvailable()).toBe(true);
 
-      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+    expect(new SpotifyAdapter().isAvailable()).toBe(false);
+
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+  });
+
+  it('returns inactive status when disabled without probing', async () => {
+    adapter.setEnabled(false);
+
+    await expect(adapter.getStatus()).resolves.toEqual({
+      name: 'Spotify',
+      isActive: false,
     });
 
-    it('should not be available on Windows', () => {
-      const originalPlatform = process.platform;
-      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+    expect(isMacProcessRunning).not.toHaveBeenCalled();
+    expect(readAppleScriptOutput).not.toHaveBeenCalled();
+  });
 
-      adapter = new SpotifyAdapter();
-      expect(adapter.isAvailable()).toBe(false);
+  it('returns active status when Spotify is running, playing, and exposes a track', async () => {
+    vi.mocked(isMacProcessRunning).mockResolvedValue(true);
+    vi.mocked(readAppleScriptOutput)
+      .mockResolvedValueOnce('playing')
+      .mockResolvedValueOnce('Artist - Song');
 
-      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+    await expect(adapter.getStatus()).resolves.toEqual({
+      name: 'Spotify',
+      isActive: true,
+      title: 'Artist - Song',
+      emoji: ':spotify_2:',
+      message: 'Artist - Song',
     });
   });
 
-  describe('enable/disable', () => {
-    it('should enable and disable', () => {
-      expect(adapter.isEnabled()).toBe(true);
+  it('delegates Spotify-specific probes through the shared music detector path', async () => {
+    vi.mocked(isMacProcessRunning).mockResolvedValue(true);
+    vi.mocked(readAppleScriptOutput)
+      .mockResolvedValueOnce('playing')
+      .mockResolvedValueOnce('Artist - Song');
 
-      adapter.setEnabled(false);
-      expect(adapter.isEnabled()).toBe(false);
+    await adapter.getStatus();
 
-      adapter.setEnabled(true);
-      expect(adapter.isEnabled()).toBe(true);
+    expect(isMacProcessRunning).toHaveBeenCalledWith('Spotify');
+    expect(readAppleScriptOutput).toHaveBeenNthCalledWith(1, [
+      'try',
+      'if application "Spotify" is running then',
+      'tell application "Spotify" to player state',
+      'end if',
+      'end try',
+    ]);
+    expect(readAppleScriptOutput).toHaveBeenNthCalledWith(2, [
+      'try',
+      'if application "Spotify" is running then',
+      'tell application "Spotify"',
+      'set track_artist to artist of current track',
+      'set track_name to name of current track',
+      'set podcast to album of current track',
+      'if track_artist = "" then',
+      'podcast & " - " & track_name',
+      'else',
+      'track_artist & " - " & track_name',
+      'end if',
+      'end tell',
+      'end if',
+      'end try',
+    ]);
+  });
+
+  it('falls back to inactive status when probes do not find an active track', async () => {
+    vi.mocked(isMacProcessRunning).mockResolvedValue(true);
+    vi.mocked(readAppleScriptOutput).mockResolvedValueOnce('paused');
+
+    await expect(adapter.getStatus()).resolves.toEqual({
+      name: 'Spotify',
+      isActive: false,
     });
   });
 
-  describe('basic structure', () => {
-    it('should have getStatus method', () => {
-      expect(typeof adapter.getStatus).toBe('function');
-    });
+  it('truncates long track titles at the adapter boundary', async () => {
+    vi.mocked(isMacProcessRunning).mockResolvedValue(true);
+    vi.mocked(readAppleScriptOutput)
+      .mockResolvedValueOnce('playing')
+      .mockResolvedValueOnce('A'.repeat(110));
 
-    it('should initialize with correct name', () => {
-      expect(adapter['lastStatus'].name).toBe('Spotify');
-    });
-  });
+    const status = await adapter.getStatus();
 
-  describe('getStatus (PRIORITY 2)', () => {
-    it('should return async status', () => {
-      // getStatus returns a Promise
-      const result = adapter.getStatus();
-      expect(result instanceof Promise).toBe(true);
-    });
-
-    it('should have emoji property when defined', () => {
-      // When active, status should have emoji
-      expect(adapter['lastStatus']).toHaveProperty('emoji');
-    });
-
-    it('should initialize with Spotify emoji', () => {
-      // Status should be initialized with :spotify_2: emoji
-      expect(adapter['lastStatus'].emoji).toBe(':spotify_2:');
-    });
-
-    it('should cache status internally', () => {
-      // Adapter maintains lastStatus for caching
-      expect(adapter['lastStatus']).toBeDefined();
-      expect(typeof adapter['lastStatus']).toBe('object');
-    });
-
-    it('should be ready for repeated calls', () => {
-      // Architecture should support repeated calls
-      const result1 = adapter.getStatus();
-      const result2 = adapter.getStatus();
-      
-      // Both should be promises
-      expect(result1 instanceof Promise).toBe(true);
-      expect(result2 instanceof Promise).toBe(true);
-    });
-  });
-
-  describe('Spotify Detection (PRIORITY 2)', () => {
-    it('should only work on macOS', () => {
-      const originalPlatform = process.platform;
-      
-      // On non-macOS, should not be available
-      Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
-      const linuxAdapter = new SpotifyAdapter();
-      expect(linuxAdapter.isAvailable()).toBe(false);
-      
-      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
-    });
-
-    it('should use osascript method for detection', () => {
-      // Spotify uses osascript (AppleScript) on macOS
-      // This is the detection method, not runtime tested
-      expect(typeof adapter.getStatus).toBe('function');
-    });
+    expect(status.isActive).toBe(true);
+    expect(status.message).toHaveLength(100);
+    expect(status.message?.endsWith('...')).toBe(true);
   });
 });

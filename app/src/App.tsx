@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
 import FirstRunDialog from './components/FirstRunDialog';
 import { IPCService } from './services/ipcService';
+import type { AppSnapshot } from './contracts/appSnapshot';
 
 type Page = 'dashboard' | 'settings';
 
@@ -14,33 +15,32 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initApp = async () => {
-      // Check if this is first run
+    const applySnapshot = (snapshot: AppSnapshot | null) => {
+      setIsOnline(snapshot?.daemon.running ?? false);
+      setShowFirstRun(snapshot?.setup.isFirstRun ?? false);
+    };
+
+    const loadAppState = async () => {
       try {
-        const isFirstRun = await IPCService.isFirstRun();
-        if (isFirstRun) {
-          setShowFirstRun(true);
-        }
+        const snapshot = await IPCService.getAppSnapshot();
+        applySnapshot(snapshot);
       } catch (err) {
-        console.error('Error checking first run:', err);
+        console.error('Error loading app snapshot:', err);
+        applySnapshot(null);
       } finally {
         setLoading(false);
       }
-
-      // Get initial daemon status
-      IPCService.getDaemonStatus().then((status) => {
-        if (status?.running) {
-          setIsOnline(true);
-        }
-      });
-
-      // Listen for daemon status changes
-      IPCService.onDaemonStatusChange((data) => {
-        setIsOnline(data.running || false);
-      });
     };
 
-    initApp();
+    void loadAppState();
+
+    const cleanupSnapshot = IPCService.onAppSnapshotChanged(() => {
+      void loadAppState();
+    });
+
+    return () => {
+      cleanupSnapshot?.();
+    };
   }, []);
 
   if (loading) {
@@ -85,4 +85,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-

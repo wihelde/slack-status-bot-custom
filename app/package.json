@@ -1,8 +1,8 @@
 {
   "name": "slack-status-bot",
-  "version": "1.4.9",
+  "version": "2.0.0",
   "description": "Cross-platform Slack Status Bot with Tray UI",
-  "main": "public/electron.js",
+  "main": "dist/electron.js",
   "homepage": "./",
   "author": {
     "name": "Martin",
@@ -10,14 +10,17 @@
   },
   "license": "MIT",
   "scripts": {
-    "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron-dev\"",
+    "dev": "concurrently \"npm run react-start\" \"npm run host:watch\" \"wait-on http://localhost:3000 dist/electron.js && npm run electron-dev\"",
     "react-start": "cross-env BROWSER=none react-scripts start",
     "react-build": "react-scripts build",
     "tsc": "tsc",
+    "host:build": "tsc -p tsconfig.json",
+    "host:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "host:smoke": "npm run host:build && node ./scripts/verify-electron-host-build.mjs",
     "electron-dev": "cross-env NODE_ENV=development ELECTRON_START_URL=http://localhost:3000 electron .",
-    "electron-build": "npm run react-build && npm run tsc && electron-builder && npm run fix-dmg",
+    "electron-build": "npm run react-build && npm run host:build && electron-builder && npm run fix-dmg",
     "fix-dmg": "DMG=\"dist/Slack Status Bot-$(node -p \"require('./package.json').version\")-arm64.dmg\" && [ -f \"$DMG\" ] && ./scripts/fix-dmg-hidden-files.sh \"$DMG\" || true",
-    "build": "npm run react-build && npm run tsc && npm run electron-build",
+    "build": "npm run electron-build",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "test": "vitest run",
@@ -83,7 +86,10 @@
         "zip"
       ],
       "hardenedRuntime": true,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "LSUIElement": true
+      }
     },
     "dmg": {
       "title": "Slack Status Bot",
