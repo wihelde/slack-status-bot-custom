@@ -1,10 +1,8 @@
 # Changelog
 
-## [2.0.0] - 
+## [2.0.0] - 2024-04-21
 
-This one is a bigger refactoring to clean up the code, change ownership and responsibilities regarding functions within the bot. Nothing which can be seen using the bot, but helping further development and making it easier to understand whats going within the code. So in essence: reduce complexity for all functions and depdendencies (.e.g when is a change allowed, when should the status be kept etc.). Therefore no detailed change-list this time.
-
-## [1.4.10] - 
+This one is a bigger refactoring to clean up the code, change ownership and responsibilities regarding functions within the bot. Nothing which can be seen using the bot, but helping further development and making it easier to understand whats going on within the code. So in essence: reduce complexity for all functions and depdendencies (e.g. when is a change allowed, when should the status be kept etc.) Therefore no detailed change-list this time.
 
 ## [1.4.9] - 2026-03-07
 

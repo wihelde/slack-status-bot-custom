@@ -3,8 +3,8 @@ import { SlackService, SlackProfile } from './slack';
 import { SlackStatusExecutor } from './slackStatusExecutor';
 import { DayOfWeek, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS, OverridableStatusPattern } from '../config/statusConfig';
 import type { AppStatusChangedEvent } from '../contracts/ipc';
-import { ManualAction } from './statusReconciler';
 import { StatusDomain } from './statusDomain/statusDomain';
+import type { ManualAction } from './statusDomain/types';
 import { logger } from '../utils/logger';
 
 export interface StatusCheckState {
