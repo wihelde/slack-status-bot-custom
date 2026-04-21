@@ -2,10 +2,12 @@ import { SlackService } from './services/slack';
 import { SlackStatusExecutor } from './services/slackStatusExecutor';
 import { StatusManager } from './services/statusManager';
 import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS } from './config/statusConfig';
-import { DEFAULT_SOURCE_ORDER, MEETING_SOURCE_NAMES, SourceName } from './config/sourceCatalog';
+import { DEFAULT_SOURCE_ORDER, SourceName } from './config/sourceCatalog';
 import { AppConfigStore, createAppConfigStore } from './config/appConfigStore';
-import { SourceArbitrationEngine, TrackedSourceChange } from './services/sources/sourceArbitrationEngine';
+import { SourceArbitrationEngine } from './services/sources/sourceArbitrationEngine';
 import { SourceRegistry } from './services/sources/sourceRegistry';
+import { RuntimeOrchestrator } from './services/runtimeOrchestrator';
+import type { AppStatusChangedEvent } from './contracts/ipc';
 import { logger } from './utils/logger';
 import path from 'path';
 
@@ -13,7 +15,7 @@ export interface DaemonConfig {
   slackTokens: string | string[];
   configDir?: string;
   configStore?: AppConfigStore;
-  onAppStateChanged?: (statusData: any) => void; // Callback for renderer-facing runtime changes
+  onAppStateChanged?: (statusData: AppStatusChangedEvent) => void;
 }
 
 export class SlackStatusBotDaemon {
@@ -22,16 +24,13 @@ export class SlackStatusBotDaemon {
   private statusManager: StatusManager;
   private sourceRegistry: SourceRegistry;
   private sourceArbitrationEngine: SourceArbitrationEngine;
+  private runtimeOrchestrator: RuntimeOrchestrator;
   private running: boolean = false;
   private intervals: NodeJS.Timeout[] = [];
   private configDir: string;
   private sourceOrder: SourceName[] = [...DEFAULT_SOURCE_ORDER];
-  private lastResetBlockedTime: number = 0; // Track when reset was last blocked
-  private readonly RESET_BLOCKED_COOLDOWN = 30000; // Don't retry reset for 30 seconds if blocked
-  private onAppStateChanged?: (statusData: any) => void; // Callback for renderer-facing runtime changes
+  private onAppStateChanged?: (statusData: AppStatusChangedEvent) => void;
   private configStore: AppConfigStore;
-  private lastProfileSetTime: number = 0; // Track when we last set a profile
-  private readonly PROFILE_SET_COOLDOWN = 2000; // Minimum 2 seconds between profile updates to avoid rate limiting
   private isPolling: boolean = false; // Prevent concurrent polling cycles
   private pollTimeoutId: NodeJS.Timeout | null = null; // Track polling timeout for cleanup
 
@@ -41,6 +40,11 @@ export class SlackStatusBotDaemon {
     this.statusManager = new StatusManager(this.slackService);
     this.sourceRegistry = new SourceRegistry();
     this.sourceArbitrationEngine = new SourceArbitrationEngine();
+    this.runtimeOrchestrator = new RuntimeOrchestrator({
+      statusManager: this.statusManager,
+      slackExecutor: this.slackExecutor,
+      sourceArbitrationEngine: this.sourceArbitrationEngine,
+    });
     this.onAppStateChanged = config.onAppStateChanged;
 
     this.configDir = config.configDir || this.getDefaultConfigDir();
@@ -220,30 +224,10 @@ export class SlackStatusBotDaemon {
     // Re-evaluate current status based on new priority order
     try {
       const sourceStatuses = await this.getSourceStatuses();
-      const winningSource = this.sourceArbitrationEngine.pickWinner(this.sourceOrder, sourceStatuses);
-
-      if (winningSource?.status.message) {
-        console.log(`[Daemon] Re-evaluating status with new priority: switching to ${winningSource.sourceName}`);
-        this.statusManager.markObservedSourceActive(winningSource.sourceName);
-
-        const statusChanged = await this.statusManager.shouldApplyObservedStatus(
-          winningSource.status.emoji!,
-          winningSource.status.message
-        );
-
-        if (statusChanged) {
-          await this.tryApplyObservedStatus(
-            winningSource.sourceName,
-            winningSource.status.emoji!,
-            winningSource.status.message,
-            'won after reprioritization'
-          );
-        }
-      } else {
-        // No active source, reset
-        console.log(`[Daemon] No active source with new priority, resetting status`);
-        await this.tryResetWithoutWinner('reprioritization');
-      }
+      await this.runtimeOrchestrator.handleReprioritization({
+        sourceOrder: this.sourceOrder,
+        sourceStatuses,
+      });
     } catch (error) {
       console.error('[Daemon] Error re-evaluating status after priority change:', error);
     }
@@ -271,36 +255,11 @@ export class SlackStatusBotDaemon {
         if (activeSourcesDebug.length > 0) {
           logger.debug(`[polling] Active sources: ${activeSourcesDebug.join(', ')}`);
         }
-
-        let statusWasSet = false;
-
-        for (const change of changes) {
-          const { sourceName, status, previous } = change;
-          if (change.type === 'activated' || change.type === 'deactivated') {
-            logger.debug(`[polling] ${sourceName} state changed: ${previous.wasActive} → ${change.status.isActive}`, {
-              lastMessage: previous.lastMessage,
-              newMessage: status.message,
-            });
-          } else if (change.type === 'message-changed') {
-            logger.debug(`[polling] ${sourceName} message changed while active`, {
-              lastMessage: previous.lastMessage,
-              newMessage: status.message,
-            });
-          }
-
-          // Handle source becoming active OR message changed while active
-          if (
-            winningSource?.sourceName === sourceName &&
-            (change.type === 'activated' || change.type === 'message-changed') &&
-            !statusWasSet
-          ) {
-            statusWasSet = await this.applyWinningSourceChange(change, statusWasSet);
-          }
-          // Handle source becoming inactive
-          else if (change.type === 'deactivated') {
-            await this.handleDeactivatedSource(sourceName, sourceStatuses);
-          }
-        }
+        await this.runtimeOrchestrator.handlePollingSnapshot({
+          sourceOrder: this.sourceOrder,
+          sourceStatuses,
+          snapshot: arbitrationSnapshot,
+        });
 
         const anyActive = !!winningSource;
         const anyWasActive = Object.values(trackingState).some(s => s.wasActive);
@@ -332,186 +291,6 @@ export class SlackStatusBotDaemon {
 
     // Start first poll
     poll();
-  }
-
-  private async applyWinningSourceChange(
-    change: TrackedSourceChange,
-    statusWasSet: boolean
-  ): Promise<boolean> {
-    const { sourceName, status, type } = change;
-
-    this.statusManager.markObservedSourceActive(sourceName);
-    logger.debug(`[polling] Marked source as active in statusCheckState`, { activeSource: sourceName });
-
-    if (type === 'activated' || type === 'message-changed') {
-      const statusChanged = await this.statusManager.shouldApplyObservedStatus(status.emoji!, status.message!);
-      if (statusChanged) {
-        const applied = await this.tryApplyObservedStatus(
-          sourceName,
-          status.emoji!,
-          status.message!,
-          type === 'activated' ? 'became active' : 'message changed'
-        );
-        if (applied) {
-          this.sourceArbitrationEngine.recordHandledStatus(sourceName, status.message || '');
-          this.statusManager.emitObservedStatusChange(
-            status.emoji!,
-            status.message!,
-            'activeSource'
-          );
-          statusWasSet = true;
-        }
-      } else {
-        this.sourceArbitrationEngine.recordHandledStatus(sourceName, status.message || '');
-        logger.debug(`[polling] ${sourceName} status unchanged or blocked, skipping API call`);
-      }
-    }
-
-    if (MEETING_SOURCE_NAMES.includes(sourceName) && type === 'activated') {
-      logger.info(`[polling] ${sourceName} meeting started, ensuring DND is enabled...`);
-      await this.slackExecutor.setMeetingDnd(true);
-    }
-
-    return statusWasSet;
-  }
-
-  private async handleDeactivatedSource(
-    sourceName: SourceName,
-    sourceStatuses: Awaited<ReturnType<SlackStatusBotDaemon['getSourceStatuses']>>
-  ): Promise<void> {
-    console.log(`[polling] ${sourceName} became inactive`);
-
-    this.statusManager.clearObservedSourceActive(sourceName);
-    logger.debug(`[polling] Cleared activeSource from statusCheckState`, { wasActive: sourceName });
-
-    await this.syncMeetingDndAfterDeactivation(sourceName, sourceStatuses);
-
-    const nextWinner = this.sourceArbitrationEngine.pickWinner(this.sourceOrder, sourceStatuses, {
-      excludeSource: sourceName,
-    });
-
-    if (nextWinner && nextWinner.sourceName !== sourceName) {
-      console.log(`[polling] Switching status from ${sourceName} to ${nextWinner.sourceName}`);
-      this.statusManager.markObservedSourceActive(nextWinner.sourceName);
-
-      const statusChanged = await this.statusManager.shouldApplyObservedStatus(
-        nextWinner.status.emoji!,
-        nextWinner.status.message!
-      );
-      if (statusChanged) {
-        const applied = await this.tryApplyObservedStatus(
-          nextWinner.sourceName,
-          nextWinner.status.emoji!,
-          nextWinner.status.message!,
-          `switching from ${sourceName}`
-        );
-        if (applied) {
-          this.sourceArbitrationEngine.recordHandledStatus(nextWinner.sourceName, nextWinner.status.message || '');
-        }
-      }
-      return;
-    }
-
-    await this.tryResetAfterSourceDeactivation(sourceName);
-  }
-
-  private async syncMeetingDndAfterDeactivation(
-    sourceName: SourceName,
-    sourceStatuses: Awaited<ReturnType<SlackStatusBotDaemon['getSourceStatuses']>>
-  ): Promise<void> {
-    if (!MEETING_SOURCE_NAMES.includes(sourceName)) {
-      return;
-    }
-
-    const activeMeetings = this.sourceArbitrationEngine.listActiveSources(MEETING_SOURCE_NAMES, sourceStatuses, {
-      excludeSource: sourceName,
-    });
-
-    if (activeMeetings.length > 0) {
-      logger.info(
-        `[polling] ${sourceName} meeting ended, but another meeting is active (${activeMeetings.join(', ')}), keeping DND enabled`
-      );
-      return;
-    }
-
-    logger.info(`[polling] ${sourceName} meeting ended and no other meetings active, disabling DND...`);
-    await this.slackExecutor.setMeetingDnd(false);
-  }
-
-  private async tryApplyObservedStatus(
-    sourceName: SourceName,
-    emoji: string,
-    message: string,
-    reason: string
-  ): Promise<boolean> {
-    const now = Date.now();
-    const timeSinceLastSet = now - this.lastProfileSetTime;
-
-    if (timeSinceLastSet < this.PROFILE_SET_COOLDOWN) {
-      const remainingCooldown = Math.ceil((this.PROFILE_SET_COOLDOWN - timeSinceLastSet) / 1000);
-      logger.debug(`[polling] ${sourceName} status changed but rate limited (${remainingCooldown}s cooldown remaining)`, {
-        emoji,
-        message,
-      });
-      return false;
-    }
-
-    logger.info(`[polling] ${sourceName} ${reason}, setting status`, { emoji, message });
-    await this.slackExecutor.setSourceStatus(emoji, message);
-    this.lastProfileSetTime = now;
-    return true;
-  }
-
-  private async tryResetAfterSourceDeactivation(sourceName: SourceName): Promise<void> {
-    const now = Date.now();
-    const timeSinceLastBlock = now - this.lastResetBlockedTime;
-
-    const currentStatus = await this.slackExecutor.getProfile();
-    if (currentStatus) {
-      this.statusManager.emitObservedStatusChange(
-        currentStatus.status_emoji,
-        currentStatus.status_text,
-        'sourceInactive'
-      );
-    }
-
-    if (timeSinceLastBlock < this.RESET_BLOCKED_COOLDOWN) {
-      const remainingCooldown = Math.ceil((this.RESET_BLOCKED_COOLDOWN - timeSinceLastBlock) / 1000);
-      logger.debug(`[polling] Reset is blocked, cooldown active (${remainingCooldown}s remaining)`);
-      return;
-    }
-
-    logger.info(`[polling] ${sourceName} became inactive, no other source active - attempting reset`);
-    const resetSuccess = await this.statusManager.reset();
-    if (resetSuccess) {
-      logger.info(`[polling] Status reset successful after ${sourceName} deactivation`);
-      this.lastResetBlockedTime = 0;
-      return;
-    }
-
-    logger.warn(`[polling] Status reset failed after ${sourceName} deactivation (likely blocked by isStatusClean)`);
-    this.lastResetBlockedTime = now;
-  }
-
-  private async tryResetWithoutWinner(reason: string): Promise<void> {
-    const now = Date.now();
-    const timeSinceLastBlock = now - this.lastResetBlockedTime;
-
-    if (timeSinceLastBlock < this.RESET_BLOCKED_COOLDOWN) {
-      const remainingCooldown = Math.ceil((this.RESET_BLOCKED_COOLDOWN - timeSinceLastBlock) / 1000);
-      logger.debug(`[polling] Reset is blocked, cooldown active (${remainingCooldown}s remaining)`, { reason });
-      return;
-    }
-
-    const resetSuccess = await this.statusManager.reset();
-    if (resetSuccess) {
-      logger.info(`[polling] Status reset successful`, { reason });
-      this.lastResetBlockedTime = 0;
-      return;
-    }
-
-    logger.warn(`[polling] Status reset failed`, { reason });
-    this.lastResetBlockedTime = now;
   }
 
   private startStatusCorrection(): void {

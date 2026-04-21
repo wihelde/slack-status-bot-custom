@@ -10,51 +10,34 @@ import {
   AppStatusSnapshot,
   AppSnapshotRefreshSignal,
 } from '../contracts/appSnapshot';
+import { ElectronAPI, RendererLogLevel } from '../contracts/ipc';
 import { CustomStatusConfig } from '../config/statusConfig';
 import { SourceName } from '../config/sourceCatalog';
 
 declare global {
   interface Window {
-    electronAPI: {
-      saveTokens: (tokens: string | string[]) => Promise<{ success: boolean; error?: string }>;
-      getTokens: () => Promise<{ success: boolean; tokens?: string[]; count?: number; error?: string }>;
-      deleteTokens: () => Promise<{ success: boolean; error?: string }>;
-      getAppSnapshot: () => Promise<{
-        success: boolean;
-        data?: AppSnapshot;
-        error?: string;
-      }>;
-      onAppSnapshotChanged: (
-        callback: (signal: AppSnapshotRefreshSignal) => void
-      ) => () => void;
-      setStatus: (emoji: string, message: string) => Promise<{ success: boolean; data?: boolean; error?: string }>;
-      goOnline: () => Promise<{ success: boolean; data?: boolean; error?: string }>;
-      goAway: () => Promise<{ success: boolean; data?: boolean; error?: string }>;
-      toggleSource: (source: string, enabled: boolean) => Promise<{ success: boolean; error?: string }>;
-      setSourceOrder: (sourceOrder: string[]) => Promise<{ success: boolean; error?: string }>;
-      getSourceOrder: () => Promise<{ success: boolean; sourceOrder?: string[]; error?: string }>;
-      getTokenStatus: () => Promise<{
-        success: boolean;
-        data?: { configured: boolean };
-        error?: string;
-      }>;
-      getLogs: (lines?: number) => Promise<{ success: boolean; data?: string; error?: string }>;
-      clearLogs: () => Promise<{ success: boolean; error?: string }>;
-      setLogLevel: (level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR') => Promise<{ success: boolean; logLevel?: string; error?: string }>;
-      getLogLevel: () => Promise<{ success: boolean; logLevel?: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'; error?: string }>;
-      getStatusConfiguration: () => Promise<{ success: boolean; data?: CustomStatusConfig[]; error?: string }>;
-      updateStatusConfiguration: (config: CustomStatusConfig[]) => Promise<{ success: boolean; error?: string }>;
-      resetStatusConfiguration: () => Promise<{ success: boolean; error?: string }>;
-      setHoliday: (returnDate: string) => Promise<{ success: boolean; data?: boolean; error?: string }>;
-      onOpenHolidayModal: (callback: () => void) => () => void;
-      setAutoLaunch: (enabled: boolean) => Promise<{ success: boolean; verified?: boolean; error?: string }>;
-      getAutoLaunch: () => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
-      completeFirstRun: () => Promise<{ success: boolean; error?: string }>;
-    };
+    electronAPI: ElectronAPI;
   }
 }
 
+function logRendererWarning(message: string): void {
+  console.warn(`[IPCService] ${message}`);
+}
+
+function logRendererError(message: string, error: unknown): void {
+  console.error(`[IPCService] ${message}`, error);
+}
+
 export class IPCService {
+  private static getElectronAPI(): ElectronAPI | null {
+    if (typeof window === 'undefined' || typeof window.electronAPI === 'undefined') {
+      logRendererWarning('Not running in Electron');
+      return null;
+    }
+
+    return window.electronAPI;
+  }
+
   /**
    * Check if running in Electron
    */
@@ -66,15 +49,15 @@ export class IPCService {
    * Save Slack tokens
    */
   static async saveTokens(tokens: string | string[]): Promise<boolean> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.saveTokens(tokens);
+      const result = await electronAPI.saveTokens(tokens);
       return result.success;
     } catch (error) {
-      console.error('Error saving tokens:', error);
+      logRendererError('Error saving tokens', error);
       return false;
     }
   }
@@ -91,15 +74,15 @@ export class IPCService {
    * Get the consolidated app snapshot for renderer bootstrap.
    */
   static async getAppSnapshot(): Promise<AppSnapshot | null> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return null;
     }
     try {
-      const result = await window.electronAPI.getAppSnapshot();
+      const result = await electronAPI.getAppSnapshot();
       return result.success ? result.data ?? null : null;
     } catch (error) {
-      console.error('Error getting app snapshot:', error);
+      logRendererError('Error getting app snapshot', error);
       return null;
     }
   }
@@ -110,11 +93,11 @@ export class IPCService {
   static onAppSnapshotChanged(
     callback: (signal: AppSnapshotRefreshSignal) => void
   ): (() => void) | undefined {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return;
     }
-    return window.electronAPI.onAppSnapshotChanged(callback);
+    return electronAPI.onAppSnapshotChanged(callback);
   }
 
   /**
@@ -138,15 +121,15 @@ export class IPCService {
    * Set custom status
    */
   static async setStatus(emoji: string, message: string): Promise<boolean> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.setStatus(emoji, message);
+      const result = await electronAPI.setStatus(emoji, message);
       return result.success && result.data ? true : false;
     } catch (error) {
-      console.error('Error setting status:', error);
+      logRendererError('Error setting status', error);
       return false;
     }
   }
@@ -155,15 +138,15 @@ export class IPCService {
    * Go online
    */
   static async goOnline(): Promise<boolean> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.goOnline();
+      const result = await electronAPI.goOnline();
       return result.success && result.data ? true : false;
     } catch (error) {
-      console.error('Error going online:', error);
+      logRendererError('Error going online', error);
       return false;
     }
   }
@@ -172,15 +155,15 @@ export class IPCService {
    * Go away
    */
   static async goAway(): Promise<boolean> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.goAway();
+      const result = await electronAPI.goAway();
       return result.success && result.data ? true : false;
     } catch (error) {
-      console.error('Error going away:', error);
+      logRendererError('Error going away', error);
       return false;
     }
   }
@@ -189,15 +172,15 @@ export class IPCService {
    * Toggle monitoring of a source
    */
   static async toggleSource(source: 'spotify' | 'appleMusic' | 'zoom' | 'teams' | 'huddle', enabled: boolean): Promise<boolean> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.toggleSource(source, enabled);
+      const result = await electronAPI.toggleSource(source, enabled);
       return result.success;
     } catch (error) {
-      console.error('Error toggling source:', error);
+      logRendererError('Error toggling source', error);
       return false;
     }
   }
@@ -206,15 +189,15 @@ export class IPCService {
    * Set source priority order
    */
   static async setSourceOrder(sourceOrder: string[]): Promise<boolean> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.setSourceOrder(sourceOrder);
+      const result = await electronAPI.setSourceOrder(sourceOrder as SourceName[]);
       return result.success;
     } catch (error) {
-      console.error('Error setting source order:', error);
+      logRendererError('Error setting source order', error);
       return false;
     }
   }
@@ -223,15 +206,15 @@ export class IPCService {
    * Get current source priority order
    */
   static async getSourceOrder(): Promise<string[] | null> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return null;
     }
     try {
-      const result = await window.electronAPI.getSourceOrder();
-      return result.success ? result.sourceOrder || [] : null;
+      const result = await electronAPI.getSourceOrder();
+      return result.success ? result.data || [] : null;
     } catch (error) {
-      console.error('Error getting source order:', error);
+      logRendererError('Error getting source order', error);
       return null;
     }
   }
@@ -248,15 +231,15 @@ export class IPCService {
    * Get stored tokens (masked for security)
    */
   static async getTokens() {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return null;
     }
     try {
-      const result = await window.electronAPI.getTokens();
-      return result.success ? { tokens: result.tokens || [], count: result.count || 0 } : null;
+      const result = await electronAPI.getTokens();
+      return result.success ? { tokens: result.data?.tokens || [], count: result.data?.count || 0 } : null;
     } catch (error) {
-      console.error('Error getting tokens:', error);
+      logRendererError('Error getting tokens', error);
       return null;
     }
   }
@@ -265,15 +248,15 @@ export class IPCService {
    * Delete all tokens
    */
   static async deleteTokens(): Promise<boolean> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.deleteTokens();
+      const result = await electronAPI.deleteTokens();
       return result.success;
     } catch (error) {
-      console.error('Error deleting tokens:', error);
+      logRendererError('Error deleting tokens', error);
       return false;
     }
   }
@@ -282,15 +265,15 @@ export class IPCService {
    * Check if tokens are configured
    */
   static async isConfigured(): Promise<boolean> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.getTokenStatus();
+      const result = await electronAPI.getTokenStatus();
       return result.success && result.data?.configured ? true : false;
     } catch (error) {
-      console.error('Error checking token status:', error);
+      logRendererError('Error checking token status', error);
       return false;
     }
   }
@@ -299,12 +282,12 @@ export class IPCService {
    * Get recent logs
    */
   static async getLogs(lines: number = 200): Promise<string> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return '(Not running in Electron)';
     }
     try {
-      const result = await window.electronAPI.getLogs(lines);
+      const result = await electronAPI.getLogs(lines);
       if (result.success && result.data) {
         return result.data;
       } else {
@@ -312,7 +295,7 @@ export class IPCService {
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error('Error fetching logs:', error);
+      logRendererError('Error fetching logs', error);
       return `(Error fetching logs: ${errorMsg})`;
     }
   }
@@ -321,15 +304,15 @@ export class IPCService {
    * Clear logs
    */
   static async clearLogs(): Promise<boolean> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.clearLogs();
+      const result = await electronAPI.clearLogs();
       return result.success;
     } catch (error) {
-      console.error('Error clearing logs:', error);
+      logRendererError('Error clearing logs', error);
       return false;
     }
   }
@@ -337,16 +320,16 @@ export class IPCService {
   /**
    * Set log level
    */
-  static async setLogLevel(level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR') {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+  static async setLogLevel(level: RendererLogLevel) {
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return null;
     }
     try {
-      const result = await window.electronAPI.setLogLevel(level);
-      return result.success ? result : null;
+      const result = await electronAPI.setLogLevel(level);
+      return result.success ? { success: true, logLevel: result.data ?? level } : null;
     } catch (error) {
-      console.error('Error setting log level:', error);
+      logRendererError('Error setting log level', error);
       return null;
     }
   }
@@ -355,15 +338,15 @@ export class IPCService {
    * Get current log level
    */
   static async getLogLevel() {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return null;
     }
     try {
-      const result = await window.electronAPI.getLogLevel();
-      return result.success ? result : null;
+      const result = await electronAPI.getLogLevel();
+      return result.success ? { success: true, logLevel: result.data } : null;
     } catch (error) {
-      console.error('Error getting log level:', error);
+      logRendererError('Error getting log level', error);
       return null;
     }
   }
@@ -372,15 +355,15 @@ export class IPCService {
    * Set holiday status with return date
    */
   static async setHoliday(returnDate: string): Promise<boolean> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.setHoliday(returnDate);
+      const result = await electronAPI.setHoliday(returnDate);
       return result.success && result.data ? true : false;
     } catch (error) {
-      console.error('Error setting holiday:', error);
+      logRendererError('Error setting holiday', error);
       return false;
     }
   }
@@ -389,14 +372,15 @@ export class IPCService {
    * Get status configuration
    */
   static async getStatusConfiguration(): Promise<CustomStatusConfig[] | null> {
-    if (!this.isElectron()) {
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return null;
     }
     try {
-      const result = await window.electronAPI.getStatusConfiguration();
+      const result = await electronAPI.getStatusConfiguration();
       return result.success ? result.data || [] : null;
     } catch (error) {
-      console.error('Error getting status configuration:', error);
+      logRendererError('Error getting status configuration', error);
       return null;
     }
   }
@@ -405,14 +389,15 @@ export class IPCService {
    * Update status configuration
    */
   static async updateStatusConfiguration(config: CustomStatusConfig[]): Promise<boolean> {
-    if (!this.isElectron()) {
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.updateStatusConfiguration(config);
+      const result = await electronAPI.updateStatusConfiguration(config);
       return result.success;
     } catch (error) {
-      console.error('Error updating status configuration:', error);
+      logRendererError('Error updating status configuration', error);
       return false;
     }
   }
@@ -421,14 +406,15 @@ export class IPCService {
    * Reset status configuration to defaults
    */
   static async resetStatusConfiguration(): Promise<boolean> {
-    if (!this.isElectron()) {
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.resetStatusConfiguration();
+      const result = await electronAPI.resetStatusConfiguration();
       return result.success;
     } catch (error) {
-      console.error('Error resetting status configuration:', error);
+      logRendererError('Error resetting status configuration', error);
       return false;
     }
   }
@@ -437,26 +423,26 @@ export class IPCService {
    * Listen for open-holiday-modal event
    */
   static onOpenHolidayModal(callback: () => void): (() => void) | undefined {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return;
     }
-    return window.electronAPI.onOpenHolidayModal(callback);
+    return electronAPI.onOpenHolidayModal(callback);
   }
 
   /**
    * Set auto-launch on startup
    */
   static async setAutoLaunch(enabled: boolean): Promise<boolean> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.setAutoLaunch(enabled);
+      const result = await electronAPI.setAutoLaunch(enabled);
       return result.success;
     } catch (error) {
-      console.error('Error setting auto-launch:', error);
+      logRendererError('Error setting auto-launch', error);
       return false;
     }
   }
@@ -465,15 +451,15 @@ export class IPCService {
    * Get auto-launch status
    */
   static async getAutoLaunch(): Promise<boolean | null> {
-    if (!this.isElectron()) {
-      console.warn('Not running in Electron');
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return null;
     }
     try {
-      const result = await window.electronAPI.getAutoLaunch();
-      return result.success ? (result.enabled || false) : null;
+      const result = await electronAPI.getAutoLaunch();
+      return result.success ? (result.data?.enabled || false) : null;
     } catch (error) {
-      console.error('Error getting auto-launch status:', error);
+      logRendererError('Error getting auto-launch status', error);
       return null;
     }
   }
@@ -482,14 +468,15 @@ export class IPCService {
    * Mark first run as complete
    */
   static async completeFirstRun(): Promise<boolean> {
-    if (!this.isElectron()) {
+    const electronAPI = this.getElectronAPI();
+    if (!electronAPI) {
       return false;
     }
     try {
-      const result = await window.electronAPI.completeFirstRun();
+      const result = await electronAPI.completeFirstRun();
       return result.success;
     } catch (error) {
-      console.error('Error completing first run:', error);
+      logRendererError('Error completing first run', error);
       return false;
     }
   }

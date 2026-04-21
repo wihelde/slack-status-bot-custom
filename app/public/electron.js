@@ -4,38 +4,39 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, shell } = require(
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
+const { execSync } = require('child_process');
+const https = require('https');
 
-// Logging-Funktion für Debugging
-const logToFile = (message) => {
-  const logPath = path.join(app.getPath('userData'), 'tray-debug.log');
-  const timestamp = new Date().toISOString();
-  try {
-    fs.appendFileSync(logPath, `[${timestamp}] ${message}\n`, 'utf-8');
-  } catch (e) {
-    // Ignore logging errors
-  }
-  console.log(message);
-};
+const { createMainLogger } = require('./main/logging');
+const { createWindowLifecycle } = require('./main/windowLifecycle');
+const { createSnapshotBridge } = require('./main/snapshotBridge');
+const { createTrayBridge } = require('./main/trayBridge');
+const { createUpdateBridge } = require('./main/updateBridge');
+const { createAutoLaunchAdapter } = require('./main/autoLaunchAdapter');
+const { registerMainIpcHandlers } = require('./main/ipcHandlers');
 
 console.log('[Electron] Modules loaded');
 
-// Check if running in development
 const isDev = process.env.NODE_ENV === 'development';
 console.log('[Electron] isDev:', isDev);
 
-// Note: In production, the daemon would be built separately
-// For now, we'll import from dist if available
+const { log, logStatusBridgeInfo, logStatusBridgeError } = createMainLogger({
+  app,
+  fs,
+  path,
+  console,
+});
+
 let daemon;
 let createDaemon;
 let createAppSnapshotProvider;
 let configStore;
+let config = {};
+let currentLogLevel = 'ERROR';
+let updateAvailable = null;
+let updateIntervalId = null;
 
-let mainWindow;
-let tray;
-let buildContextMenu; // Wird in createTray() definiert
-let updateAvailable = null; // Speichert Update-Info { version, releaseDate }
-
-const getDistModulePath = (modulePath) => {
+const getDistModulePath = modulePath => {
   if (isDev) {
     return path.resolve(__dirname, '../dist', modulePath);
   }
@@ -56,19 +57,11 @@ const getConfigStore = () => {
 
 const loadConfig = () => {
   try {
-    const configPath = getConfigStore().getConfigPath();
-    console.log('[Config] Loading config from:', configPath);
-    console.log('[Config] File exists:', fs.existsSync(configPath));
-    const persistedConfig = getConfigStore().load();
-    console.log('[Config] Loaded config:', {
-      hasTokens: !!persistedConfig.slackTokens,
-      tokenCount: persistedConfig.slackTokens?.length,
-    });
-    return persistedConfig;
-  } catch (e) {
-    console.error('Error loading config:', e);
+    return getConfigStore().load();
+  } catch (error) {
+    console.error('Error loading config:', error);
+    return {};
   }
-  return {};
 };
 
 const refreshConfig = () => {
@@ -77,20 +70,80 @@ const refreshConfig = () => {
   return config;
 };
 
-let config = {}; // Will be loaded in app.whenReady()
+const hasConfiguredTokens = () =>
+  Array.isArray(config.slackTokens) && config.slackTokens.length > 0;
 
-function hasConfiguredTokens() {
-  return Array.isArray(config.slackTokens) && config.slackTokens.length > 0;
-}
+const getSetupSnapshot = () => ({
+  tokensConfigured: hasConfiguredTokens(),
+  isFirstRun: !config.hasCompletedFirstRun,
+});
 
-function getSetupSnapshot() {
-  return {
-    tokensConfigured: hasConfiguredTokens(),
-    isFirstRun: !config.hasCompletedFirstRun,
-  };
-}
+const windowLifecycle = createWindowLifecycle({
+  app,
+  BrowserWindow,
+  shell,
+  path,
+  isDev,
+  preloadPath: path.join(__dirname, 'preload.js'),
+  getStartUrl: () =>
+    isDev
+      ? process.env.ELECTRON_START_URL || 'http://localhost:3000'
+      : `file://${path.join(__dirname, '../build/index.html')}`,
+  hasTray: () => trayBridge.hasTray(),
+  onClosed: () => {},
+});
 
-function buildAppSnapshotProvider() {
+const snapshotBridge = createSnapshotBridge({
+  sendToRenderer: (channel, payload) => windowLifecycle.send(channel, payload),
+  logStatusBridgeInfo,
+});
+
+const trayBridge = createTrayBridge({
+  app,
+  Tray,
+  Menu,
+  nativeImage,
+  shell,
+  fs,
+  path,
+  __dirname,
+  log,
+  showWindow: () => windowLifecycle.showWindow(),
+  getDaemon: () => daemon,
+  getUpdateAvailable: () => updateAvailable,
+  onQuit: () => {
+    app.isQuitting = true;
+    app.quit();
+  },
+  onOpenHolidayModal: () => snapshotBridge.openHolidayModal(),
+});
+
+const updateBridge = createUpdateBridge({
+  app,
+  autoUpdater,
+  isDev,
+  log,
+  emitAppSnapshotChanged: reason => snapshotBridge.emitAppSnapshotChanged(reason),
+  onUpdateAvailable: nextUpdate => {
+    updateAvailable = nextUpdate;
+  },
+  refreshTrayMenu: () => trayBridge.refreshMenu(),
+  request: https.request,
+  setIntervalFn: setInterval,
+});
+
+const autoLaunchAdapter = createAutoLaunchAdapter({
+  app,
+  fs,
+  path,
+  platform: process.platform,
+  homeDir: process.env.HOME || '',
+  execSync,
+  processExecPath: process.execPath,
+  log,
+});
+
+const buildAppSnapshotProvider = () => {
   if (typeof createAppSnapshotProvider !== 'function') {
     throw new Error('App snapshot provider is not available');
   }
@@ -104,12 +157,14 @@ function buildAppSnapshotProvider() {
           stateCheckValue: '',
         };
       }
+
       return daemon.getSlackStatus();
     },
     getSourceStatuses: async () => {
       if (!daemon) {
         return {};
       }
+
       return daemon.getSourceStatuses();
     },
     getDaemonSnapshot: () => ({
@@ -118,1071 +173,204 @@ function buildAppSnapshotProvider() {
     getUpdateSnapshot: () => updateAvailable,
     getSetupSnapshot,
   });
-}
+};
 
-async function getAppSnapshot() {
-  const provider = buildAppSnapshotProvider();
-  return provider.getSnapshot();
-}
+const getAppSnapshot = async () => buildAppSnapshotProvider().getSnapshot();
 
-function emitAppSnapshotChanged(reason = 'manual') {
-  if (mainWindow && mainWindow.webContents) {
-    mainWindow.webContents.send('app-snapshot-changed', { reason });
+const initializeDaemonModules = () => {
+  const daemonModule = require(getDistModulePath('daemon'));
+  createDaemon = daemonModule.createDaemon;
+
+  const appSnapshotProviderModule = require(getDistModulePath('main/appSnapshotProvider'));
+  createAppSnapshotProvider = appSnapshotProviderModule.createAppSnapshotProvider;
+};
+
+const applyDaemonLogLevel = () => {
+  if (daemon && daemon.setLogLevel) {
+    daemon.setLogLevel(currentLogLevel);
   }
-}
+};
 
-// Note: Squirrel startup handler not needed for modern electron-builder
-
-async function showWindow() {
-  if (!mainWindow) return;
-  if (process.platform === 'darwin') {
-    await app.dock.show();
-  }
-  mainWindow.show();
-  mainWindow.focus();
-}
-
-function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true,
-      enableRemoteModule: false,
+const createDaemonInstance = slackTokens =>
+  createDaemon({
+    slackTokens,
+    onAppStateChanged: statusData => {
+      logStatusBridgeInfo('Daemon status change forwarded to renderer', statusData);
+      snapshotBridge.emitAppSnapshotChanged('daemon-status');
     },
-    show: false,
   });
 
-  const startUrl = isDev
-    ? 'http://localhost:3001'
-    : `file://${path.join(__dirname, '../build/index.html')}`;
-
-  mainWindow.loadURL(startUrl);
-
-  // Externe Links (target="_blank") im System-Browser öffnen
-  // statt in einem neuen Electron-Fenster
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    // Nur externe URLs im Browser öffnen (http/https)
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      shell.openExternal(url);
-    }
-    return { action: 'deny' }; // Verhindert das neue Electron-Fenster
-  });
-
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-  }
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-
-  mainWindow.on('minimize', (event) => {
-    event.preventDefault();
-    // Nur verstecken, wenn das Tray erfolgreich erstellt wurde
-    if (tray) {
-      mainWindow.hide();
-    }
-    // Sonst: Fenster im Vordergrund lassen, bis Tray funktioniert
-  });
-
-  mainWindow.on('close', (event) => {
-    if (!app.isQuitting) {
-      event.preventDefault();
-      mainWindow.hide();
-    }
-  });
-
-  mainWindow.once('ready-to-show', () => {
-    showWindow();
-  });
-
-  mainWindow.on('hide', () => {
-    if (process.platform === 'darwin') {
-      app.dock.hide();
-    }
-  });
-}
-
-function updateTrayMenu() {
-  if (tray && buildContextMenu) {
-    tray.setContextMenu(buildContextMenu());
-    
-    // Update tray icon to show update available
-    if (updateAvailable) {
-      logToFile('[Tray] Update available - changing icon');
-      // Use a different visual indicator - we could use different icon or title
-      // For now, just log it
-    }
-  }
-}
-
-function createTray() {
-  logToFile('[Tray] Starting tray creation...');
-  logToFile('[Tray] __dirname: ' + __dirname);
-  
-  // Wenn Tray bereits existiert, nur Menü aktualisieren statt neu zu erstellen
-  if (tray) {
-    logToFile('[Tray] Tray already exists, updating context menu instead of recreating');
-    if (buildContextMenu) {
-      tray.setContextMenu(buildContextMenu());
-    }
-    return;
-  }
-  
-  // Die Icons können an verschiedenen Orten sein, je nachdem ob Dev oder Build
-  // Dev: /app/assets/
-  // Build: /app/dist/mac-arm64/.../Resources/app/assets/ oder /Resources/
-  
-  const trayIconPathPNG = path.join(__dirname, '../assets/tray-icon.png');
-  const trayIconPathICNS = path.join(__dirname, '../assets/icon.icns');
-  const trayIconPathPNGResources = path.join(__dirname, '../../icon.icns'); // /Resources/icon.icns level
-  const trayIconPathAppResources = path.join(app.getAppPath(), 'assets', 'tray-icon.png');
-  const trayIconPathAppResourcesICNS = path.join(app.getAppPath(), 'assets', 'icon.icns');
-  
-  const pathsToTry = [
-    trayIconPathPNG,
-    trayIconPathICNS,
-    trayIconPathAppResources,
-    trayIconPathAppResourcesICNS,
-    trayIconPathPNGResources,
-  ];
-  
-  logToFile('[Tray] Trying these paths:');
-  pathsToTry.forEach(p => logToFile('[Tray]   ' + p + ' exists: ' + fs.existsSync(p)));
-  
-  let trayIconPath;
-  for (const p of pathsToTry) {
-    if (fs.existsSync(p)) {
-      trayIconPath = p;
-      logToFile('[Tray] Found icon at: ' + p);
-      break;
-    }
-  }
-  
-  if (!trayIconPath) {
-    logToFile('[Tray] ERROR: No icon found at any path!');
-    return;
-  }
-
-  try {
-    logToFile('[Tray] Loading icon from: ' + trayIconPath);
-    
-    // Versuche zuerst direkt mit Pfad
-    logToFile('[Tray] Creating Tray with direct path...');
-    tray = new Tray(trayIconPath);
-    logToFile('[Tray] SUCCESS: Tray created with direct path!');
-    
-    // Versuche zu skalieren, falls PNG zu groß ist
-    if (process.platform === 'darwin') {
-      logToFile('[Tray] macOS detected, trying to resize icon...');
-      try {
-        const iconImage = nativeImage.createFromPath(trayIconPath);
-        if (!iconImage.isEmpty()) {
-          const resized = iconImage.resize({ width: 22, height: 22 });
-          tray.setImage(resized);
-          logToFile('[Tray] Icon resized to 22x22');
-        }
-      } catch (e) {
-        logToFile('[Tray] Warning: Could not resize icon: ' + e.message);
-      }
-    }
-
-    tray.setToolTip('Slack Status Bot');
-
-    // Funktion zum Erstellen des Context-Menüs
-    buildContextMenu = () => {
-      const menuItems = [
-        {
-          label: 'Show',
-          click: () => {
-            showWindow();
-          },
-        },
-        {
-          label: 'Go Online',
-          click: async () => {
-            if (daemon) {
-              await daemon.goOnline();
-            }
-          },
-        },
-        {
-          label: 'Go Away',
-          click: async () => {
-            if (daemon) {
-              await daemon.goAway();
-            }
-          },
-        },
-      ];
-
-      // Quick Actions Submenu hinzufügen
-      if (daemon) {
-        try {
-          const statusConfig = daemon.getStatusConfiguration();
-          const quickActions = statusConfig.filter(s => s.quickActionLabel);
-          
-          if (quickActions.length > 0) {
-            const quickActionItems = quickActions.map(status => ({
-              label: status.quickActionLabel || `${status.emoji} ${status.message}`,
-              click: async () => {
-                if (status.id === 'holiday') {
-                  // Holiday-Special: Fenster öffnen und Modal triggern
-                  if (mainWindow) {
-                    await showWindow();
-                    // Event an Renderer senden
-                    mainWindow.webContents.send('open-holiday-modal');
-                  }
-                } else {
-                  // Normale Quick Action: Status setzen
-                  if (daemon) {
-                    await daemon.setStatus(status.emoji, status.message);
-                  }
-                }
-              },
-            }));
-
-            menuItems.push({
-              label: 'Quick Actions',
-              submenu: quickActionItems,
-            });
-          }
-        } catch (error) {
-          console.error('[Tray] Error building quick actions menu:', error);
-        }
-      }
-
-      // Add update menu item if update is available
-      if (updateAvailable) {
-        menuItems.push(
-          {
-            type: 'separator',
-          },
-          {
-            label: `🚀 Update available (v${updateAvailable.version})`,
-            click: () => {
-              const releaseUrl = `https://gitlab.com/wihel_de/slack-status-bot-custom/-/releases/v${updateAvailable.version}`;
-              shell.openExternal(releaseUrl);
-            },
-          }
-        );
-        
-        // Update tray title to show indicator
-        if (tray) {
-          tray.setTitle('●');
-        }
-      }
-
-      menuItems.push(
-        {
-          type: 'separator',
-        },
-        {
-          label: 'Quit',
-          click: () => {
-            app.isQuitting = true;
-            app.quit();
-          },
-        }
-      );
-
-      return Menu.buildFromTemplate(menuItems);
-    };
-
-    tray.setContextMenu(buildContextMenu());
-
-    // Rechtsklick (oder Ctrl+Klick) zeigt das Menü - kein zusätzlicher Click-Handler nötig
-    // Der Benutzer kann "Show" im Menü anklicken, um die App zu öffnen
-    
-    logToFile('[Tray] Tray icon created successfully');
-  } catch (e) {
-    logToFile('[Tray] ERROR: Failed to create tray: ' + e.message);
-    logToFile('[Tray] Stack: ' + (e.stack || 'no stack'));
-  }
-}
-
-/**
- * Check for updates
- */
-function checkForUpdates() {
-  logToFile('[Updates] checkForUpdates() called');
-  
-  // Skip update check in dev mode
-  if (isDev) {
-    logToFile('[Updates] Skipping update check in development mode');
-    return;
-  }
-
-  try {
-    // Manually check GitLab releases API for latest version
-    const https = require('https');
-    const currentVersion = app.getVersion();
-    
-    logToFile('[Updates] Current version: ' + currentVersion);
-    logToFile('[Updates] Checking GitLab for newer releases...');
-    
-    const options = {
-      hostname: 'gitlab.com',
-      path: '/api/v4/projects/22692225/releases',
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Slack Status Bot'
-      }
-    };
-    
-    const req = https.request(options, (res) => {
-      let data = '';
-      
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-      
-      res.on('end', () => {
-        try {
-          if (res.statusCode === 200) {
-            const releases = JSON.parse(data);
-            if (releases && releases.length > 0) {
-              const latestRelease = releases[0];
-              const latestVersion = latestRelease.tag_name.replace(/^v/, '');
-              logToFile('[Updates] Latest release found: ' + latestVersion);
-              
-              // Compare versions (simple semantic versioning)
-              if (isNewerVersion(latestVersion, currentVersion)) {
-                logToFile('[Updates] Update available: ' + latestVersion);
-                updateAvailable = {
-                  version: latestVersion,
-                  releaseDate: latestRelease.released_at || new Date().toISOString(),
-                };
-                
-                // Send to renderer
-                emitAppSnapshotChanged('update');
-                
-                // Update tray
-                if (tray && buildContextMenu) {
-                  updateTrayMenu();
-                }
-              } else {
-                logToFile('[Updates] You are on the latest version');
-              }
-            }
-          } else {
-            logToFile('[Updates] GitLab API error: ' + res.statusCode);
-          }
-        } catch (e) {
-          logToFile('[Updates] Error parsing releases: ' + e.message);
-        }
-      });
-    });
-    
-    req.on('error', (error) => {
-      logToFile('[Updates] Network error: ' + error.message);
-    });
-    
-    req.end();
-  } catch (e) {
-    logToFile('[Updates] Exception in checkForUpdates: ' + (e ? e.message : 'unknown error'));
-  }
-}
-
-/**
- * Compare versions (simple semantic versioning)
- * Returns true if newVersion > currentVersion
- */
-function isNewerVersion(newVersion, currentVersion) {
-  const newParts = newVersion.split('.').map(Number);
-  const currentParts = currentVersion.split('.').map(Number);
-  
-  for (let i = 0; i < Math.max(newParts.length, currentParts.length); i++) {
-    const newPart = newParts[i] || 0;
-    const currentPart = currentParts[i] || 0;
-    
-    if (newPart > currentPart) return true;
-    if (newPart < currentPart) return false;
-  }
-  
-  return false;
-}
-
-/**
- * Setup update event listeners
- */
-function setupUpdateListeners() {
-  logToFile('[Updates] setupUpdateListeners() called');
-  
-  autoUpdater.on('update-available', (updateInfo) => {
-    logToFile('[Updates] Event: update-available, version: ' + (updateInfo ? updateInfo.version : 'unknown'));
-    
-    updateAvailable = {
-      version: updateInfo.version,
-      releaseDate: updateInfo.releaseDate,
-    };
-    
-    // Benachrichtige Renderer Process
-    logToFile('[Updates] Sending app-snapshot refresh signal to renderer');
-    emitAppSnapshotChanged('update');
-    
-    // Update Tray Menu
-    if (tray && buildContextMenu) {
-      logToFile('[Updates] Updating tray menu');
-      updateTrayMenu();
-    }
-  });
-
-  autoUpdater.on('update-not-available', () => {
-    logToFile('[Updates] Event: update-not-available');
-  });
-
-  autoUpdater.on('error', (error) => {
-    logToFile('[Updates] Event: error, message: ' + (error ? error.message : 'unknown'));
-  });
-  
-  autoUpdater.on('checking-for-update', () => {
-    logToFile('[Updates] Event: checking-for-update');
-  });
-  
-  logToFile('[Updates] Listeners attached');
-}
-
-// Single Instance Lock - verhindert mehrere App-Instanzen
-const gotTheLock = app.requestSingleInstanceLock();
-
-if (!gotTheLock) {
-  // Eine andere Instanz läuft bereits - diese Instanz beenden
-  console.log('[Electron] Another instance is already running. Quitting...');
-  app.quit();
-} else {
-  // Wenn jemand versucht eine zweite Instanz zu starten,
-  // das Fenster der ersten Instanz fokussieren
-  app.on('second-instance', () => {
-    logToFile('[App] Second instance attempted - focusing existing window');
-    showWindow();
-  });
-
-app.whenReady().then(() => {
-  logToFile('[App] App is ready!');
-  logToFile('[App] Platform: ' + process.platform);
-  logToFile('[App] __dirname: ' + __dirname);
-  
-  // Load config now that app is ready
-  refreshConfig();
-  logToFile('[App] Config loaded');
-  
-  // Note: Logger is part of the React bundle, not available in main process at startup.
-  // Log level will be set when the daemon starts.
-  
-  logToFile('[App] Creating window...');
-  createWindow();
-  logToFile('[App] Creating tray...');
-  createTray();
-  logToFile('[App] Tray creation attempted');
-
-  // Setup update checking
-  logToFile('[App] Setting up update listeners...');
-  setupUpdateListeners();
-  logToFile('[App] Checking for updates (first time)...');
-  checkForUpdates();
-  logToFile('[App] Scheduling update check every 4 hours...');
-  // Check for updates every 4 hours
-  setInterval(() => {
-    logToFile('[App] Running scheduled update check...');
-    checkForUpdates();
-  }, 4 * 60 * 60 * 1000);
-
-  // Initialize daemon if available
-  try {
-    const daemonPath = getDistModulePath('daemon');
-    
-    console.log('[Daemon] Loading daemon from:', daemonPath);
-    
-    const daemonModule = require(daemonPath);
-    console.log('[Daemon] Loaded daemon module:', Object.keys(daemonModule));
-    createDaemon = daemonModule.createDaemon;
-    console.log('[Daemon] createDaemon function available:', typeof createDaemon);
-
-    const appSnapshotProviderPath = getDistModulePath('main/appSnapshotProvider');
-    const appSnapshotProviderModule = require(appSnapshotProviderPath);
-    createAppSnapshotProvider = appSnapshotProviderModule.createAppSnapshotProvider;
-    console.log('[Snapshot] createAppSnapshotProvider function available:', typeof createAppSnapshotProvider);
-    
-    if (hasConfiguredTokens()) {
-      console.log('[Daemon] Starting daemon with stored tokens:', config.slackTokens.length);
-      daemon = createDaemon({ 
-        slackTokens: config.slackTokens,
-        onAppStateChanged: (statusData) => {
-          console.log('[Daemon] Status changed, sending to UI:', statusData);
-          emitAppSnapshotChanged('daemon-status');
-        }
-      });
-      if (daemon.setLogLevel) {
-        daemon.setLogLevel(currentLogLevel);
-      }
-      daemon.start().then(() => {
-        // Tray-Menü aktualisieren, nachdem Daemon initialisiert wurde
-        updateTrayMenu();
-      }).catch(err => console.error('Error starting daemon:', err));
-    } else {
-      console.log('[Daemon] No tokens configured, daemon will start after tokens are saved');
-    }
-  } catch (e) {
-    console.error('[Daemon] Failed to initialize daemon:', e.message);
-    console.error('[Daemon] Stack:', e.stack);
-  }
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-app.on('activate', () => {
-  if (mainWindow === null) {
-    createWindow();
-    // Tray wird bereits in app.whenReady() erstellt, also nicht nochmal hier erstellen
-  } else {
-    showWindow();
-  }
-});
-
-app.on('before-quit', async () => {
-  app.isQuitting = true;
+const restartDaemon = async slackTokens => {
   if (daemon) {
-    try {
-      await daemon.stop();
-    } catch (e) {
-      console.error('Error stopping daemon:', e);
-    }
+    await daemon.stop();
+    daemon = null;
   }
-  // Cleanup tray
-  if (tray) {
-    try {
-      tray.destroy();
-      tray = null;
-    } catch (e) {
-      console.error('Error destroying tray on quit:', e);
-    }
+
+  if (!createDaemon) {
+    return;
   }
-});
 
-// ============== IPC Handlers ==============
+  daemon = createDaemonInstance(slackTokens);
+  applyDaemonLogLevel();
+  await daemon.start();
+  trayBridge.refreshMenu();
+};
 
-/**
- * Get stored Slack tokens (for display in UI)
- */
-ipcMain.handle('get-tokens', async (event) => {
+const stopDaemon = async () => {
+  if (!daemon) {
+    return;
+  }
+
   try {
-    console.log('[IPC] get-tokens called');
-    const tokens = config.slackTokens || [];
-    // Return masked tokens for security - show only first and last 4 chars
-    const maskedTokens = Array.isArray(tokens)
-      ? tokens.map(t => {
-          if (t.length > 8) {
-            return `${t.substring(0, 4)}...${t.substring(t.length - 4)}`;
-          }
-          return '****';
-        })
-      : [];
-    return { success: true, tokens: maskedTokens, count: tokens.length };
-  } catch (error) {
-    console.error('Error getting tokens:', error);
-    return { success: false, error: error.message };
+    await daemon.stop();
+  } finally {
+    daemon = null;
   }
-});
+};
 
-/**
- * Save Slack tokens
- */
-ipcMain.handle('save-tokens', async (event, tokens) => {
-  try {
-    console.log('[IPC] save-tokens called with tokens:', Array.isArray(tokens) ? `${tokens.length} token(s)` : '1 token');
-    getConfigStore().updateSlackTokens(tokens);
-    refreshConfig();
-    console.log('[IPC] Updated persisted slack tokens');
-    console.log('[IPC] Config saved to disk');
-    
-    // Restart daemon with new tokens
-    if (daemon) {
-      await daemon.stop();
-    }
-    
-    if (createDaemon) {
-      daemon = createDaemon({ 
-        slackTokens: tokens,
-        onAppStateChanged: (statusData) => {
-          console.log('[Daemon] Status changed, sending to UI:', statusData);
-          emitAppSnapshotChanged('daemon-status');
-        }
-      });
-      if (daemon.setLogLevel) {
-        daemon.setLogLevel(currentLogLevel);
-      }
-      await daemon.start();
-      console.log('[IPC] Daemon started with new tokens');
-      // Tray-Menü aktualisieren, nachdem Daemon gestartet wurde
-      updateTrayMenu();
-    }
-
-    emitAppSnapshotChanged('setup');
-    return { success: true };
-  } catch (error) {
-    console.error('Error saving tokens:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Delete all Slack tokens
- */
-ipcMain.handle('delete-tokens', async (event) => {
-  try {
-    console.log('[IPC] delete-tokens called');
-    getConfigStore().clearSlackTokens();
-    refreshConfig();
-    console.log('[IPC] Tokens deleted');
-    
-    // Stop daemon if running
-    if (daemon) {
-      await daemon.stop();
-      daemon = null;
-    }
-
-    emitAppSnapshotChanged('setup');
-    return { success: true };
-  } catch (error) {
-    console.error('Error deleting tokens:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Set custom status
- */
-ipcMain.handle('set-status', async (event, emoji, message) => {
-  try {
-    if (!daemon) {
-      return { success: false, error: 'Daemon not initialized' };
-    }
-    const success = await daemon.setStatus(emoji, message);
-    return { success, data: success };
-  } catch (error) {
-    console.error('Error setting status:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Go online
- */
-ipcMain.handle('go-online', async (event) => {
-  try {
-    if (!daemon) {
-      return { success: false, error: 'Daemon not initialized' };
-    }
-    const success = await daemon.goOnline();
-    return { success, data: success };
-  } catch (error) {
-    console.error('Error going online:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Go away
- */
-ipcMain.handle('go-away', async (event) => {
-  try {
-    if (!daemon) {
-      return { success: false, error: 'Daemon not initialized' };
-    }
-    const success = await daemon.goAway();
-    return { success, data: success };
-  } catch (error) {
-    console.error('Error going away:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Toggle source
- */
-ipcMain.handle('toggle-source', async (event, source, enabled) => {
-  try {
-    if (!daemon) {
-      return { success: false, error: 'Daemon not initialized' };
-    }
-    daemon.toggleSource(source, enabled);
-    emitAppSnapshotChanged('source-status');
-    return { success: true };
-  } catch (error) {
-    console.error('Error toggling source:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('set-source-order', async (event, sourceOrder) => {
-  try {
-    // Update daemon's source order in real-time if running
-    if (daemon) {
-      await daemon.setSourceOrder(sourceOrder);
-      console.log('[IPC] Daemon source order updated and re-evaluated in real-time');
-    } else {
-      getConfigStore().updateSourceOrder(sourceOrder);
-    }
-
-    refreshConfig();
-    console.log('[IPC] Source order updated:', sourceOrder);
-    return { success: true };
-  } catch (error) {
-    console.error('Error setting source order:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('get-source-order', async (event) => {
-  try {
-    const order = config.sourceOrder || ['spotify', 'appleMusic', 'zoom', 'teams', 'huddle'];
-    console.log('[IPC] Source order requested:', order);
-    return { success: true, sourceOrder: order };
-  } catch (error) {
-    console.error('Error getting source order:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('get-app-snapshot', async (event) => {
-  try {
-    const snapshot = await getAppSnapshot();
-    return { success: true, data: snapshot };
-  } catch (error) {
-    console.error('Error getting app snapshot:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-// Log file paths (same as logger.ts uses)
 const getLogDir = () => path.join(app.getPath('userData'), 'logs');
 const getLogFile = () => path.join(getLogDir(), 'app.log');
 
-// In-memory log level (default: ERROR)
-let currentLogLevel = config.logLevel || 'ERROR';
-
-/**
- * Get recent logs - reads directly from log file
- */
-ipcMain.handle('get-logs', async (event, lines = 200) => {
-  try {
-    const logFile = getLogFile();
-    if (!fs.existsSync(logFile)) {
-      return { success: true, data: '(No logs yet)' };
-    }
-    const content = fs.readFileSync(logFile, 'utf-8');
-    const allLines = content.split('\n');
-    const recentLines = allLines.slice(-lines).join('\n');
-    return { success: true, data: recentLines };
-  } catch (error) {
-    console.error('Error getting logs:', error);
-    return { success: false, error: error.message, data: '(Error reading logs)' };
+const getLogs = lines => {
+  const logFile = getLogFile();
+  if (!fs.existsSync(logFile)) {
+    return '(No logs yet)';
   }
-});
 
-/**
- * Clear logs - removes log files directly
- */
-ipcMain.handle('clear-logs', async (event) => {
-  try {
-    const logDir = getLogDir();
-    const logFile = getLogFile();
-    
-    // Remove main log file
-    if (fs.existsSync(logFile)) {
-      fs.unlinkSync(logFile);
-    }
-    
-    // Remove backup files
-    for (let i = 1; i <= 15; i++) {
-      const backupFile = path.join(logDir, `app.log.${i}`);
-      if (fs.existsSync(backupFile)) {
-        fs.unlinkSync(backupFile);
-      }
-    }
-    
-    console.log('[IPC] Logs cleared');
-    return { success: true };
-  } catch (error) {
-    console.error('Error clearing logs:', error);
-    return { success: false, error: error.message };
+  const content = fs.readFileSync(logFile, 'utf-8');
+  return content.split('\n').slice(-lines).join('\n');
+};
+
+const clearLogs = () => {
+  const logDir = getLogDir();
+  const logFile = getLogFile();
+
+  if (fs.existsSync(logFile)) {
+    fs.unlinkSync(logFile);
   }
-});
 
-/**
- * Set log level - stored in config and passed to daemon
- */
-ipcMain.handle('set-log-level', async (event, level) => {
-  try {
-    getConfigStore().updateLogLevel(level);
+  for (let index = 1; index <= 15; index += 1) {
+    const backupFile = path.join(logDir, `app.log.${index}`);
+    if (fs.existsSync(backupFile)) {
+      fs.unlinkSync(backupFile);
+    }
+  }
+};
+
+const setLogLevel = level => {
+  getConfigStore().updateLogLevel(level);
+  refreshConfig();
+  applyDaemonLogLevel();
+  return currentLogLevel;
+};
+
+const saveTokens = async tokens => {
+  const normalizedTokens = Array.isArray(tokens) ? tokens : [tokens];
+  getConfigStore().updateSlackTokens(normalizedTokens);
+  refreshConfig();
+  await restartDaemon(normalizedTokens);
+  snapshotBridge.emitAppSnapshotChanged('setup');
+};
+
+const deleteTokens = async () => {
+  getConfigStore().clearSlackTokens();
+  refreshConfig();
+  await stopDaemon();
+  trayBridge.refreshMenu();
+  snapshotBridge.emitAppSnapshotChanged('setup');
+};
+
+const markFirstRunComplete = async () => {
+  getConfigStore().markFirstRunCompleted();
+  refreshConfig();
+  log('[FirstRun] First run marked as complete');
+  snapshotBridge.emitAppSnapshotChanged('setup');
+};
+
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  console.log('[Electron] Another instance is already running. Quitting...');
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    log('[App] Second instance attempted - focusing existing window');
+    void windowLifecycle.showWindow();
+  });
+
+  app.whenReady().then(async () => {
+    log('[App] App is ready!');
+    log(`[App] Platform: ${process.platform}`);
+    log(`[App] __dirname: ${__dirname}`);
+
     refreshConfig();
-    
-    // If daemon is running, update its logger
-    if (daemon && daemon.setLogLevel) {
-      daemon.setLogLevel(level);
-    }
-    
-    return { success: true, logLevel: level };
-  } catch (error) {
-    console.error('Error setting log level:', error);
-    return { success: false, error: error.message };
-  }
-});
+    initializeDaemonModules();
 
-/**
- * Get current log level
- */
-ipcMain.handle('get-log-level', async (event) => {
-  try {
-    return { success: true, logLevel: currentLogLevel };
-  } catch (error) {
-    console.error('Error getting log level:', error);
-    return { success: false, error: error.message };
-  }
-});
+    windowLifecycle.createWindow();
+    trayBridge.createTray();
+    updateBridge.setupUpdateListeners();
+    updateIntervalId = updateBridge.startScheduledChecks();
 
-/**
- * Set holiday status with return date
- */
-ipcMain.handle('set-holiday', async (event, returnDate) => {
-  try {
-    if (!daemon) {
-      return { success: false, error: 'Daemon not initialized' };
-    }
-    console.log('[IPC] set-holiday called with date:', returnDate);
-    const success = await daemon.setHoliday(returnDate);
-    return { success, data: success };
-  } catch (error) {
-    console.error('Error setting holiday:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Get status configuration
- */
-ipcMain.handle('get-status-configuration', async (event) => {
-  try {
-    if (!daemon) {
-      return { success: false, error: 'Daemon not initialized' };
-    }
-    const config = daemon.getStatusConfiguration();
-    return { success: true, data: config };
-  } catch (error) {
-    console.error('Error getting status configuration:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Update status configuration
- */
-ipcMain.handle('update-status-configuration', async (event, statusConfig) => {
-  try {
-    if (!daemon) {
-      return { success: false, error: 'Daemon not initialized' };
-    }
-    const success = await daemon.updateStatusConfiguration(statusConfig);
-    if (success && daemon.statusManager?.setCustomStatuses) {
-      daemon.statusManager.setCustomStatuses(statusConfig);
-    }
-    // Tray-Menü aktualisieren, nachdem Status-Konfiguration geändert wurde
-    updateTrayMenu();
-    return { success };
-  } catch (error) {
-    console.error('Error updating status configuration:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Reset status configuration to defaults
- */
-ipcMain.handle('reset-status-configuration', async (event) => {
-  try {
-    if (!daemon) {
-      return { success: false, error: 'Daemon not initialized' };
-    }
-    const success = await daemon.resetStatusConfiguration();
-    // Tray-Menü aktualisieren, nachdem Status-Konfiguration zurückgesetzt wurde
-    updateTrayMenu();
-    return { success };
-  } catch (error) {
-    console.error('Error resetting status configuration:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Open holiday modal (triggers event to renderer)
- */
-ipcMain.handle('open-holiday-modal', async (event) => {
-  try {
-    if (mainWindow && mainWindow.webContents) {
-      mainWindow.webContents.send('open-holiday-modal');
-      return { success: true };
-    }
-    return { success: false, error: 'Main window not available' };
-  } catch (error) {
-    console.error('Error opening holiday modal:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-/**
- * Set auto-launch (App beim Hochfahren starten)
- * Auf macOS erstellen wir einen LaunchAgent statt setLoginItemSettings zu verwenden,
- * da das nicht auf unsigned apps funktioniert
- */
-ipcMain.handle('set-auto-launch', async (event, enabled) => {
-  try {
-    console.log('[AutoLaunch] Setting auto-launch to:', enabled);
-    logToFile('[AutoLaunch] Setting auto-launch to: ' + enabled);
-    
-    if (process.platform === 'darwin') {
-      // Auf macOS: erstelle LaunchAgent
-      const launchAgentPath = path.join(
-        process.env.HOME || '',
-        'Library/LaunchAgents/com.slack-status-bot.plist'
-      );
-      
-      let appPath = process.execPath;
-      const appMatch = appPath.match(/^(.+?\.app)/);
-      if (appMatch) {
-        appPath = appMatch[1];
+    try {
+      if (hasConfiguredTokens()) {
+        await restartDaemon(config.slackTokens);
       }
-      
-      logToFile('[AutoLaunch] LaunchAgent path: ' + launchAgentPath);
-      logToFile('[AutoLaunch] App path: ' + appPath);
-      
-      if (enabled) {
-        // Erstelle LaunchAgent Plist
-        const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>com.slack-status-bot</string>
-  <key>Program</key>
-  <string>${appPath}/Contents/MacOS/Slack Status Bot</string>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>StandardOutPath</key>
-  <string>${process.env.HOME}/Library/Logs/slack-status-bot.log</string>
-  <key>StandardErrorPath</key>
-  <string>${process.env.HOME}/Library/Logs/slack-status-bot-error.log</string>
-</dict>
-</plist>`;
-        
-        // Erstelle Verzeichnis falls nicht vorhanden
-        const launchAgentDir = path.dirname(launchAgentPath);
-        if (!fs.existsSync(launchAgentDir)) {
-          fs.mkdirSync(launchAgentDir, { recursive: true });
-        }
-        
-        // Schreibe Plist
-        fs.writeFileSync(launchAgentPath, plistContent, 'utf-8');
-        logToFile('[AutoLaunch] LaunchAgent plist written');
-        
-        // Lade den LaunchAgent mit launchctl
-        const { execSync } = require('child_process');
-        try {
-          execSync(`launchctl load "${launchAgentPath}"`, { stdio: 'pipe' });
-          logToFile('[AutoLaunch] LaunchAgent loaded successfully with launchctl');
-        } catch (error) {
-          // Wenn es bereits geladen ist, bekommst du einen Fehler - das ist OK
-          if (error.toString().includes('already loaded')) {
-            logToFile('[AutoLaunch] LaunchAgent was already loaded');
-          } else {
-            logToFile('[AutoLaunch] Error loading with launchctl: ' + error.message);
-            console.log('[AutoLaunch] launchctl error:', error.toString());
-          }
-        }
-      } else {
-        // Unlade und lösche LaunchAgent
-        if (fs.existsSync(launchAgentPath)) {
-          const { execSync } = require('child_process');
-          try {
-            execSync(`launchctl unload "${launchAgentPath}"`, { stdio: 'pipe' });
-            logToFile('[AutoLaunch] LaunchAgent unloaded');
-          } catch (error) {
-            if (!error.toString().includes('not loaded')) {
-              logToFile('[AutoLaunch] Error unloading: ' + error.message);
-            }
-          }
-          
-          // Lösche die Datei
-          fs.unlinkSync(launchAgentPath);
-          logToFile('[AutoLaunch] LaunchAgent plist removed');
-        }
-      }
-      
-      return { success: true, enabled: enabled };
-    } else {
-      // Windows/Linux: nutze setLoginItemSettings wenn verfügbar
-      app.setLoginItemSettings({
-        openAtLogin: enabled,
-        openAsHidden: true,
-      });
-      return { success: true, enabled: enabled };
+    } catch (error) {
+      console.error('[Daemon] Failed to initialize daemon:', error.message);
+      console.error('[Daemon] Stack:', error.stack);
     }
-  } catch (error) {
-    console.error('[AutoLaunch] Error:', error);
-    logToFile('[AutoLaunch] Error: ' + error.message);
-    return { success: false, error: error.message };
-  }
-});
 
-/**
- * Get auto-launch status
- */
-ipcMain.handle('get-auto-launch', async (event) => {
-  try {
-    if (process.platform === 'darwin') {
-      // Auf macOS: prüfe ob LaunchAgent existiert
-      const launchAgentPath = path.join(
-        process.env.HOME || '',
-        'Library/LaunchAgents/com.slack-status-bot.plist'
-      );
-      const enabled = fs.existsSync(launchAgentPath);
-      logToFile('[AutoLaunch] LaunchAgent exists: ' + enabled);
-      return { success: true, enabled: enabled };
-    } else {
-      // Windows/Linux
-      const settings = app.getLoginItemSettings();
-      return { success: true, enabled: settings.openAtLogin };
+    registerMainIpcHandlers(ipcMain, {
+      getConfig: () => config,
+      refreshConfig,
+      updateSourceOrder: sourceOrder => getConfigStore().updateSourceOrder(sourceOrder),
+      getSetupSnapshot,
+      saveTokens,
+      deleteTokens,
+      markFirstRunComplete,
+      getDaemon: () => daemon,
+      emitAppSnapshotChanged: reason => snapshotBridge.emitAppSnapshotChanged(reason),
+      refreshTrayMenu: () => trayBridge.refreshMenu(),
+      openHolidayModal: () => snapshotBridge.openHolidayModal(),
+      getAppSnapshot,
+      getLogs,
+      clearLogs,
+      setLogLevel,
+      getLogLevel: () => currentLogLevel,
+      setAutoLaunch: enabled => autoLaunchAdapter.setEnabled(enabled),
+      getAutoLaunch: () => autoLaunchAdapter.getStatus(),
+      logStatusBridgeInfo,
+      logStatusBridgeError,
+    });
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
     }
-  } catch (error) {
-    console.error('Error getting auto-launch status:', error);
-    logToFile('[AutoLaunch] Error: ' + error.message);
-    return { success: false, error: error.message };
-  }
-});
+  });
 
-/**
- * Mark first run as complete
- */
-ipcMain.handle('complete-first-run', async (event) => {
-  try {
-    getConfigStore().markFirstRunCompleted();
-    refreshConfig();
-    logToFile('[FirstRun] First run marked as complete');
-    emitAppSnapshotChanged('setup');
-    return { success: true };
-  } catch (error) {
-    console.error('Error completing first run:', error);
-    return { success: false, error: error.message };
-  }
-});
+  app.on('activate', () => {
+    if (!windowLifecycle.getWindow()) {
+      windowLifecycle.createWindow();
+      return;
+    }
 
-} // Ende des Single Instance Lock else-Blocks
+    void windowLifecycle.showWindow();
+  });
+
+  app.on('before-quit', async () => {
+    app.isQuitting = true;
+
+    if (updateIntervalId) {
+      clearInterval(updateIntervalId);
+      updateIntervalId = null;
+    }
+
+    try {
+      await stopDaemon();
+    } catch (error) {
+      console.error('Error stopping daemon:', error);
+    }
+  });
+}

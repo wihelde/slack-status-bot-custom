@@ -1,8 +1,10 @@
 import { EventEmitter } from 'events';
 import { SlackService, SlackProfile } from './slack';
 import { SlackStatusExecutor } from './slackStatusExecutor';
-import { STATUS_MESSAGES, DayOfWeek, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS, OverridableStatusPattern } from '../config/statusConfig';
-import { ManualAction, StatusReconciler } from './statusReconciler';
+import { DayOfWeek, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS, OverridableStatusPattern } from '../config/statusConfig';
+import type { AppStatusChangedEvent } from '../contracts/ipc';
+import { ManualAction } from './statusReconciler';
+import { StatusDomain } from './statusDomain/statusDomain';
 import { logger } from '../utils/logger';
 
 export interface StatusCheckState {
@@ -20,7 +22,7 @@ export class StatusManager extends EventEmitter {
   private slackExecutor: SlackStatusExecutor;
   private statusCheckState: StatusCheckState = { value: '' };
   private finalStatus: string = '';
-  private allowedEmojis: Set<string>;
+  private allowedEmojis: Set<string> = new Set();
   private customStatuses: CustomStatusConfig[];
   private profileCache: SlackProfile | null = null;
   private profileCacheTime: number = 0;
@@ -28,7 +30,7 @@ export class StatusManager extends EventEmitter {
   private dayStatusEmojiMap: Map<number, Set<string>> = new Map(); // Maps DayOfWeek → valid emoji set for that day
   private overridablePatterns: OverridableStatusPattern[];
   private isResetting: boolean = false; // Prevent concurrent reset calls
-  private readonly reconciler: StatusReconciler;
+  private readonly statusDomain: StatusDomain;
 
   constructor(slackService: SlackService, customStatuses?: CustomStatusConfig[]) {
     super(); // Call EventEmitter constructor
@@ -36,40 +38,20 @@ export class StatusManager extends EventEmitter {
     this.slackExecutor = new SlackStatusExecutor(slackService);
     this.customStatuses = customStatuses || getDefaultStatusConfiguration();
     this.overridablePatterns = DEFAULT_OVERRIDABLE_PATTERNS;
-    this.reconciler = new StatusReconciler();
-    
-    // Build set of all valid emojis from custom statuses
-    const statusEmojis = this.customStatuses.map(s => s.emoji);
-    // Add source-specific emojis that are always managed
-    const sourceEmojis = [
-      STATUS_MESSAGES.SPOTIFY_EMOJI,
-      STATUS_MESSAGES.ZOOM_EMOJI,
-      STATUS_MESSAGES.APPLE_MUSIC_EMOJI,
-      STATUS_MESSAGES.DISCORD_EMOJI,
-      STATUS_MESSAGES.TEAMS_EMOJI,
-      STATUS_MESSAGES.SKYPE_EMOJI,
-      STATUS_MESSAGES.HUDDLE_EMOJI,
-      // Note: OFF_EMOJI (:mobile_phone_off:) is intentionally NOT included - it should only be set manually via UI
-    ];
-    this.allowedEmojis = new Set([...statusEmojis, ...sourceEmojis]);
-    
-    // Build mapping: DayOfWeek → Set of valid status emojis for that day
-    this.buildDayStatusEmojiMap();
+    this.statusDomain = new StatusDomain();
+    this.refreshDerivedStatusState();
   }
 
   /**
    * Build a mapping of which emojis are valid for each day
    */
   private buildDayStatusEmojiMap(): void {
-    this.dayStatusEmojiMap.clear();
-    for (let day = 0; day < 7; day++) {
-      const emojisForDay = new Set(
-        this.customStatuses
-          .filter(s => s.days.includes(day))
-          .map(s => s.emoji)
-      );
-      this.dayStatusEmojiMap.set(day, emojisForDay);
-    }
+    this.dayStatusEmojiMap = this.statusDomain.buildDayStatusEmojiMap(this.customStatuses);
+  }
+
+  private refreshDerivedStatusState(): void {
+    this.allowedEmojis = this.statusDomain.buildAllowedEmojis(this.customStatuses);
+    this.buildDayStatusEmojiMap();
   }
 
   /**
@@ -127,7 +109,7 @@ export class StatusManager extends EventEmitter {
   }
 
   emitObservedStatusChange(emoji: string, message: string, stateValue: 'activeSource' | 'sourceInactive'): void {
-    this.emit('statusChanged', { emoji, message, stateValue });
+    this.emit('statusChanged', { emoji, message, stateValue } satisfies AppStatusChangedEvent);
   }
 
   /**
@@ -148,7 +130,7 @@ export class StatusManager extends EventEmitter {
    */
   async isStatusClean(): Promise<boolean> {
     const profile = await this.getCachedProfile();
-    const result = this.reconciler.canChangeStatus({
+    const result = this.statusDomain.canChangeStatus({
       profile,
       state: this.statusCheckState,
       allowedEmojis: this.allowedEmojis,
@@ -205,7 +187,7 @@ export class StatusManager extends EventEmitter {
     const dayOfWeek = this.getDayOfWeek();
 
     // Get status from configuration for this day
-    const statusPlan = this.reconciler.getDayStatusPlan(dayOfWeek, this.customStatuses);
+    const statusPlan = this.statusDomain.getDayStatusPlan(dayOfWeek, this.customStatuses);
 
     if (!statusPlan) {
       // No status configured for this day - set empty status
@@ -221,7 +203,7 @@ export class StatusManager extends EventEmitter {
         this.statusCheckState.activeSource = undefined;
         this.finalStatus = '';
         this.invalidateProfileCache();
-        this.emit('statusChanged', { emoji: '', message: '', stateValue: '' });
+        this.emit('statusChanged', { emoji: '', message: '', stateValue: '' } satisfies AppStatusChangedEvent);
       }
       return success;
     }
@@ -265,7 +247,7 @@ export class StatusManager extends EventEmitter {
       logger.info(`[statusManager] reset() successful`, { newState: stateValue, emoji });
       
       // Emit event for status change
-      this.emit('statusChanged', { emoji, message, stateValue });
+      this.emit('statusChanged', { emoji, message, stateValue } satisfies AppStatusChangedEvent);
     } else {
       logger.error(`[statusManager] reset() failed to set profile`);
     }
@@ -319,7 +301,7 @@ export class StatusManager extends EventEmitter {
 
     const dayOfWeek = this.getDayOfWeek();
     const validEmojisForToday = this.dayStatusEmojiMap.get(dayOfWeek) || new Set();
-    const decision = this.reconciler.getCorrectionDecision({
+    const decision = this.statusDomain.getCorrectionDecision({
       profile,
       state: this.statusCheckState,
       day: dayOfWeek,
@@ -428,21 +410,7 @@ export class StatusManager extends EventEmitter {
   setCustomStatuses(statuses: CustomStatusConfig[]): void {
     this.customStatuses = statuses;
     
-    // Rebuild allowedEmojis set
-    const statusEmojis = this.customStatuses.map(s => s.emoji);
-    const sourceEmojis = [
-      STATUS_MESSAGES.SPOTIFY_EMOJI,
-      STATUS_MESSAGES.ZOOM_EMOJI,
-      STATUS_MESSAGES.APPLE_MUSIC_EMOJI,
-      STATUS_MESSAGES.DISCORD_EMOJI,
-      STATUS_MESSAGES.TEAMS_EMOJI,
-      STATUS_MESSAGES.SKYPE_EMOJI,
-      STATUS_MESSAGES.HUDDLE_EMOJI,
-    ];
-    this.allowedEmojis = new Set([...statusEmojis, ...sourceEmojis]);
-    
-    // Rebuild day → emoji mapping
-    this.buildDayStatusEmojiMap();
+    this.refreshDerivedStatusState();
     
     logger.info('[statusManager] Custom statuses updated', { count: statuses.length });
   }
@@ -455,47 +423,13 @@ export class StatusManager extends EventEmitter {
     logger.info('[statusManager] Overridable patterns updated', { count: patterns.length });
   }
 
-  // Private helper methods
-
-  private isOverridableThirdPartyStatus(emoji: string, text: string): boolean {
-    return this.overridablePatterns.some(pattern => {
-      if (emoji === pattern.emoji && pattern.messagePatterns.includes(text)) {
-        logger.debug(`[statusManager] Found overridable status pattern`, { emoji, text, pattern: pattern.description });
-        return true;
-      }
-      return false;
-    });
-  }
-
-  private isCurrentStatusManaged(emoji: string): boolean {
-    return this.reconciler.isManagedEmoji(emoji, this.allowedEmojis);
-  }
-
   private getDayOfWeek(): DayOfWeek {
     const day = new Date().getDay();
     return day as DayOfWeek; // 0=Sunday, 1=Monday, ..., 6=Saturday
   }
 
-  private getRandomOnPair(): { emoji: string; message: string } {
-    const pairs = STATUS_MESSAGES.ON_STATUS_PAIRS;
-    return pairs[Math.floor(Math.random() * pairs.length)];
-  }
-
-  private getRandomOnEmoji(): string {
-    return this.getRandomOnPair().emoji;
-  }
-
-  private getRandomOnMessage(): string {
-    return this.getRandomOnPair().message;
-  }
-
-  private getRandomOfflineMessage(): string {
-    const messages = STATUS_MESSAGES.OFFLINE_MESSAGE_LIST;
-    return messages[Math.floor(Math.random() * messages.length)];
-  }
-
   private async applyManualAction(action: ManualAction): Promise<boolean> {
-    const actionPlan = this.reconciler.getManualActionPlan(action);
+    const actionPlan = this.statusDomain.getManualActionPlan(action);
     if (!actionPlan) {
       return false;
     }
@@ -527,7 +461,7 @@ export class StatusManager extends EventEmitter {
       emoji: actionPlan.emoji,
       message: actionPlan.message,
       stateValue: actionPlan.stateValue,
-    });
+    } satisfies AppStatusChangedEvent);
 
     return true;
   }

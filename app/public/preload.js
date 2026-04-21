@@ -60,7 +60,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /**
    * Check if tokens are configured
    */
-  getTokenStatus: () => ipcRenderer.invoke('get-tokens'),
+  getTokenStatus: () => ipcRenderer.invoke('get-token-status'),
 
   /**
    * Get recent logs

@@ -2,151 +2,99 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { IPCService } from '../ipcService';
 
 describe('IPCService - First Run & Auto Launch', () => {
+  const setWindowMock = (value: unknown) => {
+    const originalWindow = global.window;
+    Object.defineProperty(global, 'window', {
+      value,
+      writable: true,
+    });
+
+    return () => {
+      Object.defineProperty(global, 'window', {
+        value: originalWindow,
+        writable: true,
+      });
+    };
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe('completeFirstRun', () => {
-    it('should exist as a static method', () => {
-      expect(typeof IPCService.completeFirstRun).toBe('function');
+    it('returns false when not running in Electron', async () => {
+      const restoreWindow = setWindowMock({});
+      await expect(IPCService.completeFirstRun()).resolves.toBe(false);
+      restoreWindow();
     });
 
-    it('should return false when not running in Electron', async () => {
-      const originalWindow = global.window;
-      Object.defineProperty(global, 'window', {
-        value: {},
-        writable: true,
-      });
-
-      const result = await IPCService.completeFirstRun();
-      expect(result).toBe(false);
-
-      Object.defineProperty(global, 'window', {
-        value: originalWindow,
-        writable: true,
-      });
-    });
-
-    it('should call window.electronAPI.completeFirstRun if available', async () => {
+    it('proxies the complete-first-run contract through the preload boundary', async () => {
       const mockCompleteFirstRun = vi.fn().mockResolvedValue({
         success: true,
       });
-
-      const mockElectronAPI = {
-        completeFirstRun: mockCompleteFirstRun,
-      };
-
-      const originalWindow = global.window;
-      Object.defineProperty(global, 'window', {
-        value: {
-          electronAPI: mockElectronAPI,
+      const restoreWindow = setWindowMock({
+        electronAPI: {
+          completeFirstRun: mockCompleteFirstRun,
         },
-        writable: true,
       });
 
       const result = await IPCService.completeFirstRun();
 
       expect(mockCompleteFirstRun).toHaveBeenCalled();
       expect(result).toBe(true);
-
-      Object.defineProperty(global, 'window', {
-        value: originalWindow,
-        writable: true,
-      });
+      restoreWindow();
     });
 
-    it('should return false when completeFirstRun IPC call fails', async () => {
+    it('returns false when the complete-first-run IPC call fails', async () => {
       const mockCompleteFirstRun = vi.fn().mockResolvedValue({
         success: false,
         error: 'Failed to complete',
       });
-
-      const mockElectronAPI = {
-        completeFirstRun: mockCompleteFirstRun,
-      };
-
-      const originalWindow = global.window;
-      Object.defineProperty(global, 'window', {
-        value: {
-          electronAPI: mockElectronAPI,
+      const restoreWindow = setWindowMock({
+        electronAPI: {
+          completeFirstRun: mockCompleteFirstRun,
         },
-        writable: true,
       });
 
-      const result = await IPCService.completeFirstRun();
-      expect(result).toBe(false);
-
-      Object.defineProperty(global, 'window', {
-        value: originalWindow,
-        writable: true,
-      });
+      await expect(IPCService.completeFirstRun()).resolves.toBe(false);
+      restoreWindow();
     });
   });
 
   describe('setAutoLaunch', () => {
-    it('should exist as a static method', () => {
-      expect(typeof IPCService.setAutoLaunch).toBe('function');
-    });
-
-    it('should call window.electronAPI.setAutoLaunch with enabled value', async () => {
+    it('passes the enabled flag through the auto-launch IPC boundary', async () => {
       const mockSetAutoLaunch = vi.fn().mockResolvedValue({
         success: true,
       });
-
-      const mockElectronAPI = {
-        setAutoLaunch: mockSetAutoLaunch,
-      };
-
-      const originalWindow = global.window;
-      Object.defineProperty(global, 'window', {
-        value: {
-          electronAPI: mockElectronAPI,
+      const restoreWindow = setWindowMock({
+        electronAPI: {
+          setAutoLaunch: mockSetAutoLaunch,
         },
-        writable: true,
       });
 
       await IPCService.setAutoLaunch(true);
 
       expect(mockSetAutoLaunch).toHaveBeenCalledWith(true);
-
-      Object.defineProperty(global, 'window', {
-        value: originalWindow,
-        writable: true,
-      });
+      restoreWindow();
     });
   });
 
   describe('getAutoLaunch', () => {
-    it('should exist as a static method', () => {
-      expect(typeof IPCService.getAutoLaunch).toBe('function');
-    });
-
-    it('should return enabled status from IPC', async () => {
+    it('returns the enabled auto-launch status from IPC', async () => {
       const mockGetAutoLaunch = vi.fn().mockResolvedValue({
         success: true,
-        enabled: true,
-      });
-
-      const mockElectronAPI = {
-        getAutoLaunch: mockGetAutoLaunch,
-      };
-
-      const originalWindow = global.window;
-      Object.defineProperty(global, 'window', {
-        value: {
-          electronAPI: mockElectronAPI,
+        data: {
+          enabled: true,
         },
-        writable: true,
+      });
+      const restoreWindow = setWindowMock({
+        electronAPI: {
+          getAutoLaunch: mockGetAutoLaunch,
+        },
       });
 
-      const result = await IPCService.getAutoLaunch();
-
-      expect(result).toBe(true);
-
-      Object.defineProperty(global, 'window', {
-        value: originalWindow,
-        writable: true,
-      });
+      await expect(IPCService.getAutoLaunch()).resolves.toBe(true);
+      restoreWindow();
     });
   });
 });
