@@ -565,6 +565,43 @@ describe('StatusManager', () => {
   });
 
   describe('Holiday Status Protection Against Polling', () => {
+    it('should restore not working mode from a valid Slack Holiday status after restart', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-14T10:00:00Z'));
+
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing (back on 16.03.2026)',
+        status_expiration: Math.floor(new Date('2026-03-15T23:59:59Z').getTime() / 1000),
+      });
+
+      const restored = await statusManager.restoreProtectedStatusFromSlack();
+
+      expect(restored).toBe(true);
+      expect(statusManager.getStatusCheckState().value).toBe('not working');
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('should not restore not working mode from an expired Slack Holiday status after restart', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-16T10:00:00Z'));
+
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing (back on 16.03.2026)',
+        status_expiration: Math.floor(new Date('2026-03-15T23:59:59Z').getTime() / 1000),
+      });
+
+      const restored = await statusManager.restoreProtectedStatusFromSlack();
+
+      expect(restored).toBe(false);
+      expect(statusManager.getStatusCheckState().value).toBe('');
+
+      vi.useRealTimers();
+    });
+
     it('should not allow Spotify to override Holiday status when in "not working" mode', async () => {
       // Setup: User has set Holiday status
       await statusManager.setCustomStatus(

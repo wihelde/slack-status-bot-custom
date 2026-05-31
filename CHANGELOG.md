@@ -6,6 +6,10 @@
 
 - the correction-mechanism was skipping when the current slack-status was empty, which could prevent the application of the "status of the day" - now it checks also this case, respects changes (= deletion of the status in slack) in the last 10 minutes and correct the status if a "status of the day" is configured
 
+## Fixed
+
+- it could happen that a alreaday set holiday-status was reverted when your local machine was restarted - now the bot checks after startup which status is set in slack and tries to recreate its internal status based on it (if needed, e.g. you are still on holiday)
+
 ## [2.0.0] - 2024-04-21
 
 This one is a bigger refactoring to clean up the code, change ownership and responsibilities regarding functions within the bot. Nothing which can be seen using the bot, but helping further development and making it easier to understand whats going on within the code. So in essence: reduce complexity for all functions and depdendencies (e.g. when is a change allowed, when should the status be kept etc.) Therefore no detailed change-list this time.

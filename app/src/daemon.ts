@@ -72,6 +72,8 @@ export class SlackStatusBotDaemon {
     this.running = true;
     console.log('🚀 Starting Slack Status Bot Daemon...');
 
+    await this.statusManager.restoreProtectedStatusFromSlack();
+
     // Start polling loops
     this.startSourcePolling();
     this.startStatusCorrection();

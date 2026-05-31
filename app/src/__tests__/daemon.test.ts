@@ -731,6 +731,47 @@ describe('SlackStatusBotDaemon', () => {
       await daemon.stop();
     });
 
+    it('should restore a valid Slack Holiday status before source polling can overwrite it', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-14T10:00:00Z'));
+
+      const slackService = getInternalSlackService();
+      slackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing (back on 16.03.2026)',
+        status_expiration: Math.floor(new Date('2026-03-15T23:59:59Z').getTime() / 1000),
+      });
+      slackService.setProfile = vi.fn().mockResolvedValue(true);
+
+      setSourceActive('spotify', true);
+      await daemon.start();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(slackService.setProfile).not.toHaveBeenCalled();
+      expect(getInternalStatusManager().getStatusCheckState().value).toBe('not working');
+
+      await daemon.stop();
+    });
+
+    it('should not restore protection for an expired Slack Holiday status on startup', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-16T10:00:00Z'));
+
+      const slackService = getInternalSlackService();
+      slackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing (back on 16.03.2026)',
+        status_expiration: Math.floor(new Date('2026-03-15T23:59:59Z').getTime() / 1000),
+      });
+      slackService.setProfile = vi.fn().mockResolvedValue(true);
+
+      await daemon.start();
+
+      expect(getInternalStatusManager().getStatusCheckState().value).toBe('');
+
+      await daemon.stop();
+    });
+
     it('should correct mismatched status', async () => {
       mockSlackService.getProfile = vi.fn().mockResolvedValue({
         status_emoji: ':wrong:',
