@@ -18,7 +18,7 @@
     "host:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "host:smoke": "npm run host:build && node ./scripts/verify-electron-host-build.mjs",
     "electron-dev": "cross-env NODE_ENV=development ELECTRON_START_URL=http://localhost:3000 electron .",
-    "electron-build": "npm run react-build && npm run host:build && electron-builder && npm run fix-dmg",
+    "electron-build": "npm run react-build && npm run host:build && electron-builder && node ./scripts/verify-electron-package.mjs && npm run fix-dmg",
     "fix-dmg": "DMG=\"dist/Slack Status Bot-$(node -p \"require('./package.json').version\")-arm64.dmg\" && [ -f \"$DMG\" ] && ./scripts/fix-dmg-hidden-files.sh \"$DMG\" || true",
     "build": "npm run electron-build",
     "pack": "electron-builder --dir",
@@ -59,12 +59,15 @@
     "webpack-dev-server": "^5.2.3"
   },
   "build": {
+    "extends": null,
     "appId": "com.slack-status-bot.app",
     "productName": "Slack Status Bot",
+    "extraMetadata": {
+      "main": "dist/electron.js"
+    },
     "files": [
       "build/**/*",
       "dist/**/*.js",
-      "public/**/*",
       "assets/**/*",
       "package.json",
       "node_modules/axios/**/*",

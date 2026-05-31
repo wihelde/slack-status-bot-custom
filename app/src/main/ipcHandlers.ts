@@ -117,6 +117,7 @@ export function registerSetupIpcHandlers(
   registerHandlerGroup(ipcMain, {
     [IPC_CHANNELS.getTokens]: async () => {
       const tokens = getConfig().slackTokens || [];
+      dependencies.logStatusBridgeInfo('get-tokens requested', { count: tokens.length });
       return {
         success: true,
         data: {
@@ -127,6 +128,10 @@ export function registerSetupIpcHandlers(
     },
     [IPC_CHANNELS.getTokenStatus]: async () => {
       const tokens = getConfig().slackTokens || [];
+      dependencies.logStatusBridgeInfo('get-token-status requested', {
+        configured: Array.isArray(tokens) ? tokens.length > 0 : Boolean(tokens),
+        count: Array.isArray(tokens) ? tokens.length : 0,
+      });
       return {
         success: true,
         data: {
@@ -285,6 +290,11 @@ export function registerSnapshotIpcHandlers(
   registerHandlerGroup(ipcMain, {
     [IPC_CHANNELS.getAppSnapshot]: async () => {
       const snapshot = await dependencies.getAppSnapshot();
+      dependencies.logStatusBridgeInfo('get-app-snapshot requested', {
+        daemonRunning: snapshot.daemon?.running,
+        tokensConfigured: snapshot.setup?.tokensConfigured,
+        isFirstRun: snapshot.setup?.isFirstRun,
+      });
       return { success: true, data: snapshot };
     },
   });
