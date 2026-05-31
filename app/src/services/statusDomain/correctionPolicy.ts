@@ -7,6 +7,8 @@ import { CorrectionDecision, ReconcilerStatusState } from './types';
 export class CorrectionPolicy {
   constructor(private readonly statusChangePolicy: StatusChangePolicy = new StatusChangePolicy()) {}
 
+  private static readonly EMPTY_STATUS_GRACE_PERIOD = 10 * 60; // 10 minutes in seconds
+
   getCorrectionDecision(input: {
     profile: SlackProfile | null;
     state: ReconcilerStatusState;
@@ -29,7 +31,22 @@ export class CorrectionPolicy {
     const emoji = profile.status_emoji;
     const text = profile.status_text;
     if (!emoji) {
-      return { action: 'skip', reason: 'empty-status' };
+      if (validEmojisForToday.size === 0) {
+        return { action: 'skip', reason: 'empty-status-no-default' };
+      }
+
+      if (!state.lastEmptySeen) {
+        const nextState: ReconcilerStatusState = { ...state, lastEmptySeen: now };
+        return { action: 'skip', reason: 'empty-status-grace', nextState };
+      }
+
+      const elapsed = now - state.lastEmptySeen;
+      if (elapsed < CorrectionPolicy.EMPTY_STATUS_GRACE_PERIOD) {
+        return { action: 'skip', reason: 'empty-status-grace' };
+      }
+
+      const nextState: ReconcilerStatusState = { ...state, lastEmptySeen: undefined };
+      return { action: 'reset', reason: 'empty-status', nextState };
     }
 
     if (state.value === 'not working') {

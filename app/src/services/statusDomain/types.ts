@@ -3,6 +3,7 @@ import { CustomStatusConfig, DayOfWeek } from '../../config/statusConfig';
 export interface ReconcilerStatusState {
   value: 'not working' | '';
   activeSource?: string;
+  lastEmptySeen?: number;
 }
 
 export interface DayStatusPlan {
@@ -43,6 +44,8 @@ export interface CorrectionDecision {
     | 'source-active'
     | 'missing-profile'
     | 'empty-status'
+    | 'empty-status-grace'
+    | 'empty-status-no-default'
     | 'holiday-protected'
     | 'holiday-expired'
     | 'protected-status'
