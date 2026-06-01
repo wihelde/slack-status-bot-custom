@@ -23,8 +23,17 @@ console.log('[Electron] Starting up...');
 const isDev = process.env.NODE_ENV === 'development';
 console.log('[Electron] isDev:', isDev);
 
-const userDataDir = path.join(app.getPath('appData'), 'slack-status-bot');
+const userDataDir =
+  process.env.SLACK_STATUS_BOT_USER_DATA_DIR ||
+  path.join(app.getPath('appData'), 'slack-status-bot');
 app.setPath('userData', userDataDir);
+
+if (process.env.SLACK_STATUS_BOT_REMOTE_DEBUGGING_PORT) {
+  app.commandLine.appendSwitch(
+    'remote-debugging-port',
+    process.env.SLACK_STATUS_BOT_REMOTE_DEBUGGING_PORT
+  );
+}
 
 const { log, logStatusBridgeInfo, logStatusBridgeError } = createMainLogger({
   app,
