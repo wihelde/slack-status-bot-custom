@@ -1,11 +1,13 @@
 import {
   AppDaemonSnapshot,
+  AppMetadataSnapshot,
   AppSetupSnapshot,
   AppSnapshot,
   AppStatusSnapshot,
   AppUpdateSnapshot,
   AppSourcesSnapshot,
   AppSourceSnapshot,
+  createDefaultAppMetadataSnapshot,
   createDefaultDaemonSnapshot,
   createDefaultSetupSnapshot,
   createDefaultStatusSnapshot,
@@ -15,6 +17,7 @@ import { SOURCE_CATALOG, SourceName } from '../config/sourceCatalog';
 type RawSourceStatuses = Partial<Record<SourceName, Omit<AppSourceSnapshot, 'name'>>>;
 
 export interface AppSnapshotProviderDependencies {
+  getAppMetadataSnapshot: () => Partial<AppMetadataSnapshot> | null | undefined;
   getSlackStatus: () => Promise<Partial<AppStatusSnapshot> | null | undefined>;
   getSourceStatuses: () => Promise<RawSourceStatuses | null | undefined>;
   getDaemonSnapshot: () => Partial<AppDaemonSnapshot> | null | undefined;
@@ -32,6 +35,7 @@ export class AppSnapshotProvider {
     ]);
 
     return {
+      app: normalizeAppMetadataSnapshot(this.dependencies.getAppMetadataSnapshot()),
       status: normalizeAppStatusSnapshot(status),
       daemon: normalizeAppDaemonSnapshot(this.dependencies.getDaemonSnapshot()),
       sources: normalizeAppSourcesSnapshot(rawSources),
@@ -77,6 +81,16 @@ export function normalizeAppStatusSnapshot(
   };
 }
 
+export function normalizeAppMetadataSnapshot(
+  appMetadata: Partial<AppMetadataSnapshot> | null | undefined
+): AppMetadataSnapshot {
+  const fallback = createDefaultAppMetadataSnapshot();
+
+  return {
+    version: normalizeRequiredString(appMetadata?.version, fallback.version),
+  };
+}
+
 export function normalizeAppDaemonSnapshot(
   daemon: Partial<AppDaemonSnapshot> | null | undefined
 ): AppDaemonSnapshot {
@@ -118,6 +132,7 @@ export function normalizeAppUpdateSnapshot(
 
 export function createEmptyAppSnapshot(): AppSnapshot {
   return {
+    app: normalizeAppMetadataSnapshot(null),
     status: normalizeAppStatusSnapshot(null),
     daemon: normalizeAppDaemonSnapshot(null),
     sources: normalizeAppSourcesSnapshot(),

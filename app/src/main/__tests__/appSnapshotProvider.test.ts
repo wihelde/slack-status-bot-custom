@@ -3,6 +3,7 @@ import {
   createAppSnapshotProvider,
   createEmptyAppSnapshot,
   normalizeAppDaemonSnapshot,
+  normalizeAppMetadataSnapshot,
   normalizeAppSetupSnapshot,
   normalizeAppStatusSnapshot,
   normalizeAppUpdateSnapshot,
@@ -12,6 +13,9 @@ import {
 describe('AppSnapshotProvider', () => {
   it('builds one consolidated snapshot from main-process dependencies', async () => {
     const provider = createAppSnapshotProvider({
+      getAppMetadataSnapshot: () => ({
+        version: '2.0.1',
+      }),
       getSlackStatus: async () => ({
         emoji: ':spotify_2:',
         text: 'Playing Music',
@@ -36,6 +40,9 @@ describe('AppSnapshotProvider', () => {
     });
 
     await expect(provider.getSnapshot()).resolves.toMatchObject({
+      app: {
+        version: '2.0.1',
+      },
       status: {
         emoji: ':spotify_2:',
         text: 'Playing Music',
@@ -76,6 +83,9 @@ describe('AppSnapshotProvider', () => {
 
   it('provides an empty snapshot baseline for no-daemon startup scenarios', () => {
     expect(createEmptyAppSnapshot()).toMatchObject({
+      app: {
+        version: '',
+      },
       status: {
         emoji: '',
         text: '',
@@ -94,6 +104,9 @@ describe('AppSnapshotProvider', () => {
 
   it('normalizes partial dependency data into the canonical runtime model', async () => {
     const provider = createAppSnapshotProvider({
+      getAppMetadataSnapshot: () => ({
+        version: '2.0.1',
+      }),
       getSlackStatus: async () => ({
         text: 'Heads down',
       }),
@@ -115,6 +128,9 @@ describe('AppSnapshotProvider', () => {
     });
 
     await expect(provider.getSnapshot()).resolves.toEqual({
+      app: {
+        version: '2.0.1',
+      },
       status: {
         emoji: '',
         text: 'Heads down',
@@ -159,6 +175,10 @@ describe('AppSnapshotProvider', () => {
   });
 
   it('exposes focused normalizers for the canonical app-state fields', () => {
+    expect(normalizeAppMetadataSnapshot({ version: '2.0.1' })).toEqual({
+      version: '2.0.1',
+    });
+
     expect(normalizeAppStatusSnapshot({ emoji: ':wave:' })).toEqual({
       emoji: ':wave:',
       text: '',

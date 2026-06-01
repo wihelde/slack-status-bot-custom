@@ -26,6 +26,9 @@ describe('IPCService - App Snapshot', () => {
     const mockGetAppSnapshot = vi.fn().mockResolvedValue({
       success: true,
       data: {
+        app: {
+          version: '2.0.1',
+        },
         status: {
           emoji: ':spotify_2:',
           text: 'Playing Music',
@@ -89,6 +92,9 @@ describe('IPCService - App Snapshot', () => {
       },
       setup: {
         tokensConfigured: true,
+      },
+      app: {
+        version: '2.0.1',
       },
     });
 

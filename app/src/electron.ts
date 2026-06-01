@@ -157,6 +157,9 @@ const autoLaunchAdapter = createAutoLaunchAdapter({
 
 const getAppSnapshot = async (): Promise<AppSnapshot> =>
   createAppSnapshotProvider({
+    getAppMetadataSnapshot: () => ({
+      version: app.getVersion(),
+    }),
     getSlackStatus: async () => {
       if (!daemon) {
         return {

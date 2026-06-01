@@ -27,6 +27,10 @@ export interface AppSetupSnapshot {
   isFirstRun: boolean;
 }
 
+export interface AppMetadataSnapshot {
+  version: string;
+}
+
 export type AppSnapshotRefreshReason =
   | 'daemon-status'
   | 'source-status'
@@ -41,6 +45,7 @@ export interface AppSnapshotRefreshSignal {
 export type AppSourcesSnapshot = Record<SourceName, AppSourceSnapshot>;
 
 export interface AppSnapshot {
+  app: AppMetadataSnapshot;
   status: AppStatusSnapshot;
   daemon: AppDaemonSnapshot;
   sources: AppSourcesSnapshot;
@@ -66,5 +71,11 @@ export function createDefaultSetupSnapshot(): AppSetupSnapshot {
   return {
     tokensConfigured: false,
     isFirstRun: false,
+  };
+}
+
+export function createDefaultAppMetadataSnapshot(): AppMetadataSnapshot {
+  return {
+    version: '',
   };
 }

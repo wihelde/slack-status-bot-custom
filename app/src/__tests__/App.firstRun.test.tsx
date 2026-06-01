@@ -27,6 +27,9 @@ vi.mock('../pages/Settings', () => ({
 
 describe('App - First Run Integration', () => {
   const createAppSnapshot = (overrides: Partial<AppSnapshot> = {}): AppSnapshot => ({
+    app: {
+      version: '2.0.1',
+    },
     status: {
       emoji: '',
       text: '',

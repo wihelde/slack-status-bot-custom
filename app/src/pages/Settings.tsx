@@ -19,6 +19,7 @@ const Settings: React.FC = () => {
   const [logLevelSaving, setLogLevelSaving] = useState(false);
   const [autoLaunch, setAutoLaunch] = useState(false);
   const [autoLaunchLoading, setAutoLaunchLoading] = useState(false);
+  const [appVersion, setAppVersion] = useState('');
 
   useEffect(() => {
     loadConfig();
@@ -54,6 +55,9 @@ const Settings: React.FC = () => {
         console.log('[Settings] Auto-launch status loaded:', autoLaunchStatus);
         setAutoLaunch(autoLaunchStatus);
       }
+
+      const appSnapshot = await IPCService.getAppSnapshot();
+      setAppVersion(appSnapshot?.app.version || '');
 
       setLoading(false);
     } catch (err) {
@@ -309,7 +313,7 @@ const Settings: React.FC = () => {
       <div className="settings-card">
         <h2>ℹ️ About</h2>
         <div className="about-section">
-          <p><strong>Slack Status Bot v1.0.0</strong></p>
+          <p><strong>Slack Status Bot{appVersion ? ` v${appVersion}` : ''}</strong></p>
           <p>Automatically update your Slack status based on what you're doing:</p>
           <ul>
             <li>🎵 Music: Spotify and Apple Music</li>
