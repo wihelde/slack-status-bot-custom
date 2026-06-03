@@ -31,10 +31,6 @@ export class SourceRegistry {
     this.adapters[sourceName].setEnabled(enabled);
   }
 
-  isEnabled(sourceName: SourceName): boolean {
-    return this.adapters[sourceName].isEnabled();
-  }
-
   async getStatuses(): Promise<Record<SourceName, RegisteredSourceStatus>> {
     const statuses = await Promise.all(
       this.getSourceNames().map(async sourceName => {

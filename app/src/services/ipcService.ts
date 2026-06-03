@@ -5,9 +5,6 @@
 
 import {
   AppSnapshot,
-  AppDaemonSnapshot,
-  AppSourceSnapshot,
-  AppStatusSnapshot,
   AppSnapshotRefreshSignal,
 } from '../contracts/appSnapshot';
 import { ElectronAPI, RendererLogLevel } from '../contracts/ipc';
@@ -39,13 +36,6 @@ export class IPCService {
   }
 
   /**
-   * Check if running in Electron
-   */
-  static isElectron(): boolean {
-    return typeof window !== 'undefined' && typeof window.electronAPI !== 'undefined';
-  }
-
-  /**
    * Save Slack tokens
    */
   static async saveTokens(tokens: string | string[]): Promise<boolean> {
@@ -60,14 +50,6 @@ export class IPCService {
       logRendererError('Error saving tokens', error);
       return false;
     }
-  }
-
-  /**
-   * Get current Slack status
-   */
-  static async getSlackStatus(): Promise<AppStatusSnapshot | null> {
-    const snapshot = await this.getAppSnapshot();
-    return snapshot?.status ?? null;
   }
 
   /**
@@ -98,23 +80,6 @@ export class IPCService {
       return;
     }
     return electronAPI.onAppSnapshotChanged(callback);
-  }
-
-  /**
-   * Get status of all sources
-   */
-  static async getSourceStatuses(): Promise<Record<SourceName, Omit<AppSourceSnapshot, 'name'>> | null> {
-    const snapshot = await this.getAppSnapshot();
-    if (!snapshot) {
-      return null;
-    }
-
-    return Object.fromEntries(
-      Object.entries(snapshot.sources).map(([name, source]) => {
-        const { name: _ignoredName, ...sourceStatus } = source;
-        return [name, sourceStatus];
-      })
-    ) as Record<SourceName, Omit<AppSourceSnapshot, 'name'>>;
   }
 
   /**
@@ -220,14 +185,6 @@ export class IPCService {
   }
 
   /**
-   * Get daemon status
-   */
-  static async getDaemonStatus(): Promise<AppDaemonSnapshot | null> {
-    const snapshot = await this.getAppSnapshot();
-    return snapshot?.daemon ?? null;
-  }
-
-  /**
    * Get stored tokens (masked for security)
    */
   static async getTokens() {
@@ -257,23 +214,6 @@ export class IPCService {
       return result.success;
     } catch (error) {
       logRendererError('Error deleting tokens', error);
-      return false;
-    }
-  }
-
-  /**
-   * Check if tokens are configured
-   */
-  static async isConfigured(): Promise<boolean> {
-    const electronAPI = this.getElectronAPI();
-    if (!electronAPI) {
-      return false;
-    }
-    try {
-      const result = await electronAPI.getTokenStatus();
-      return result.success && result.data?.configured ? true : false;
-    } catch (error) {
-      logRendererError('Error checking token status', error);
       return false;
     }
   }

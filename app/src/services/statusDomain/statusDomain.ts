@@ -27,10 +27,6 @@ export class StatusDomain {
     return this.dayStatusPlanner.getDayStatusPlan(day, customStatuses);
   }
 
-  getManualStatusPlan(emoji: string): ManualStatusPlan {
-    return this.manualStatusPlanner.getManualStatusPlan(emoji);
-  }
-
   getManualActionPlan(action: ManualAction): ManualActionPlan | null {
     return this.manualStatusPlanner.getManualActionPlan(action);
   }
@@ -45,10 +41,6 @@ export class StatusDomain {
     now: number;
   }): CorrectionDecision {
     return this.correctionPolicy.getCorrectionDecision(input);
-  }
-
-  isManagedEmoji(emoji: string, allowedEmojis: Set<string>): boolean {
-    return this.statusChangePolicy.isManagedEmoji(emoji, allowedEmojis);
   }
 
   buildAllowedEmojis(customStatuses: CustomStatusConfig[]): Set<string> {

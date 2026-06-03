@@ -37,8 +37,6 @@ export const IPC_RENDERER_EVENTS = {
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
-export type IpcRendererEventChannel =
-  (typeof IPC_RENDERER_EVENTS)[keyof typeof IPC_RENDERER_EVENTS];
 
 export type StatusChangeEventStateValue =
   | AppStatusSnapshot['stateCheckValue']
