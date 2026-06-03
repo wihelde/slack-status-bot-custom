@@ -71,6 +71,7 @@ RELEASE_GUIDE.md
 #custom
 .idea
 .*
+fallow.toml
 # Exception for GitLab CI/CD
 !.gitlab-ci.yml
 !.gitignore
