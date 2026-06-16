@@ -343,6 +343,151 @@ describe('StatusManager', () => {
     });
   });
 
+  describe('correctStatus() with empty status correction', () => {
+    it('should not correct empty status when no default is configured for today', async () => {
+      const customStatuses = [
+        {
+          id: 'monday',
+          emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+          message: 'Monday',
+          days: [DayOfWeek.MONDAY],
+          enableDND: false,
+          presence: 'auto' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-23')); // Sunday (no config)
+
+      customStatusManager.setProfileCache({ status_emoji: '', status_text: '' });
+      customStatusManager.setStatusCheckState({ value: '' });
+
+      await customStatusManager.correctStatus();
+
+      vi.useRealTimers();
+
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should start grace period on first empty status detection', async () => {
+      const customStatuses = [
+        {
+          id: 'monday',
+          emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+          message: 'Monday',
+          days: [DayOfWeek.MONDAY],
+          enableDND: false,
+          presence: 'auto' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-17')); // Monday
+
+      customStatusManager.setProfileCache({ status_emoji: '', status_text: '' });
+      customStatusManager.setStatusCheckState({ value: '' });
+
+      await customStatusManager.correctStatus();
+
+      vi.useRealTimers();
+
+      // Should not correct yet (grace period just started)
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+      // State should have lastEmptySeen set
+      expect(customStatusManager.getStatusCheckState().lastEmptySeen).toBeDefined();
+    });
+
+    it('should not correct empty status within grace period', async () => {
+      const customStatuses = [
+        {
+          id: 'monday',
+          emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+          message: 'Monday',
+          days: [DayOfWeek.MONDAY],
+          enableDND: false,
+          presence: 'auto' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-17T10:00:00')); // Monday
+
+      const now = Math.floor(Date.now() / 1000);
+      customStatusManager.setProfileCache({ status_emoji: '', status_text: '' });
+      customStatusManager.setStatusCheckState({ value: '', lastEmptySeen: now - 5 * 60 }); // 5 min ago
+
+      await customStatusManager.correctStatus();
+
+      vi.useRealTimers();
+
+      // Should not correct (only 5 minutes elapsed, grace period is 10 min)
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+    });
+
+    it('should correct empty status after grace period expires', async () => {
+      const customStatuses = [
+        {
+          id: 'monday',
+          emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+          message: 'Monday',
+          days: [DayOfWeek.MONDAY],
+          enableDND: false,
+          presence: 'auto' as const,
+          quickActionLabel: null,
+          category: 'day_based' as const,
+        },
+      ];
+
+      const customStatusManager = new StatusManager(mockSlackService, customStatuses);
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-17T10:00:00')); // Monday
+
+      const now = Math.floor(Date.now() / 1000);
+      customStatusManager.setProfileCache({ status_emoji: '', status_text: '' });
+      customStatusManager.setStatusCheckState({ value: '', lastEmptySeen: now - 11 * 60 }); // 11 min ago
+
+      mockSlackService.setProfile.mockClear();
+      await customStatusManager.correctStatus();
+
+      vi.useRealTimers();
+
+      // Should correct (grace period of 10 min has passed)
+      expect(mockSlackService.setProfile).toHaveBeenCalled();
+      // lastEmptySeen should be cleared
+      expect(customStatusManager.getStatusCheckState().lastEmptySeen).toBeUndefined();
+    });
+
+    it('should reset lastEmptySeen when status becomes non-empty', async () => {
+      statusManager.setStatusCheckState({ value: '', lastEmptySeen: 1000 });
+      statusManager.setProfileCache({
+        status_emoji: STATUS_MESSAGES.MONDAY_EMOJI,
+        status_text: 'Monday',
+      });
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-11-17')); // Monday
+
+      await statusManager.correctStatus();
+
+      vi.useRealTimers();
+
+      expect(statusManager.getStatusCheckState().lastEmptySeen).toBeUndefined();
+    });
+  });
+
   describe('reset() with blocked status', () => {
     it('should return false if blocked and user has custom status', async () => {
       // User has set a custom (truly non-managed) status - something we don't manage
@@ -420,6 +565,43 @@ describe('StatusManager', () => {
   });
 
   describe('Holiday Status Protection Against Polling', () => {
+    it('should restore not working mode from a valid Slack Holiday status after restart', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-14T10:00:00Z'));
+
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing (back on 16.03.2026)',
+        status_expiration: Math.floor(new Date('2026-03-15T23:59:59Z').getTime() / 1000),
+      });
+
+      const restored = await statusManager.restoreProtectedStatusFromSlack();
+
+      expect(restored).toBe(true);
+      expect(statusManager.getStatusCheckState().value).toBe('not working');
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('should not restore not working mode from an expired Slack Holiday status after restart', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-16T10:00:00Z'));
+
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.HOLIDAY_EMOJI,
+        status_text: 'strong vacationing (back on 16.03.2026)',
+        status_expiration: Math.floor(new Date('2026-03-15T23:59:59Z').getTime() / 1000),
+      });
+
+      const restored = await statusManager.restoreProtectedStatusFromSlack();
+
+      expect(restored).toBe(false);
+      expect(statusManager.getStatusCheckState().value).toBe('');
+
+      vi.useRealTimers();
+    });
+
     it('should not allow Spotify to override Holiday status when in "not working" mode', async () => {
       // Setup: User has set Holiday status
       await statusManager.setCustomStatus(

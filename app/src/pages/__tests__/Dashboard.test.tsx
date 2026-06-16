@@ -42,6 +42,9 @@ describe('Dashboard', () => {
   const createAppSnapshot = (
     overrides: Partial<AppSnapshot> = {}
   ): AppSnapshot => ({
+    app: {
+      version: '2.0.1',
+    },
     status: createStatus(),
     daemon: { running: true },
     sources: {

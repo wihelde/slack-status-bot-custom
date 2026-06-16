@@ -72,6 +72,8 @@ export class SlackStatusBotDaemon {
     this.running = true;
     console.log('🚀 Starting Slack Status Bot Daemon...');
 
+    await this.statusManager.restoreProtectedStatusFromSlack();
+
     // Start polling loops
     this.startSourcePolling();
     this.startStatusCorrection();
@@ -345,26 +347,9 @@ export class SlackStatusBotDaemon {
     logger.setLogLevel(level);
   }
 
-  /**
-   * Get the current log level
-   */
-  getLogLevel(): string {
-    return logger.getLogLevel();
-  }
 }
 
-// Export singleton instance
 let daemonInstance: SlackStatusBotDaemon | null = null;
-
-export function getDaemon(config?: DaemonConfig): SlackStatusBotDaemon {
-  if (!daemonInstance && config) {
-    daemonInstance = new SlackStatusBotDaemon(config);
-  }
-  if (!daemonInstance) {
-    throw new Error('Daemon not initialized. Please provide config.');
-  }
-  return daemonInstance;
-}
 
 export function createDaemon(config: DaemonConfig): SlackStatusBotDaemon {
   daemonInstance = new SlackStatusBotDaemon(config);

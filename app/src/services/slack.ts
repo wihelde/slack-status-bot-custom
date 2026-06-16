@@ -8,10 +8,6 @@ export interface SlackProfile {
   status_expiration?: number;
 }
 
-export interface SlackUser {
-  profile: SlackProfile;
-}
-
 /**
  * Slack API Service
  * Handles all communication with Slack API
@@ -250,4 +246,3 @@ export class SlackService {
     }
   }
 }
-

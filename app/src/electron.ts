@@ -23,6 +23,18 @@ console.log('[Electron] Starting up...');
 const isDev = process.env.NODE_ENV === 'development';
 console.log('[Electron] isDev:', isDev);
 
+const userDataDir =
+  process.env.SLACK_STATUS_BOT_USER_DATA_DIR ||
+  path.join(app.getPath('appData'), 'slack-status-bot');
+app.setPath('userData', userDataDir);
+
+if (process.env.SLACK_STATUS_BOT_REMOTE_DEBUGGING_PORT) {
+  app.commandLine.appendSwitch(
+    'remote-debugging-port',
+    process.env.SLACK_STATUS_BOT_REMOTE_DEBUGGING_PORT
+  );
+}
+
 const { log, logStatusBridgeInfo, logStatusBridgeError } = createMainLogger({
   app,
   fs,
@@ -60,6 +72,13 @@ const loadConfig = (): RuntimeConfig => {
 const refreshConfig = (): RuntimeConfig => {
   config = loadConfig();
   currentLogLevel = config.logLevel || 'ERROR';
+  log(
+    `[Config] Loaded config ${JSON.stringify({
+      configPath: configStore.getConfigPath(),
+      tokenCount: Array.isArray(config.slackTokens) ? config.slackTokens.length : 0,
+      hasCompletedFirstRun: config.hasCompletedFirstRun === true,
+    })}`
+  );
   return config;
 };
 
@@ -138,6 +157,9 @@ const autoLaunchAdapter = createAutoLaunchAdapter({
 
 const getAppSnapshot = async (): Promise<AppSnapshot> =>
   createAppSnapshotProvider({
+    getAppMetadataSnapshot: () => ({
+      version: app.getVersion(),
+    }),
     getSlackStatus: async () => {
       if (!daemon) {
         return {
@@ -172,6 +194,7 @@ const applyDaemonLogLevel = (): void => {
 const createDaemonInstance = (slackTokens: string[]): SlackStatusBotDaemon =>
   createDaemon({
     slackTokens,
+    configStore,
     onAppStateChanged: statusData => {
       logStatusBridgeInfo('Daemon status change forwarded to renderer', statusData);
       snapshotBridge.emitAppSnapshotChanged('daemon-status');
@@ -188,6 +211,7 @@ const restartDaemon = async (slackTokens: string[]): Promise<void> => {
   applyDaemonLogLevel();
   await daemon.start();
   trayBridge.refreshMenu();
+  snapshotBridge.emitAppSnapshotChanged('daemon-status');
 };
 
 const stopDaemon = async (): Promise<void> => {
@@ -279,24 +303,6 @@ if (!gotTheLock) {
 
     refreshConfig();
 
-    windowLifecycle.createWindow();
-    trayBridge.createTray();
-    updateBridge.setupUpdateListeners();
-    updateIntervalId = updateBridge.startScheduledChecks();
-
-    try {
-      if (hasConfiguredTokens()) {
-        await restartDaemon(config.slackTokens || []);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const stack = error instanceof Error ? error.stack : undefined;
-      console.error('[Daemon] Failed to initialize daemon:', message);
-      if (stack) {
-        console.error('[Daemon] Stack:', stack);
-      }
-    }
-
     registerMainIpcHandlers(ipcMain, {
       getConfig: () => config,
       refreshConfig,
@@ -320,6 +326,24 @@ if (!gotTheLock) {
       logStatusBridgeInfo,
       logStatusBridgeError,
     });
+
+    windowLifecycle.createWindow();
+    trayBridge.createTray();
+    updateBridge.setupUpdateListeners();
+    updateIntervalId = updateBridge.startScheduledChecks();
+
+    try {
+      if (hasConfiguredTokens()) {
+        await restartDaemon(config.slackTokens || []);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      console.error('[Daemon] Failed to initialize daemon:', message);
+      if (stack) {
+        console.error('[Daemon] Stack:', stack);
+      }
+    }
   });
 
   app.on('window-all-closed', () => {

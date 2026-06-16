@@ -26,6 +26,7 @@ interface BrowserWindowOptions {
     preload: string;
     nodeIntegration: boolean;
     contextIsolation: boolean;
+    sandbox: boolean;
     enableRemoteModule: boolean;
   };
   show: boolean;
@@ -87,6 +88,7 @@ export function createWindowLifecycle({
         preload: preloadPath,
         nodeIntegration: false,
         contextIsolation: true,
+        sandbox: false,
         enableRemoteModule: false,
       },
       show: false,

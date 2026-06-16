@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { SlackService, SlackProfile } from './slack';
 import { SlackStatusExecutor } from './slackStatusExecutor';
-import { DayOfWeek, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS, OverridableStatusPattern } from '../config/statusConfig';
+import { DayOfWeek, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS, OverridableStatusPattern, STATUS_MESSAGES } from '../config/statusConfig';
 import type { AppStatusChangedEvent } from '../contracts/ipc';
 import { StatusDomain } from './statusDomain/statusDomain';
 import type { ManualAction } from './statusDomain/types';
@@ -10,6 +10,7 @@ import { logger } from '../utils/logger';
 export interface StatusCheckState {
   value: 'not working' | '';
   activeSource?: string; // Track which source is currently active (e.g. 'zoom', 'teams', 'huddle')
+  lastEmptySeen?: number;
 }
 
 /**
@@ -84,6 +85,26 @@ export class StatusManager extends EventEmitter {
    */
   async getLastKnownProfile(): Promise<SlackProfile | null> {
     return this.profileCache;
+  }
+
+  async restoreProtectedStatusFromSlack(): Promise<boolean> {
+    const profile = await this.getCachedProfile();
+    if (!profile || profile.status_emoji !== STATUS_MESSAGES.HOLIDAY_EMOJI) {
+      return false;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    if (!profile.status_expiration || profile.status_expiration <= now) {
+      this.statusCheckState = { value: '' };
+      return false;
+    }
+
+    this.statusCheckState = { value: 'not working' };
+    this.finalStatus = profile.status_text;
+    logger.info('[statusManager] Restored protected Holiday status from Slack profile', {
+      expiration: profile.status_expiration,
+    });
+    return true;
   }
 
   markObservedSourceActive(sourceName: string): void {
@@ -297,7 +318,10 @@ export class StatusManager extends EventEmitter {
 
     const emoji = profile.status_emoji;
     const text = profile.status_text;
-    if (!emoji) return;
+
+    if (emoji && this.statusCheckState.lastEmptySeen) {
+      this.statusCheckState = { ...this.statusCheckState, lastEmptySeen: undefined };
+    }
 
     const dayOfWeek = this.getDayOfWeek();
     const validEmojisForToday = this.dayStatusEmojiMap.get(dayOfWeek) || new Set();
