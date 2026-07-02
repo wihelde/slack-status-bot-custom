@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.1] - 2026-07-02
+
+## Fixed
+
+- fixed detection of Microsoft Teams Meetings
+
 ## [2.0.1] - 2026-06-16
 
 ## Changed

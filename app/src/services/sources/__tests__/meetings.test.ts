@@ -47,7 +47,9 @@ describe('meeting adapters', () => {
   it('keeps Teams-specific macOS matching rules and output copy', async () => {
     const originalPlatform = process.platform;
     Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
-    vi.mocked(hasMacUdpConnectionMatch).mockResolvedValue(true);
+    vi.mocked(hasMacUdpConnectionMatch)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
 
     await expect(new TeamsAdapter().getStatus()).resolves.toEqual({
       name: 'Microsoft Teams',
@@ -58,6 +60,10 @@ describe('meeting adapters', () => {
 
     expect(hasMacUdpConnectionMatch).toHaveBeenCalledWith(
       'MSTeams',
+      '([0-9]{1,3}[.]){3}[0-9]{1,3}[:](500[0-9]{2})$'
+    );
+    expect(hasMacUdpConnectionMatch).toHaveBeenCalledWith(
+      'Microsoft',
       '([0-9]{1,3}[.]){3}[0-9]{1,3}[:](500[0-9]{2})$'
     );
     Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });

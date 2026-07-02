@@ -23,7 +23,11 @@ async function isZoomMeetingActive(): Promise<boolean> {
 
 async function isTeamsMeetingActive(): Promise<boolean> {
   if (process.platform === 'darwin') {
-    return hasMacUdpConnectionMatch('MSTeams', '([0-9]{1,3}[.]){3}[0-9]{1,3}[:](500[0-9]{2})$');
+    const teamsUdpPattern = '([0-9]{1,3}[.]){3}[0-9]{1,3}[:](500[0-9]{2})$';
+    return (
+      (await hasMacUdpConnectionMatch('MSTeams', teamsUdpPattern)) ||
+      (await hasMacUdpConnectionMatch('Microsoft', teamsUdpPattern))
+    );
   }
 
   if (process.platform === 'win32') {
