@@ -135,6 +135,80 @@ describe('StatusManager', () => {
     });
   });
 
+  describe('setExternalStatus()', () => {
+    it('should set free-form status without marking a manual activeSource', async () => {
+      const result = await statusManager.setExternalStatus(
+        ':shopping_trolley:',
+        'Bin einkaufen'
+      );
+
+      expect(result).toBe(true);
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith(
+        ':shopping_trolley:',
+        'Bin einkaufen',
+        0
+      );
+      expect(mockSlackService.setPresence).toHaveBeenCalledWith('auto');
+
+      const state = statusManager.getStatusCheckState();
+      expect(state.value).toBe('');
+      expect(state.activeSource).toBeUndefined();
+    });
+
+    it('should set away presence when requested', async () => {
+      const result = await statusManager.setExternalStatus(
+        ':shopping_trolley:',
+        'Bin einkaufen',
+        'away'
+      );
+
+      expect(result).toBe(true);
+      expect(mockSlackService.setPresence).toHaveBeenCalledWith('away');
+    });
+
+    it('should protect external statuses from correction even when the emoji is managed', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-07-10')); // Friday
+
+      await statusManager.setExternalStatus(
+        STATUS_MESSAGES.FOCUS_EMOJI,
+        STATUS_MESSAGES.FOCUS_MESSAGE,
+        'auto'
+      );
+      mockSlackService.setProfile.mockClear();
+
+      statusManager.setProfileCache({
+        status_emoji: STATUS_MESSAGES.FOCUS_EMOJI,
+        status_text: STATUS_MESSAGES.FOCUS_MESSAGE,
+      });
+
+      await statusManager.correctStatus();
+
+      vi.useRealTimers();
+
+      expect(mockSlackService.setProfile).not.toHaveBeenCalledWith(
+        STATUS_MESSAGES.TGIF_EMOJI,
+        STATUS_MESSAGES.TGIF_MESSAGE,
+        expect.anything()
+      );
+    });
+
+    it('should not allow observed sources to override external statuses with managed emojis', async () => {
+      await statusManager.setExternalStatus(
+        STATUS_MESSAGES.FOCUS_EMOJI,
+        STATUS_MESSAGES.FOCUS_MESSAGE,
+        'auto'
+      );
+
+      statusManager.setProfileCache({
+        status_emoji: STATUS_MESSAGES.FOCUS_EMOJI,
+        status_text: STATUS_MESSAGES.FOCUS_MESSAGE,
+      });
+
+      await expect(statusManager.isStatusClean()).resolves.toBe(false);
+    });
+  });
+
   describe('setHoliday()', () => {
     it('should mark holiday as manual activeSource and protected state', async () => {
       const result = await statusManager.setHoliday('14.04.2026');

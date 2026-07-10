@@ -22,6 +22,7 @@ interface UpdateBridgeDependencies {
   emitAppSnapshotChanged: (reason: 'update') => void;
   onUpdateAvailable: (update: AppUpdateSnapshot) => void;
   refreshTrayMenu: () => void;
+  notifyUpdateAvailable?: (update: AppUpdateSnapshot) => void;
   request: (
     options: {
       hostname: string;
@@ -78,6 +79,7 @@ export function createUpdateBridge({
   emitAppSnapshotChanged,
   onUpdateAvailable,
   refreshTrayMenu,
+  notifyUpdateAvailable,
   request,
   setIntervalFn,
 }: UpdateBridgeDependencies): UpdateBridge {
@@ -85,6 +87,7 @@ export function createUpdateBridge({
     onUpdateAvailable(updateInfo);
     emitAppSnapshotChanged('update');
     refreshTrayMenu();
+    notifyUpdateAvailable?.(updateInfo);
   }
 
   function setupUpdateListeners(): void {

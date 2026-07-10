@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, shell } from 'electron';
+import { app, BrowserWindow, Notification, ipcMain, Menu, Tray, nativeImage, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { execSync } from 'child_process';
 import fs from 'fs';
@@ -11,6 +11,10 @@ import { type AppSnapshot, type AppSnapshotRefreshReason, type AppUpdateSnapshot
 import type { RendererLogLevel } from './contracts/ipc';
 import { createAppSnapshotProvider } from './main/appSnapshotProvider';
 import { createAutoLaunchAdapter } from './main/autoLaunchAdapter';
+import {
+  EXTERNAL_STATUS_PROTOCOL,
+  createExternalStatusCommandHandler,
+} from './main/externalStatusCommand';
 import { registerMainIpcHandlers } from './main/ipcHandlers';
 import { createMainLogger } from './main/logging';
 import { createSnapshotBridge } from './main/snapshotBridge';
@@ -59,6 +63,17 @@ let config: RuntimeConfig = {};
 let currentLogLevel: RendererLogLevel = 'ERROR';
 let updateAvailable: AppUpdateSnapshot | null = null;
 let updateIntervalId: NodeJS.Timeout | null = null;
+let externalStatusLaunchRequested = false;
+
+const externalStatusCommandHandler = createExternalStatusCommandHandler({
+  getDaemon: () => daemon,
+  log,
+  notify: notification => {
+    if (Notification.isSupported()) {
+      new Notification(notification).show();
+    }
+  },
+});
 
 const loadConfig = (): RuntimeConfig => {
   try {
@@ -140,6 +155,15 @@ const updateBridge = createUpdateBridge({
     updateAvailable = nextUpdate;
   },
   refreshTrayMenu: () => trayBridge.refreshMenu(),
+  notifyUpdateAvailable: nextUpdate => {
+    if (Notification.isSupported()) {
+      new Notification({
+        title: 'Slack Status Bot update available',
+        body: `Version ${nextUpdate.version} is available`,
+        timeoutType: 'never',
+      }).show();
+    }
+  },
   request: https.request,
   setIntervalFn: setInterval,
 });
@@ -191,6 +215,32 @@ const applyDaemonLogLevel = (): void => {
   }
 };
 
+const registerExternalStatusProtocol = (): void => {
+  const processWithDefaultApp = process as NodeJS.Process & { defaultApp?: boolean };
+  const registered = processWithDefaultApp.defaultApp && process.argv.length >= 2
+    ? app.setAsDefaultProtocolClient(
+        EXTERNAL_STATUS_PROTOCOL,
+        process.execPath,
+        [path.resolve(process.argv[1])]
+      )
+    : app.setAsDefaultProtocolClient(EXTERNAL_STATUS_PROTOCOL);
+
+  log(`[ExternalStatusCommand] Protocol registration result: ${registered}`);
+};
+
+const handleExternalStatusUrlFromArgv = (argv: string[]): boolean => {
+  const externalStatusUrl = argv.find(arg => arg.startsWith(`${EXTERNAL_STATUS_PROTOCOL}://`));
+  if (!externalStatusUrl) {
+    return false;
+  }
+
+  const handled = externalStatusCommandHandler.handleUrl(externalStatusUrl);
+  if (handled) {
+    externalStatusLaunchRequested = true;
+  }
+  return handled;
+};
+
 const createDaemonInstance = (slackTokens: string[]): SlackStatusBotDaemon =>
   createDaemon({
     slackTokens,
@@ -210,6 +260,7 @@ const restartDaemon = async (slackTokens: string[]): Promise<void> => {
   daemon = createDaemonInstance(slackTokens);
   applyDaemonLogLevel();
   await daemon.start();
+  await externalStatusCommandHandler.flushPending();
   trayBridge.refreshMenu();
   snapshotBridge.emitAppSnapshotChanged('daemon-status');
 };
@@ -291,7 +342,21 @@ if (!gotTheLock) {
   console.log('[Electron] Another instance is already running. Quitting...');
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    if (externalStatusCommandHandler.handleUrl(url)) {
+      externalStatusLaunchRequested = true;
+    } else {
+      log(`[ExternalStatusCommand] Ignored URL: ${url}`);
+    }
+  });
+
+  app.on('second-instance', (_event, argv) => {
+    if (handleExternalStatusUrlFromArgv(argv)) {
+      log('[ExternalStatusCommand] Handled URL from second instance');
+      return;
+    }
+
     log('[App] Second instance attempted - focusing existing window');
     void windowLifecycle.showWindow();
   });
@@ -302,6 +367,8 @@ if (!gotTheLock) {
     log(`[App] __dirname: ${__dirname}`);
 
     refreshConfig();
+    registerExternalStatusProtocol();
+    handleExternalStatusUrlFromArgv(process.argv);
 
     registerMainIpcHandlers(ipcMain, {
       getConfig: () => config,
@@ -327,7 +394,7 @@ if (!gotTheLock) {
       logStatusBridgeError,
     });
 
-    windowLifecycle.createWindow();
+    windowLifecycle.createWindow({ showOnReady: !externalStatusLaunchRequested });
     trayBridge.createTray();
     updateBridge.setupUpdateListeners();
     updateIntervalId = updateBridge.startScheduledChecks();

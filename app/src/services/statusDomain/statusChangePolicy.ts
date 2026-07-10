@@ -16,6 +16,10 @@ export class StatusChangePolicy {
     const emoji = profile.status_emoji;
     const text = profile.status_text;
 
+    if (state.userOwned) {
+      return !emoji && !text;
+    }
+
     if (this.isOverridableThirdPartyStatus(emoji, text, overridablePatterns)) {
       return true;
     }
