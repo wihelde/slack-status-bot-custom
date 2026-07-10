@@ -78,7 +78,48 @@ Settings are stored in:
 - **Focus** - Focusing (DND enabled)
 - **Holiday** - Vacation mode with return and expiration date
 
+### External Status Commands
+The Electron app supports a custom URL scheme for free-form status shortcuts.
+
+For Stream Deck, use **System → Website** and enter the URL itself, not a shell command:
+
+```text
+slack-status-bot://set?emoji=:shopping_trolley:&text=Bin%20einkaufen
+```
+
+From a terminal, wrap the URL with macOS `open`:
+
+```sh
+open "slack-status-bot://set?emoji=:shopping_trolley:&text=Bin%20einkaufen"
+```
+
+This is useful for Stream Deck, macOS Shortcuts, Raycast, Alfred, Keyboard Maestro, or shell commands. The command is handled by the Electron app; if the app is not already running, macOS starts it and the app continues running in the background.
+External commands show a native notification after the app has handled them.
+
+Parameters:
+- `emoji` - Slack emoji code, for example `:shopping_trolley:`
+- `text` - Status text; URL-encode spaces and special characters
+- `presence` - Optional Slack presence, either `auto` or `away`; defaults to `auto`
+
+Example for an away status:
+
+```sh
+open "slack-status-bot://set?emoji=:shopping_trolley:&text=Bin%20einkaufen&presence=away"
+```
+
+Online and offline can be triggered through the existing quick actions:
+
+```text
+slack-status-bot://online
+slack-status-bot://offline
+```
+
+`online` runs the app's **Go Online** action. `offline` runs the app's **Go Away** action.
+
 ## Troubleshooting
+
+### Update Notifications
+When an update is available, the app shows a native notification in addition to the dashboard and tray menu indicators. On Windows and Linux the notification is requested as persistent; on macOS persistence depends on the notification style configured in System Settings.
 
 ### App won't start
 - Clear cache: `rm -rf node_modules && npm install`
@@ -102,6 +143,3 @@ MIT
 ## Release Notes
 
 See [CHANGELOG.md](./CHANGELOG.md) for version history and updates.
-
-
-

@@ -11,6 +11,7 @@ export interface StatusCheckState {
   value: 'not working' | '';
   activeSource?: string; // Track which source is currently active (e.g. 'zoom', 'teams', 'huddle')
   lastEmptySeen?: number;
+  userOwned?: boolean;
 }
 
 /**
@@ -202,6 +203,11 @@ export class StatusManager extends EventEmitter {
     // Prevent resetting if 'not working' mode is active (user has set a protected status)
     if (this.statusCheckState.value === 'not working') {
       logger.warn(`[statusManager] performReset() blocked - 'not working' mode is active`, { currentState: this.statusCheckState.value });
+      return false;
+    }
+
+    if (this.statusCheckState.userOwned) {
+      logger.warn(`[statusManager] performReset() blocked - user-owned status is active`);
       return false;
     }
 
@@ -402,6 +408,17 @@ export class StatusManager extends EventEmitter {
     });
   }
 
+  async setExternalStatus(emoji: string, message: string, presence: 'auto' | 'away' = 'auto', expiration: number = 0): Promise<boolean> {
+    logger.info(`[statusManager] setExternalStatus called`, { emoji, message, presence, expiration });
+    return this.applyManualAction({
+      type: 'external-status',
+      emoji,
+      message,
+      presence,
+      expiration,
+    });
+  }
+
   async runCorrectionCycle(): Promise<void> {
     await this.correctStatus();
   }
@@ -474,6 +491,7 @@ export class StatusManager extends EventEmitter {
     this.invalidateProfileCache();
     this.statusCheckState.value = actionPlan.stateValue;
     this.statusCheckState.activeSource = actionPlan.activeSource;
+    this.statusCheckState.userOwned = actionPlan.userOwned;
 
     if (actionPlan.stateValue === 'not working') {
       logger.info(`[statusManager] applyManualAction: set statusCheckState.value to 'not working'`, {

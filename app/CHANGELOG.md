@@ -1,6 +1,16 @@
 # Changelog
 
-## [2.0.1] - 2026-07-02
+## [2.1.0] - 2026-07-10
+
+## Added
+
+- added external status commands via the `slack-status-bot://` URL scheme, so shortcuts, Stream Deck, Raycast, Alfred or macOS Shortcuts can set a status through the Electron app
+- external commands can set free-form emoji/text statuses and optionally set Slack presence with `presence=auto` or `presence=away`
+- added special external commands for the existing quick actions: `slack-status-bot://online` and `slack-status-bot://offline`
+- external commands now show native notifications after they were handled
+- update checks now show a native notification when a newer version is available
+
+## [2.0.2] - 2026-07-02
 
 ## Fixed
 

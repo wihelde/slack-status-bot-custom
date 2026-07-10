@@ -76,6 +76,18 @@ export class ManualStatusPlanner {
           activeSource: manualStatusPlan.activeSource,
         };
       }
+      case 'external-status': {
+        const manualStatusPlan = this.getManualStatusPlan(action.emoji);
+        return {
+          emoji: action.emoji,
+          message: action.message,
+          expiration: action.expiration ?? 0,
+          presence: action.presence,
+          dndAction: manualStatusPlan.dndAction,
+          stateValue: manualStatusPlan.stateValue,
+          userOwned: true,
+        };
+      }
       case 'holiday':
         return this.getHolidayManualActionPlan(action.returnDateString);
     }

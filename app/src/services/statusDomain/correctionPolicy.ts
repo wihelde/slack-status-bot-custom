@@ -49,6 +49,10 @@ export class CorrectionPolicy {
       return { action: 'reset', reason: 'empty-status', nextState };
     }
 
+    if (state.userOwned) {
+      return { action: 'skip', reason: 'custom-user-status' };
+    }
+
     if (state.value === 'not working') {
       if (emoji === STATUS_MESSAGES.HOLIDAY_EMOJI) {
         if (profile.status_expiration && profile.status_expiration > now) {

@@ -47,7 +47,7 @@ interface BrowserWindowInstance {
 }
 
 export interface WindowLifecycle {
-  createWindow: () => BrowserWindowInstance;
+  createWindow: (options?: { showOnReady?: boolean }) => BrowserWindowInstance;
   getWindow: () => BrowserWindowInstance | null;
   showWindow: () => Promise<void>;
   send: (channel: string, payload?: unknown) => void;
@@ -78,7 +78,9 @@ export function createWindowLifecycle({
     mainWindow.focus();
   }
 
-  function createWindow(): BrowserWindowInstance {
+  function createWindow(options: { showOnReady?: boolean } = {}): BrowserWindowInstance {
+    const showOnReady = options.showOnReady ?? true;
+
     mainWindow = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -127,9 +129,11 @@ export function createWindowLifecycle({
       }
     });
 
-    mainWindow.once('ready-to-show', () => {
-      void showWindow();
-    });
+    if (showOnReady) {
+      mainWindow.once('ready-to-show', () => {
+        void showWindow();
+      });
+    }
 
     mainWindow.on('hide', () => {
       if (process.platform === 'darwin') {

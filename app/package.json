@@ -1,6 +1,6 @@
 {
   "name": "slack-status-bot",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "description": "Cross-platform Slack Status Bot with Tray UI",
   "main": "dist/electron.js",
   "homepage": "./",
@@ -76,6 +76,14 @@
       "provider": "generic",
       "url": "https://gitlab.com/wihel_de/slack-status-bot-custom/-/raw/v${version}/app/dist"
     },
+    "protocols": [
+      {
+        "name": "Slack Status Bot External Status Command",
+        "schemes": [
+          "slack-status-bot"
+        ]
+      }
+    ],
     "asar": true,
     "directories": {
       "buildResources": "assets"

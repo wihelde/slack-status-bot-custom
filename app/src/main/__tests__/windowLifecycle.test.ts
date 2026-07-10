@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createWindowLifecycle } from '../windowLifecycle';
 
 describe('windowLifecycle', () => {
-  it('creates the renderer window with a preload-compatible security configuration', () => {
+  function createHarness() {
     const webContents = {
       send: vi.fn(),
       openDevTools: vi.fn(),
@@ -32,6 +32,12 @@ describe('windowLifecycle', () => {
       onClosed: vi.fn(),
     });
 
+    return { lifecycle, BrowserWindow, windowInstance };
+  }
+
+  it('creates the renderer window with a preload-compatible security configuration', () => {
+    const { lifecycle, BrowserWindow, windowInstance } = createHarness();
+
     lifecycle.createWindow();
 
     expect(BrowserWindow).toHaveBeenCalledWith(
@@ -46,5 +52,13 @@ describe('windowLifecycle', () => {
       })
     );
     expect(windowInstance.loadURL).toHaveBeenCalledWith('file:///runtime/build/index.html');
+  });
+
+  it('can create the renderer window without showing it when ready', () => {
+    const { lifecycle, windowInstance } = createHarness();
+
+    lifecycle.createWindow({ showOnReady: false });
+
+    expect(windowInstance.once).not.toHaveBeenCalledWith('ready-to-show', expect.any(Function));
   });
 });

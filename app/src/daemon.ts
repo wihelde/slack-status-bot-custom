@@ -140,6 +140,10 @@ export class SlackStatusBotDaemon {
     return this.statusManager.setCustomStatus(emoji, message);
   }
 
+  async setExternalStatus(emoji: string, message: string, presence: 'auto' | 'away' = 'auto'): Promise<boolean> {
+    return this.statusManager.setExternalStatus(emoji, message, presence);
+  }
+
   /**
    * Go online
    */
