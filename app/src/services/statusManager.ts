@@ -5,6 +5,7 @@ import { DayOfWeek, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_O
 import type { AppStatusChangedEvent } from '../contracts/ipc';
 import { StatusDomain } from './statusDomain/statusDomain';
 import type { ManualAction } from './statusDomain/types';
+import { protectedEmojis } from './statusDomain/constants';
 import { logger } from '../utils/logger';
 
 export interface StatusCheckState {
@@ -90,19 +91,21 @@ export class StatusManager extends EventEmitter {
 
   async restoreProtectedStatusFromSlack(): Promise<boolean> {
     const profile = await this.getCachedProfile();
-    if (!profile || profile.status_emoji !== STATUS_MESSAGES.HOLIDAY_EMOJI) {
+    if (!profile || !protectedEmojis.has(profile.status_emoji)) {
       return false;
     }
 
-    const now = Math.floor(Date.now() / 1000);
-    if (!profile.status_expiration || profile.status_expiration <= now) {
+    const holidayExpired = profile.status_emoji === STATUS_MESSAGES.HOLIDAY_EMOJI &&
+      (!profile.status_expiration || profile.status_expiration <= Math.floor(Date.now() / 1000));
+    if (holidayExpired) {
       this.statusCheckState = { value: '' };
       return false;
     }
 
     this.statusCheckState = { value: 'not working' };
     this.finalStatus = profile.status_text;
-    logger.info('[statusManager] Restored protected Holiday status from Slack profile', {
+    logger.info('[statusManager] Restored protected status from Slack profile', {
+      emoji: profile.status_emoji,
       expiration: profile.status_expiration,
     });
     return true;
@@ -311,11 +314,7 @@ export class StatusManager extends EventEmitter {
       return;
     }
 
-    // Use cached profile, or fetch fresh if cache is empty
-    let profile = this.profileCache;
-    if (!profile) {
-      profile = await this.getCachedProfile();
-    }
+    const profile = await this.getCachedProfile();
     
     if (!profile) {
       logger.debug(`[statusManager] correctStatus: No profile available, skipping`);

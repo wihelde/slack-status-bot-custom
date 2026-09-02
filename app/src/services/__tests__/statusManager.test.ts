@@ -281,6 +281,32 @@ describe('StatusManager', () => {
   });
 
   describe('correctStatus()', () => {
+    it('should retry a failed profile refresh on the next correction cycle', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-08-18T08:00:00Z'));
+
+      const sickProfile = {
+        status_emoji: STATUS_MESSAGES.SICK_EMOJI,
+        status_text: STATUS_MESSAGES.SICK_MESSAGE,
+        status_expiration: 0,
+      };
+      statusManager.setProfileCache(sickProfile);
+      statusManager.setStatusCheckState({ value: 'not working' });
+      mockSlackService.getProfile = vi.fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(sickProfile);
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      await statusManager.correctStatus();
+      await vi.advanceTimersByTimeAsync(60_000);
+      await statusManager.correctStatus();
+
+      expect(mockSlackService.getProfile).toHaveBeenCalledTimes(2);
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
     it('should skip correction if a source is actively running', async () => {
       const state = { value: '' as const, activeSource: 'zoom' };
       statusManager.setStatusCheckState(state);
@@ -638,7 +664,27 @@ describe('StatusManager', () => {
     });
   });
 
-  describe('Holiday Status Protection Against Polling', () => {
+  describe('Protected Status Protection Against Polling', () => {
+    it('should keep Sick status after restarting on Monday', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-08-17T08:00:00Z'));
+
+      mockSlackService.getProfile = vi.fn().mockResolvedValue({
+        status_emoji: STATUS_MESSAGES.SICK_EMOJI,
+        status_text: STATUS_MESSAGES.SICK_MESSAGE,
+        status_expiration: 0,
+      });
+
+      const restored = await statusManager.restoreProtectedStatusFromSlack();
+      await statusManager.correctStatus();
+
+      expect(restored).toBe(true);
+      expect(statusManager.getStatusCheckState().value).toBe('not working');
+      expect(mockSlackService.setProfile).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
     it('should restore not working mode from a valid Slack Holiday status after restart', async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2026-03-14T10:00:00Z'));

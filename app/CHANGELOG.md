@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.1] - 2026-
+
+## Fixed
+
+- in rare cases it could happen that the bot updates the status, but the changed status is not reflected in slack -> fixed by a single check after the update happened to validate and / or do a retry
+- external online commands now update Slack presence even if a profile status fails in one workspace
+- protected statuses such as Sick are now restored after restarting the app instead of being replaced by the status of the day
+- failed Slack profile requests are retried once and no longer allow automatic sources to overwrite a protected status; status correction retries with a fresh profile after 60 seconds instead of using stale cached data
+
 ## [2.1.0] - 2026-07-10
 
 ## Added

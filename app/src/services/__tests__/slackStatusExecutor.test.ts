@@ -28,7 +28,7 @@ describe('SlackStatusExecutor', () => {
     expect(slackService.disableDND).not.toHaveBeenCalled();
   });
 
-  it('should stop execution when setting the profile fails', async () => {
+  it('should still set presence when setting the profile fails', async () => {
     const slackService = {
       setProfile: vi.fn().mockResolvedValue(false),
       setPresence: vi.fn().mockResolvedValue(true),
@@ -47,7 +47,7 @@ describe('SlackStatusExecutor', () => {
     });
 
     expect(success).toBe(false);
-    expect(slackService.setPresence).not.toHaveBeenCalled();
+    expect(slackService.setPresence).toHaveBeenCalledWith('auto');
     expect(slackService.enableDND).not.toHaveBeenCalled();
   });
 

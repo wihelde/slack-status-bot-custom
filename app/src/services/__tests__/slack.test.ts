@@ -17,6 +17,7 @@ describe('SlackService', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -56,14 +57,30 @@ describe('SlackService', () => {
     });
 
     it('should return null when API call fails', async () => {
-      mockedAxios.create.mockReturnValue({
-        get: vi.fn().mockRejectedValue(new Error('Network error')),
-      } as any);
+      const getMock = vi.fn().mockRejectedValue(new Error('Network error'));
+      mockedAxios.create.mockReturnValue({ get: getMock } as any);
 
       slackService = new SlackService(mockToken);
       const profile = await slackService.getProfile();
 
       expect(profile).toBeNull();
+      expect(getMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('should retry a failed profile request once', async () => {
+      const mockProfile = {
+        status_emoji: ':face_with_thermometer:',
+        status_text: 'Out sick',
+      };
+      const getMock = vi.fn()
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce({ data: { ok: true, profile: mockProfile } });
+      mockedAxios.create.mockReturnValue({ get: getMock } as any);
+
+      slackService = new SlackService(mockToken);
+
+      await expect(slackService.getProfile()).resolves.toEqual(mockProfile);
+      expect(getMock).toHaveBeenCalledTimes(2);
     });
 
     it('should throw error when no tokens configured', async () => {
@@ -81,16 +98,21 @@ describe('SlackService', () => {
     });
 
     it('should set profile successfully', async () => {
+      vi.useFakeTimers();
       mockedAxios.create.mockReturnValue({
         post: vi.fn().mockResolvedValue({
           data: { ok: true },
         }),
+        get: vi.fn().mockResolvedValue({
+          data: { ok: true, profile: { status_emoji: ':shark:', status_text: 'Working' } },
+        }),
       } as any);
 
       slackService = new SlackService(mockToken);
-      const success = await slackService.setProfile(':shark:', 'Working');
+      const result = slackService.setProfile(':shark:', 'Working');
+      await vi.runAllTimersAsync();
 
-      expect(success).toBe(true);
+      await expect(result).resolves.toBe(true);
     });
 
     it('should handle API error', async () => {
@@ -105,19 +127,66 @@ describe('SlackService', () => {
     });
 
     it('should set profile for all tokens', async () => {
+      vi.useFakeTimers();
       const postMock = vi.fn()
         .mockResolvedValueOnce({ data: { ok: true } })
         .mockResolvedValueOnce({ data: { ok: true } });
 
       mockedAxios.create.mockReturnValue({
         post: postMock,
+        get: vi.fn().mockResolvedValue({
+          data: { ok: true, profile: { status_emoji: ':shark:', status_text: 'Working' } },
+        }),
       } as any);
 
       slackService = new SlackService(mockTokens);
-      const success = await slackService.setProfile(':shark:', 'Working');
+      const result = slackService.setProfile(':shark:', 'Working');
+      await vi.runAllTimersAsync();
 
-      expect(success).toBe(true);
+      await expect(result).resolves.toBe(true);
       expect(postMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('should retry only workspaces that did not persist the profile', async () => {
+      vi.useFakeTimers();
+      const postMock = vi.fn().mockResolvedValue({ data: { ok: true } });
+      const getMock = vi.fn()
+        .mockResolvedValueOnce({
+          data: { ok: true, profile: { status_emoji: ':shark:', status_text: 'Working' } },
+        })
+        .mockResolvedValueOnce({
+          data: { ok: true, profile: { status_emoji: ':bulb:', status_text: 'Old status' } },
+        });
+
+      mockedAxios.create.mockReturnValue({ post: postMock, get: getMock } as any);
+      slackService = new SlackService(mockTokens);
+
+      const result = slackService.setProfile(':shark:', 'Working');
+      await vi.runAllTimersAsync();
+
+      await expect(result).resolves.toBe(true);
+      expect(postMock).toHaveBeenCalledTimes(3);
+      expect(postMock.mock.calls[2][2].headers.Authorization).toBe('Bearer xoxb-token2');
+    });
+
+    it('should continue verifying workspaces when one read-back fails', async () => {
+      vi.useFakeTimers();
+      const postMock = vi.fn().mockResolvedValue({ data: { ok: true } });
+      const getMock = vi.fn()
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce({
+          data: { ok: true, profile: { status_emoji: ':bulb:', status_text: 'Old status' } },
+        });
+
+      mockedAxios.create.mockReturnValue({ post: postMock, get: getMock } as any);
+      slackService = new SlackService(mockTokens);
+
+      const result = slackService.setProfile(':shark:', 'Working');
+      await vi.runAllTimersAsync();
+
+      await expect(result).resolves.toBe(true);
+      expect(getMock).toHaveBeenCalledTimes(2);
+      expect(postMock).toHaveBeenCalledTimes(4);
     });
   });
 
@@ -238,4 +307,3 @@ describe('SlackService', () => {
     });
   });
 });
-
