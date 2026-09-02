@@ -6,6 +6,17 @@ import { ManualStatusPlanner } from '../statusDomain/manualStatusPlanner';
 import { StatusChangePolicy } from '../statusDomain/statusChangePolicy';
 
 describe('status domain boundaries', () => {
+  it('blocks automatic status changes when the Slack profile is unavailable', () => {
+    const policy = new StatusChangePolicy();
+
+    expect(policy.canChangeStatus({
+      profile: null,
+      state: { value: 'not working' },
+      allowedEmojis: new Set(),
+      overridablePatterns: [],
+    })).toBe(false);
+  });
+
   it('blocks managed holiday status changes while in not working mode', () => {
     const policy = new StatusChangePolicy();
 

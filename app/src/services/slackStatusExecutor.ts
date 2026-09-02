@@ -22,12 +22,12 @@ export class SlackStatusExecutor {
       change.expiration ?? 0
     );
 
-    if (!success) {
-      return false;
-    }
-
     if (change.presence) {
       await this.slackService.setPresence(change.presence);
+    }
+
+    if (!success) {
+      return false;
     }
 
     if (change.dndAction === 'enable') {

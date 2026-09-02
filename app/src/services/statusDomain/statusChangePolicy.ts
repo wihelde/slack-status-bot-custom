@@ -11,7 +11,7 @@ export class StatusChangePolicy {
     overridablePatterns: OverridableStatusPattern[];
   }): boolean {
     const { profile, state, allowedEmojis, overridablePatterns } = input;
-    if (!profile) return true;
+    if (!profile) return false;
 
     const emoji = profile.status_emoji;
     const text = profile.status_text;

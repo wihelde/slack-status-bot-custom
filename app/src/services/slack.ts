@@ -33,24 +33,32 @@ export class SlackService {
       throw new Error('No Slack tokens configured');
     }
 
-    try {
-      const response = await this.axiosInstance.get('/users.profile.get', {
-        headers: {
-          Authorization: `Bearer ${this.tokens[0]}`,
-          'Content-Type': 'application/json',
-        },
-      });
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await this.axiosInstance.get('/users.profile.get', {
+          headers: {
+            Authorization: `Bearer ${this.tokens[0]}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-      if (response.data.ok && response.data.profile) {
-        return response.data.profile;
+        if (response.data.ok && response.data.profile) {
+          return response.data.profile;
+        }
+
+        logger[attempt === 1 ? 'warn' : 'error']('[slack] getProfile API error', {
+          error: response.data.error,
+          attempt,
+        });
+      } catch (error) {
+        logger[attempt === 1 ? 'warn' : 'error']('[slack] getProfile failed', {
+          error: error instanceof Error ? error.message : String(error),
+          attempt,
+        });
       }
-
-      logger.error('[slack] getProfile API error', { error: response.data.error });
-      return null;
-    } catch (error) {
-      logger.error('[slack] getProfile failed', { error: error instanceof Error ? error.message : String(error) });
-      return null;
     }
+
+    return null;
   }
 
   /**
@@ -96,6 +104,41 @@ export class SlackService {
           .map(r => r.data.error);
         logger.error(`[slack] setProfile API errors`, { errors });
       } else {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        let retriesOk = true;
+        for (const [tokenIndex, token] of this.tokens.entries()) {
+          let persisted = false;
+          try {
+            const response = await this.axiosInstance.get('/users.profile.get', {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            persisted = response.data.ok &&
+              response.data.profile?.status_emoji === statusEmoji &&
+              response.data.profile?.status_text === statusText;
+          } catch {}
+          if (!persisted) {
+            logger.warn(`[slack] Profile did not persist, retrying`, { tokenIndex });
+            try {
+              const retry = await this.axiosInstance.post('/users.profile.set', { profile }, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+              retriesOk &&= !!retry.data.ok;
+            } catch {
+              retriesOk = false;
+            }
+          }
+        }
+
+        if (!retriesOk) {
+          logger.error(`[slack] setProfile retry failed`);
+          return false;
+        }
         logger.info(`[slack] setProfile successful`);
       }
 
