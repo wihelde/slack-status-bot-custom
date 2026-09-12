@@ -25,7 +25,7 @@ export interface CustomStatusConfig {
   enableDND: boolean;
   presence: 'auto' | 'away';
   quickActionLabel?: string | null; // null = nicht im Dashboard zeigen
-  category: 'quick_action' | 'day_based'; // für UI-Gruppierung
+  category: 'quick_action' | 'day_based' | 'offline'; // für UI-Gruppierung
 }
 
 /**
@@ -44,6 +44,7 @@ export interface OverridableStatusPattern {
  */
 export interface StatusConfiguration {
   customStatuses: CustomStatusConfig[];
+  offlineMessages: string[];
   overridablePatterns?: OverridableStatusPattern[];
 }
 
@@ -301,5 +302,19 @@ export function getDefaultStatusConfiguration(): CustomStatusConfig[] {
       quickActionLabel: null,
       category: 'day_based' as const,
     })),
+    ...getOfflineStatusConfiguration(STATUS_MESSAGES.OFFLINE_MESSAGE_LIST),
   ];
+}
+
+export function getOfflineStatusConfiguration(messages: string[]): CustomStatusConfig[] {
+  return messages.map((message, i) => ({
+    id: `offline_${i}`,
+    emoji: STATUS_MESSAGES.OFF_EMOJI,
+    message,
+    days: [],
+    enableDND: false,
+    presence: 'away',
+    quickActionLabel: null,
+    category: 'offline',
+  }));
 }

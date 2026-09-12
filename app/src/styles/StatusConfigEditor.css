@@ -87,6 +87,23 @@
   gap: 16px;
 }
 
+.offline-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.offline-message-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.offline-message-item .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
 .no-statuses {
   padding: 20px;
   text-align: center;
@@ -421,6 +438,22 @@
   gap: 10px;
 }
 
+.section-toggle {
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.section-toggle:focus-visible {
+  outline: 2px solid #0066cc;
+  outline-offset: 4px;
+}
+
 .section-header-left h3 {
   margin: 0;
 }
@@ -452,6 +485,10 @@
   padding-bottom: 20px;
 }
 
+.status-section.collapsible.expanded .offline-message-list {
+  padding: 0 20px 20px;
+}
+
 .status-section.collapsible.collapsed {
   border-color: #e8e8e8;
 }
@@ -469,6 +506,14 @@
   }
 
   .section-header-collapsible .btn {
+    width: auto;
+  }
+
+  .status-section.collapsible.expanded .offline-message-list {
+    padding: 0 16px 16px;
+  }
+
+  .offline-message-item .btn {
     width: auto;
   }
 }

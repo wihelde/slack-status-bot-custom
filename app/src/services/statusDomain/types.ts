@@ -24,7 +24,7 @@ export interface ManualStatusPlan {
 
 export type ManualAction =
   | { type: 'go-online'; day: DayOfWeek; customStatuses: CustomStatusConfig[] }
-  | { type: 'go-away' }
+  | { type: 'go-away'; customStatuses: CustomStatusConfig[] }
   | { type: 'custom-status'; emoji: string; message: string; expiration?: number }
   | { type: 'external-status'; emoji: string; message: string; expiration?: number; presence: 'auto' | 'away' }
   | { type: 'holiday'; returnDateString: string };

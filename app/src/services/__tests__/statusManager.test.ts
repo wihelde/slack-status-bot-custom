@@ -70,6 +70,39 @@ describe('StatusManager', () => {
       const state = statusManager.getStatusCheckState();
       expect(state.activeSource).toBeUndefined();
     });
+
+    it('uses the configured offline message', async () => {
+      const configuredStatusManager = new StatusManager(mockSlackService, [{
+        id: 'offline_1',
+        emoji: STATUS_MESSAGES.OFF_EMOJI,
+        message: 'See you tomorrow',
+        days: [],
+        enableDND: false,
+        presence: 'away',
+        quickActionLabel: null,
+        category: 'offline',
+      }]);
+
+      await configuredStatusManager.goAway();
+
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith(
+        STATUS_MESSAGES.OFF_EMOJI,
+        'See you tomorrow',
+        0
+      );
+    });
+
+    it('sets an empty status text when no offline message is configured', async () => {
+      const configuredStatusManager = new StatusManager(mockSlackService, []);
+
+      await configuredStatusManager.goAway();
+
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith(
+        STATUS_MESSAGES.OFF_EMOJI,
+        '',
+        0
+      );
+    });
   });
 
   describe('setCustomStatus()', () => {

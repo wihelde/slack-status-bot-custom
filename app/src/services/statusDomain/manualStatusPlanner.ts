@@ -1,4 +1,4 @@
-import { STATUS_MESSAGES } from '../../config/statusConfig';
+import { CustomStatusConfig, STATUS_MESSAGES } from '../../config/statusConfig';
 import { protectedEmojis } from './constants';
 import { DayStatusPlanner } from './dayStatusPlanner';
 import { ManualAction, ManualActionPlan, ManualStatusPlan } from './types';
@@ -59,7 +59,7 @@ export class ManualStatusPlanner {
       case 'go-away':
         return {
           emoji: STATUS_MESSAGES.OFF_EMOJI,
-          message: this.getRandomOfflineMessage(),
+          message: this.getRandomOfflineMessage(action.customStatuses),
           presence: 'away',
           dndAction: 'ignore',
           stateValue: 'not working',
@@ -126,8 +126,11 @@ export class ManualStatusPlanner {
     };
   }
 
-  private getRandomOfflineMessage(): string {
-    const messages = STATUS_MESSAGES.OFFLINE_MESSAGE_LIST;
-    return messages[Math.floor(Math.random() * messages.length)];
+  private getRandomOfflineMessage(customStatuses: CustomStatusConfig[]): string {
+    const messages = customStatuses
+      .filter(status => status.category === 'offline')
+      .map(status => status.message.trim())
+      .filter(Boolean);
+    return messages[Math.floor(Math.random() * messages.length)] ?? '';
   }
 }

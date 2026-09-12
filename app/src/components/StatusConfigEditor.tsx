@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CustomStatusConfig, DayOfWeek, getDefaultStatusConfiguration } from '../config/statusConfig';
+import { CustomStatusConfig, DayOfWeek, getDefaultStatusConfiguration, STATUS_MESSAGES } from '../config/statusConfig';
 import { IPCService } from '../services/ipcService';
 import '../styles/StatusConfigEditor.css';
 
@@ -18,6 +18,7 @@ export const StatusConfigEditor: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
   const [scheduledExpanded, setScheduledExpanded] = useState(false);
+  const [offlineExpanded, setOfflineExpanded] = useState(false);
 
   // Load status configuration on mount
   useEffect(() => {
@@ -89,6 +90,23 @@ export const StatusConfigEditor: React.FC = () => {
     setStatuses([...statuses, newStatus]);
   };
 
+  const handleAddOfflineMessage = () => {
+    setStatuses([...statuses, {
+      id: `offline_${Date.now()}`,
+      emoji: STATUS_MESSAGES.OFF_EMOJI,
+      message: '',
+      days: [],
+      enableDND: false,
+      presence: 'away',
+      quickActionLabel: null,
+      category: 'offline',
+    }]);
+  };
+
+  const handleDeleteOfflineMessage = (index: number) => {
+    setStatuses(statuses.filter((_, statusIndex) => statusIndex !== index));
+  };
+
   // Validation functions
   const isDuplicate = (status: CustomStatusConfig, allStatuses: CustomStatusConfig[]): boolean => {
     return allStatuses.some(s =>
@@ -97,7 +115,8 @@ export const StatusConfigEditor: React.FC = () => {
       s.message === status.message &&
       arraysEqual(s.days, status.days) &&
       s.enableDND === status.enableDND &&
-      s.presence === status.presence
+      s.presence === status.presence &&
+      s.category === status.category
     );
   };
 
@@ -197,13 +216,12 @@ export const StatusConfigEditor: React.FC = () => {
     try {
       setSaving(true);
       setValidationError(null);
-      // Keep only quick actions, remove all day-based statuses
-      const quickActionsOnly = statuses.filter(s => s.category === 'quick_action');
-      const success = await IPCService.updateStatusConfiguration(quickActionsOnly);
+      const statusesWithoutScheduled = statuses.filter(s => s.category !== 'day_based');
+      const success = await IPCService.updateStatusConfiguration(statusesWithoutScheduled);
 
       if (success) {
-        setStatuses(quickActionsOnly);
-        setSuccessMessage('All scheduled statuses deleted! Quick Actions preserved.');
+        setStatuses(statusesWithoutScheduled);
+        setSuccessMessage('All scheduled statuses deleted!');
         setTimeout(() => setSuccessMessage(null), 3000);
       } else {
         setValidationError('Failed to delete statuses');
@@ -223,6 +241,7 @@ export const StatusConfigEditor: React.FC = () => {
   // Group statuses by category
   const quickActions = statuses.filter(s => s.category === 'quick_action');
   const dayBased = statuses.filter(s => s.category === 'day_based');
+  const offline = statuses.filter(s => s.category === 'offline');
 
   return (
     <div className="status-config-editor">
@@ -259,6 +278,68 @@ export const StatusConfigEditor: React.FC = () => {
                       onCopy={handleCopyStatus}
                       onDelete={handleDeleteStatus}
                     />
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </section>
+
+        <section className={`status-section collapsible ${offlineExpanded ? 'expanded' : 'collapsed'}`}>
+          <div
+            className="section-header-collapsible"
+          >
+            <button
+              type="button"
+              className="section-toggle section-header-left"
+              aria-expanded={offlineExpanded}
+              onClick={() => setOfflineExpanded(!offlineExpanded)}
+            >
+              <span className="collapse-icon">{offlineExpanded ? '▼' : '▶'}</span>
+              <h3>Offline Messages</h3>
+              <span className="item-count">({offline.length})</span>
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={(event) => {
+                event.stopPropagation();
+                setOfflineExpanded(true);
+                handleAddOfflineMessage();
+              }}
+            >
+              Add Offline Message
+            </button>
+          </div>
+
+          {offlineExpanded && (
+            <>
+              <p className="section-description">
+                One of these messages is selected when you go away.
+              </p>
+              <div className="offline-message-list">
+                {offline.map((status, offlineIndex) => {
+                  const actualIndex = statuses.findIndex(candidate => candidate.id === status.id);
+                  return (
+                    <div className="offline-message-item" key={status.id}>
+                      <input
+                        type="text"
+                        id={`offline-message-${status.id}`}
+                        aria-label={`Offline message ${offlineIndex + 1}`}
+                        className="form-input"
+                        value={status.message}
+                        onChange={event => handleStatusChange(actualIndex, {
+                          ...status,
+                          message: event.target.value,
+                        })}
+                      />
+                      <button
+                        className="btn btn-small btn-danger"
+                        aria-label="Delete offline message"
+                        onClick={() => handleDeleteOfflineMessage(actualIndex)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   );
                 })}
               </div>
