@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -61,21 +61,43 @@ describe('AppConfigStore', () => {
     expect(config.sourceOrder).toContain('youtubeMusic');
     expect(config.sourceOrder).toEqual(DEFAULT_SOURCE_ORDER);
     expect(config.statusConfiguration.customStatuses.length).toBeGreaterThan(0);
+    expect(config.statusConfiguration.offlineMessages).toContain('My dog ate my away message');
     expect(config.statusConfiguration.overridablePatterns).toEqual(DEFAULT_OVERRIDABLE_PATTERNS);
   });
 
-  it('recovers from corrupted config files and writes back defaults', () => {
+  it('preserves corrupted config files and reports the recovery', () => {
     const configPath = path.join(testConfigDir, 'config.json');
-    fs.writeFileSync(configPath, '{not-valid-json', 'utf-8');
+    const corruptedContent = '{"slackTokens":["test-token"]';
+    fs.writeFileSync(configPath, corruptedContent, 'utf-8');
+    const onConfigRecovery = vi.fn();
 
-    const store = createAppConfigStore({ configDir: testConfigDir });
+    const store = createAppConfigStore({ configDir: testConfigDir, onConfigRecovery });
     const config = store.load();
-    const persisted = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const backupName = fs.readdirSync(testConfigDir).find(name => name.startsWith('config.json.corrupt-'));
 
-    expect(config.slackTokens).toEqual([]);
-    expect(config.sourceOrder).toEqual(DEFAULT_SOURCE_ORDER);
-    expect(persisted.statusConfiguration.customStatuses.length).toBeGreaterThan(0);
-    expect(persisted.statusConfiguration.overridablePatterns).toEqual(DEFAULT_OVERRIDABLE_PATTERNS);
+    expect({
+      activeConfigExists: fs.existsSync(configPath),
+      backupContent: backupName
+        ? fs.readFileSync(path.join(testConfigDir, backupName), 'utf-8')
+        : null,
+      loadedTokens: config.slackTokens,
+      recovery: onConfigRecovery.mock.calls[0]?.[0],
+    }).toMatchObject({
+      activeConfigExists: false,
+      backupContent: corruptedContent,
+      loadedTokens: [],
+      recovery: {
+        configPath,
+        backupPath: expect.stringContaining('config.json.corrupt-'),
+      },
+    });
+
+    store.updateSlackTokens(['replacement-token']);
+
+    expect(JSON.parse(fs.readFileSync(configPath, 'utf-8')).slackTokens)
+      .toEqual(['replacement-token']);
+    expect(fs.readFileSync(path.join(testConfigDir, backupName!), 'utf-8'))
+      .toBe(corruptedContent);
   });
 
   it('preserves unknown persisted fields through intentional merge rules', () => {

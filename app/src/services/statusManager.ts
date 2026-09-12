@@ -374,7 +374,7 @@ export class StatusManager extends EventEmitter {
    * Set status to "away" (manual action - no isStatusClean check)
    */
   async goAway(): Promise<boolean> {
-    return this.applyManualAction({ type: 'go-away' });
+    return this.applyManualAction({ type: 'go-away', customStatuses: this.customStatuses });
   }
 
   /**

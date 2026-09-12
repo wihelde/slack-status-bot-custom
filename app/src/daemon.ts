@@ -1,7 +1,7 @@
 import { SlackService } from './services/slack';
 import { SlackStatusExecutor } from './services/slackStatusExecutor';
 import { StatusManager } from './services/statusManager';
-import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS } from './config/statusConfig';
+import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration, getOfflineStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS } from './config/statusConfig';
 import { DEFAULT_SOURCE_ORDER, SourceName } from './config/sourceCatalog';
 import { AppConfigStore, createAppConfigStore } from './config/appConfigStore';
 import { SourceArbitrationEngine } from './services/sources/sourceArbitrationEngine';
@@ -327,18 +327,25 @@ export class SlackStatusBotDaemon {
 
     this.sourceRegistry.applyEnabledConfig(config.sources);
     this.sourceOrder = [...config.sourceOrder];
-    this.statusManager.setCustomStatuses(config.statusConfiguration.customStatuses);
+    this.statusManager.setCustomStatuses([
+      ...config.statusConfiguration.customStatuses,
+      ...getOfflineStatusConfiguration(config.statusConfiguration.offlineMessages),
+    ]);
     this.statusManager.setOverridablePatterns(
       config.statusConfiguration.overridablePatterns || DEFAULT_OVERRIDABLE_PATTERNS
     );
   }
 
   private saveConfig(): void {
+    const statuses = this.statusManager.getCustomStatuses();
     this.configStore.updateDaemonSettings({
       sources: this.sourceRegistry.getEnabledConfig(),
       sourceOrder: this.sourceOrder,
       statusConfiguration: {
-        customStatuses: this.statusManager.getCustomStatuses(),
+        customStatuses: statuses.filter(status => status.category !== 'offline'),
+        offlineMessages: statuses
+          .filter(status => status.category === 'offline')
+          .map(status => status.message),
         overridablePatterns: this.statusManager.getOverridablePatterns(),
       },
     });

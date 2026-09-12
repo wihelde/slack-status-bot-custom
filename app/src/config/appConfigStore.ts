@@ -4,6 +4,7 @@ import { DEFAULT_SOURCE_ORDER, SourceName } from './sourceCatalog';
 import {
   DEFAULT_OVERRIDABLE_PATTERNS,
   getDefaultStatusConfiguration,
+  STATUS_MESSAGES,
   StatusConfiguration,
 } from './statusConfig';
 import type { CustomStatusConfig, OverridableStatusPattern } from './statusConfig';
@@ -43,15 +44,24 @@ interface LoadedConfigState {
   shouldPersist: boolean;
 }
 
+export interface ConfigRecovery {
+  configPath: string;
+  backupPath: string | null;
+  reason: string;
+}
+
 interface AppConfigStoreOptions {
   configDir: string;
+  onConfigRecovery?: (recovery: ConfigRecovery) => void;
 }
 
 export class AppConfigStore {
   private readonly configDir: string;
+  private readonly onConfigRecovery?: (recovery: ConfigRecovery) => void;
 
   constructor(options: AppConfigStoreOptions) {
     this.configDir = options.configDir;
+    this.onConfigRecovery = options.onConfigRecovery;
   }
 
   getConfigPath(): string {
@@ -155,10 +165,24 @@ export class AppConfigStore {
         shouldPersist,
       };
     } catch (error) {
+      let backupPath: string | null = `${configPath}.corrupt-${Date.now()}`;
+
+      try {
+        fs.renameSync(configPath, backupPath);
+      } catch {
+        backupPath = null;
+      }
+
+      this.onConfigRecovery?.({
+        configPath,
+        backupPath,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+
       return {
         config: createDefaultConfig(),
         extras: {},
-        shouldPersist: true,
+        shouldPersist: false,
       };
     }
   }
@@ -251,16 +275,25 @@ function normalizeStatusConfiguration(value: unknown): StatusConfiguration {
   const record = asRecord(value);
   return {
     customStatuses: normalizeCustomStatuses(record.customStatuses),
+    offlineMessages: normalizeOfflineMessages(record.offlineMessages),
     overridablePatterns: normalizeOverridablePatterns(record.overridablePatterns),
   };
 }
 
 function normalizeCustomStatuses(value: unknown): CustomStatusConfig[] {
   if (!Array.isArray(value)) {
-    return getDefaultStatusConfiguration();
+    return getDefaultStatusConfiguration().filter(status => status.category !== 'offline');
   }
 
-  return value as CustomStatusConfig[];
+  return (value as CustomStatusConfig[]).filter(status => status.category !== 'offline');
+}
+
+function normalizeOfflineMessages(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [...STATUS_MESSAGES.OFFLINE_MESSAGE_LIST];
+  }
+
+  return value.filter((message): message is string => typeof message === 'string');
 }
 
 function normalizeOverridablePatterns(value: unknown): OverridableStatusPattern[] {
@@ -294,6 +327,7 @@ function buildPersistedPayload(
 function cloneStatusConfiguration(statusConfiguration: StatusConfiguration): StatusConfiguration {
   return {
     customStatuses: [...statusConfiguration.customStatuses],
+    offlineMessages: [...statusConfiguration.offlineMessages],
     overridablePatterns: [...(statusConfiguration.overridablePatterns || [])],
   };
 }

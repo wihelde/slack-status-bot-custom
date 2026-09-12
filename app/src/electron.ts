@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, ipcMain, Menu, Tray, nativeImage, shell } from 'electron';
+import { app, BrowserWindow, Notification, dialog, ipcMain, Menu, Tray, nativeImage, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { execSync } from 'child_process';
 import fs from 'fs';
@@ -55,6 +55,15 @@ interface RuntimeConfig {
 
 const configStore = createAppConfigStore({
   configDir: app.getPath('userData'),
+  onConfigRecovery: ({ configPath, backupPath }) => {
+    const preservedFile = backupPath
+      ? `The unreadable file was preserved at:\n\n${backupPath}`
+      : `The unreadable file remains at:\n\n${configPath}`;
+    dialog.showErrorBox(
+      'Slack Status Bot could not load its settings',
+      `${preservedFile}\n\nNo settings were overwritten. Enter your Slack token again to create a new configuration.`
+    );
+  },
 });
 const electronApp = app as typeof app & { isQuitting?: boolean };
 
