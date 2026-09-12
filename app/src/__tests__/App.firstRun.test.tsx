@@ -39,6 +39,7 @@ describe('App - First Run Integration', () => {
     sources: {
       spotify: { name: 'spotify', enabled: true, isActive: false },
       appleMusic: { name: 'appleMusic', enabled: true, isActive: false },
+      youtubeMusic: { name: 'youtubeMusic', enabled: true, isActive: false },
       zoom: { name: 'zoom', enabled: true, isActive: false },
       teams: { name: 'teams', enabled: true, isActive: false },
       huddle: { name: 'huddle', enabled: true, isActive: false },

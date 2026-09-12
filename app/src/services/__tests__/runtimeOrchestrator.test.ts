@@ -10,6 +10,7 @@ const createStatuses = (
   const base: Record<SourceName, RegisteredSourceStatus> = {
     spotify: { name: 'Spotify', enabled: true, isActive: false, emoji: ':spotify:', message: '' },
     appleMusic: { name: 'Apple Music', enabled: true, isActive: false, emoji: ':apple:', message: '' },
+    youtubeMusic: { name: 'YouTube Music', enabled: true, isActive: false, emoji: ':youtube-music:', message: '' },
     zoom: { name: 'Zoom', enabled: true, isActive: false, emoji: ':zoom:', message: '' },
     teams: { name: 'Teams', enabled: true, isActive: false, emoji: ':teams:', message: '' },
     huddle: { name: 'Huddle', enabled: true, isActive: false, emoji: ':huddle:', message: '' },

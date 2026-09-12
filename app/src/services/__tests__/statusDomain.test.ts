@@ -167,6 +167,28 @@ describe('status domain boundaries', () => {
     expect(result).toBe(false);
   });
 
+  it('recognizes a stale YouTube Music status as a managed source status', () => {
+    const policy = new CorrectionPolicy();
+
+    const decision = policy.getCorrectionDecision({
+      profile: {
+        status_emoji: STATUS_MESSAGES.YOUTUBE_MUSIC_EMOJI,
+        status_text: 'beabadoobee - Cologne',
+      },
+      state: { value: '' },
+      day: DayOfWeek.MONDAY,
+      validEmojisForToday: new Set(),
+      allowedEmojis: new Set(),
+      overridablePatterns: [],
+      now: Math.floor(Date.now() / 1000),
+    });
+
+    expect(decision).toEqual({
+      action: 'reset',
+      reason: 'stale-source-status',
+    });
+  });
+
   it('requests reset when holiday expiration has ended', () => {
     const policy = new CorrectionPolicy();
 

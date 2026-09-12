@@ -1,6 +1,6 @@
 {
   "name": "slack-status-bot",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Cross-platform Slack Status Bot with Tray UI",
   "main": "dist/electron.js",
   "homepage": "./",
@@ -10,9 +10,10 @@
   },
   "license": "MIT",
   "scripts": {
+    "postinstall": "install-electron",
     "dev": "concurrently \"npm run react-start\" \"npm run host:watch\" \"wait-on http://localhost:3000 dist/electron.js && npm run electron-dev\"",
-    "react-start": "cross-env BROWSER=none react-scripts start",
-    "react-build": "react-scripts build",
+    "react-start": "vite --host 127.0.0.1 --port 3000",
+    "react-build": "vite build",
     "tsc": "tsc",
     "host:build": "tsc -p tsconfig.json",
     "host:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
@@ -27,8 +28,7 @@
     "dist": "electron-builder",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "test:coverage": "vitest run --coverage",
-    "eject": "react-scripts eject"
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "axios": "^1.6.0",
@@ -38,24 +38,20 @@
   },
   "devDependencies": {
     "@electron/asar": "^3.4.1",
-    "@jest/globals": "^29.7.0",
-    "@jest/test-sequencer": "^29.7.0",
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.0.0",
-    "@types/electron": "^1.6.10",
-    "@types/jest": "^29.5.5",
     "@types/node": "^20.8.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "concurrently": "^8.2.0",
     "cross-env": "^7.0.3",
-    "electron": "^39.2.7",
+    "electron": "^42.11.3",
     "electron-builder": "^26.5.0",
-    "react-scripts": "^5.0.1",
+    "jsdom": "^29.1.1",
     "typescript": "^4.9.5",
+    "vite": "^8.3.0",
     "vitest": "^4.0.17",
-    "wait-on": "^7.0.1",
-    "webpack-dev-server": "^5.2.3"
+    "wait-on": "^7.0.1"
   },
   "build": {
     "extends": null,

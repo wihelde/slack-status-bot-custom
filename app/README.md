@@ -5,7 +5,7 @@ Desktop application for automating your Slack status based on music playback, me
 ## Features
 
 ✨ **Multi-Source Status Updates**
-- Spotify & Apple Music playback tracking
+- Spotify, Apple Music, and YouTube Music PWA playback tracking
 - Zoom & Microsoft Teams meeting detection
 - Slack Huddle detection
 - Custom status messages & Holiday status
@@ -30,13 +30,15 @@ Download the latest `.dmg` installer from [Releases](https://github.com/youruser
 
 **Requirements:** macOS 10.13+ (Intel & Apple Silicon)
 
+YouTube Music tracking requires installing [music.youtube.com](https://music.youtube.com/) as a browser app. Ordinary browser tabs are not detected. In a Chromium-based browser, open YouTube Music and choose **Install YouTube Music** or **Install page as app** from the browser menu.
+
 ### Windows & Linux
 Support coming in future releases.
 
 ## Development
 
 ### Prerequisites
-- Node.js 18+ and npm
+- Node.js 22.13+ and npm
 - macOS 10.13+ (for development)
 
 ### Setup
@@ -49,7 +51,7 @@ npm install
 ```bash
 npm run dev
 ```
-Runs React development server + Electron in watch mode with hot reload.
+Runs the Vite development server and Electron in watch mode with hot reload.
 
 ### Build
 ```bash
@@ -127,7 +129,7 @@ When an update is available, the app shows a native notification in addition to 
 
 ### Status not updating
 - Check Slack token in Settings
-- Verify source app is running (Spotify, Teams, etc.)
+- Verify the source app is running. YouTube Music must run as an installed browser app, not an ordinary tab.
 - Check daemon status in Dashboard
 - Check logs for errors (Settings → Logs tab)
 

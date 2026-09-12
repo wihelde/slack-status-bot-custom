@@ -25,6 +25,7 @@ describe('AppConfigStore', () => {
       sources: {
         spotify: false,
         appleMusic: true,
+        youtubeMusic: true,
         zoom: true,
         teams: true,
         huddle: true,
@@ -56,6 +57,8 @@ describe('AppConfigStore', () => {
     expect(config.slackTokens).toEqual(['xoxp-legacy-token']);
     expect(config.sources.spotify).toBe(false);
     expect(config.sources.appleMusic).toBe(true);
+    expect((config.sources as Record<string, boolean>).youtubeMusic).toBe(true);
+    expect(config.sourceOrder).toContain('youtubeMusic');
     expect(config.sourceOrder).toEqual(DEFAULT_SOURCE_ORDER);
     expect(config.statusConfiguration.customStatuses.length).toBeGreaterThan(0);
     expect(config.statusConfiguration.overridablePatterns).toEqual(DEFAULT_OVERRIDABLE_PATTERNS);

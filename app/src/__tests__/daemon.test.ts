@@ -79,6 +79,36 @@ vi.mock('../services/sources/appleMusic', () => {
   };
 });
 
+vi.mock('../services/sources/youtubeMusic', () => {
+  return {
+    YouTubeMusicAdapter: class MockYouTubeMusicAdapter {
+      private enabled = true;
+      private active = false;
+
+      setEnabled(enabled: boolean) {
+        this.enabled = enabled;
+      }
+
+      isEnabled() {
+        return this.enabled;
+      }
+
+      async getStatus() {
+        return {
+          name: 'YouTube Music',
+          isActive: this.enabled && this.active,
+          emoji: ':youtube-music:',
+          message: this.enabled && this.active ? 'Playing music' : undefined,
+        };
+      }
+
+      isAvailable() {
+        return true;
+      }
+    },
+  };
+});
+
 vi.mock('../services/sources/meetings', () => {
   return {
     ZoomAdapter: class MockZoomAdapter {
@@ -185,10 +215,10 @@ describe('SlackStatusBotDaemon', () => {
   const getInternalStatusManager = () => (daemon as any).statusManager;
   const getInternalSourceRegistry = () => (daemon as any).sourceRegistry;
   const getInternalSource = (
-    source: 'spotify' | 'appleMusic' | 'zoom' | 'teams' | 'huddle'
+    source: SourceName
   ) => getInternalSourceRegistry().getAdapter(source) as any;
   const setSourceActive = (
-    source: 'spotify' | 'appleMusic' | 'zoom' | 'teams' | 'huddle',
+    source: SourceName,
     active: boolean
   ) => {
     getInternalSource(source).active = active;
@@ -198,6 +228,7 @@ describe('SlackStatusBotDaemon', () => {
   const createCompleteSourceStatusesMock = () => ({
     spotify: { isActive: false, message: '' },
     appleMusic: { isActive: false, message: '' },
+    youtubeMusic: { isActive: false, message: '' },
     zoom: { isActive: false, message: '' },
     teams: { isActive: false, message: '' },
     huddle: { isActive: false, message: '' },
@@ -402,12 +433,14 @@ describe('SlackStatusBotDaemon', () => {
 
     it('should initialize with default source order', () => {
       const order = daemon.getSourceOrder();
-      expect(order.length).toBe(5);
-      expect(order).toContain('spotify');
-      expect(order).toContain('appleMusic');
-      expect(order).toContain('zoom');
-      expect(order).toContain('teams');
-      expect(order).toContain('huddle');
+      expect(order).toEqual([
+        'spotify',
+        'appleMusic',
+        'youtubeMusic',
+        'zoom',
+        'teams',
+        'huddle',
+      ]);
     });
 
     it('should update source order via setSourceOrder', async () => {
@@ -450,7 +483,14 @@ describe('SlackStatusBotDaemon', () => {
         configDir,
       });
 
-      const newOrder: SourceName[] = ['spotify', 'teams', 'zoom', 'appleMusic', 'huddle'];
+      const newOrder: SourceName[] = [
+        'spotify',
+        'teams',
+        'zoom',
+        'appleMusic',
+        'huddle',
+        'youtubeMusic',
+      ];
       await daemon1.setSourceOrder(newOrder);
 
       const daemon2 = new SlackStatusBotDaemon({

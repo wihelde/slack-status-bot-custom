@@ -14,7 +14,7 @@ Open your terminal and execute the following command:
 ## Features
 
 **Multi-Source Status Updates**
-- Spotify & Apple Music playback tracking
+- Spotify, Apple Music, and YouTube Music PWA playback tracking
 - Zoom & Microsoft Teams meeting detection
 - Slack Huddle detection
 - Custom status messages & Holiday status
@@ -42,10 +42,11 @@ Settings are stored in:
 ```json
 {
   "slackTokens": ["xoxb-...", "xoxb-..."],
-  "sourceOrder": ["spotify", "appleMusic", "zoom", "teams", "huddle"],
+  "sourceOrder": ["spotify", "appleMusic", "youtubeMusic", "zoom", "teams", "huddle"],
   "enabledSources": {
     "spotify": true,
     "appleMusic": true,
+    "youtubeMusic": true,
     "zoom": true,
     "teams": true,
     "huddle": true
@@ -104,12 +105,14 @@ slack-status-bot://offline
 
 ### Source Priority
 Sources are checked in priority order. The first active source's status is displayed:
-1. Spotify / Apple Music
+1. Spotify / Apple Music / YouTube Music
 2. Zoom meetings
 3. Microsoft Teams meetings
 4. Slack Huddles
 
 You can reorder these in Settings.
+
+YouTube Music tracking requires installing [music.youtube.com](https://music.youtube.com/) as a browser app. Ordinary browser tabs are not detected. In a Chromium-based browser, open YouTube Music and choose **Install YouTube Music** or **Install page as app** from the browser menu.
 
 ## Troubleshooting
 

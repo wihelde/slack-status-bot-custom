@@ -1,6 +1,6 @@
 import type { AppSourceSnapshot } from '../contracts/appSnapshot';
 
-export type SourceName = 'spotify' | 'appleMusic' | 'zoom' | 'teams' | 'huddle';
+export type SourceName = 'spotify' | 'appleMusic' | 'youtubeMusic' | 'zoom' | 'teams' | 'huddle';
 
 export interface SourceCatalogEntry {
   id: SourceName;
@@ -13,6 +13,7 @@ export type SourceDisplayState = AppSourceSnapshot;
 export const SOURCE_CATALOG: SourceCatalogEntry[] = [
   { id: 'spotify', displayName: 'Spotify', icon: '🎵' },
   { id: 'appleMusic', displayName: 'Apple Music', icon: '🎶' },
+  { id: 'youtubeMusic', displayName: 'YouTube Music', icon: '▶️' },
   { id: 'zoom', displayName: 'Zoom', icon: '📹' },
   { id: 'teams', displayName: 'Microsoft Teams', icon: '👥' },
   { id: 'huddle', displayName: 'Slack Huddle', icon: '🎧' },
