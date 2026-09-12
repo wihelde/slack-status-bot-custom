@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildAppleScriptCommand, readAppleScriptOutput } from '../probes/appleScriptProbe';
 import { commandHasOutput, readCommandOutput } from '../probes/commandProbe';
 import { hasMacUdpConnectionMatch } from '../probes/networkProbe';
-import { isMacProcessRunning, isWindowsProcessRunning } from '../probes/processProbe';
+import { getMacNowPlayingInfo } from '../probes/nowPlayingProbe';
+import { isMacApplicationRunning, isMacProcessRunning, isWindowsProcessRunning } from '../probes/processProbe';
 
 describe('source probe seams', () => {
   it('returns trimmed command output', async () => {
@@ -62,6 +63,55 @@ describe('source probe seams', () => {
 
     expect(running).toBe(true);
     expect(commands).toEqual(['pgrep -x "Spotify"']);
+  });
+
+  it('checks macOS application activity through Launch Services', async () => {
+    const commands: string[] = [];
+
+    const running = await isMacApplicationRunning('YouTube Music', async command => {
+      commands.push(command);
+      return { stdout: 'ASN:0x0-0x123\n', stderr: '' };
+    });
+
+    expect(running).toBe(true);
+    expect(commands).toEqual(['lsappinfo find name="YouTube Music"']);
+  });
+
+  it('reads system Now Playing metadata through one JXA command', async () => {
+    const commands: string[] = [];
+
+    const info = await getMacNowPlayingInfo(async command => {
+      commands.push(command);
+      return {
+        stdout: JSON.stringify({
+          app: 'YouTube Music',
+          title: 'Cologne',
+          artist: 'beabadoobee',
+          album: 'Our Extended Play',
+          playbackRate: 1,
+        }),
+        stderr: '',
+      };
+    });
+
+    expect(info).toEqual({
+      app: 'YouTube Music',
+      title: 'Cologne',
+      artist: 'beabadoobee',
+      album: 'Our Extended Play',
+      playbackRate: 1,
+    });
+    expect(commands).toHaveLength(1);
+    expect(commands[0]).toContain('osascript -l JavaScript');
+  });
+
+  it('maps malformed Now Playing output to no metadata', async () => {
+    const info = await getMacNowPlayingInfo(async () => ({
+      stdout: 'not-json',
+      stderr: '',
+    }));
+
+    expect(info).toBeNull();
   });
 
   it('checks Windows process activity through the process probe', async () => {

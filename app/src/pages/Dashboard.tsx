@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../styles/Dashboard.css';
 import { IPCService } from '../services/ipcService';
 import { CustomStatusConfig, getDefaultStatusConfiguration } from '../config/statusConfig';
-import { buildSourceDisplayStates, SOURCE_ICONS, SOURCE_LABELS, SourceDisplayState } from '../config/sourceCatalog';
+import { buildSourceDisplayStates, SOURCE_ICONS, SOURCE_LABELS, SourceDisplayState, SourceName } from '../config/sourceCatalog';
 import type { AppSnapshot } from '../contracts/appSnapshot';
 import HolidayModal from '../components/HolidayModal';
 
@@ -83,10 +83,10 @@ const Dashboard: React.FC = () => {
     return found;
   };
 
-  const handleToggleSource = async (sourceName: string) => {
+  const handleToggleSource = async (sourceName: SourceName) => {
     const source = sources.find(s => s.name === sourceName);
     if (source) {
-      await IPCService.toggleSource(sourceName as any, !source.enabled);
+      await IPCService.toggleSource(sourceName, !source.enabled);
       await refreshDashboardState();
     }
   };

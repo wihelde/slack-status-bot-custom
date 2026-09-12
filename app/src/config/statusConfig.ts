@@ -63,6 +63,7 @@ export const STATUS_MESSAGES = {
   SICK_EMOJI: ':face_with_thermometer:',
   SKYPE_EMOJI: ':skype:',
   SPOTIFY_EMOJI: ':spotify_2:',
+  YOUTUBE_MUSIC_EMOJI: ':youtube-music:',
   TEAMS_EMOJI: ':teams:',
   TGIF_EMOJI: ':tgif:',
   ZOOM_EMOJI: ':zoom_3:',

@@ -136,7 +136,7 @@ export class IPCService {
   /**
    * Toggle monitoring of a source
    */
-  static async toggleSource(source: 'spotify' | 'appleMusic' | 'zoom' | 'teams' | 'huddle', enabled: boolean): Promise<boolean> {
+  static async toggleSource(source: SourceName, enabled: boolean): Promise<boolean> {
     const electronAPI = this.getElectronAPI();
     if (!electronAPI) {
       return false;
@@ -153,13 +153,13 @@ export class IPCService {
   /**
    * Set source priority order
    */
-  static async setSourceOrder(sourceOrder: string[]): Promise<boolean> {
+  static async setSourceOrder(sourceOrder: SourceName[]): Promise<boolean> {
     const electronAPI = this.getElectronAPI();
     if (!electronAPI) {
       return false;
     }
     try {
-      const result = await electronAPI.setSourceOrder(sourceOrder as SourceName[]);
+      const result = await electronAPI.setSourceOrder(sourceOrder);
       return result.success;
     } catch (error) {
       logRendererError('Error setting source order', error);
@@ -170,7 +170,7 @@ export class IPCService {
   /**
    * Get current source priority order
    */
-  static async getSourceOrder(): Promise<string[] | null> {
+  static async getSourceOrder(): Promise<SourceName[] | null> {
     const electronAPI = this.getElectronAPI();
     if (!electronAPI) {
       return null;

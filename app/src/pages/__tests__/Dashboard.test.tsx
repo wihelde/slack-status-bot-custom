@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import Dashboard from '../Dashboard';
 import { IPCService } from '../../services/ipcService';
 import type { AppSnapshot, AppSnapshotRefreshSignal } from '../../contracts/appSnapshot';
+import type { SourceName } from '../../config/sourceCatalog';
 
 vi.mock('../../services/ipcService');
 
@@ -14,7 +15,7 @@ type StatusPayload = {
 };
 
 type SourceStatusesPayload = Record<
-  'spotify' | 'appleMusic' | 'zoom' | 'teams' | 'huddle',
+  SourceName,
   { enabled?: boolean; isActive?: boolean; message?: string }
 >;
 
@@ -26,6 +27,7 @@ describe('Dashboard', () => {
   ): SourceStatusesPayload => ({
     spotify: { enabled: true, isActive: true, message: 'Playing Music' },
     appleMusic: { enabled: true, isActive: false },
+    youtubeMusic: { enabled: true, isActive: false },
     zoom: { enabled: true, isActive: false },
     teams: { enabled: true, isActive: false },
     huddle: { enabled: true, isActive: false },
@@ -50,6 +52,7 @@ describe('Dashboard', () => {
     sources: {
       spotify: { name: 'spotify', enabled: true, isActive: true, message: 'Playing Music' },
       appleMusic: { name: 'appleMusic', enabled: true, isActive: false },
+      youtubeMusic: { name: 'youtubeMusic', enabled: true, isActive: false },
       zoom: { name: 'zoom', enabled: true, isActive: false },
       teams: { name: 'teams', enabled: true, isActive: false },
       huddle: { name: 'huddle', enabled: true, isActive: false },
@@ -90,6 +93,7 @@ describe('Dashboard', () => {
     expect(screen.getAllByText('Playing Music')).toHaveLength(2);
     expect(screen.getByText('🟢 Running')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /spotify/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /youtube music/i })).toBeInTheDocument();
     expect(screen.getByText('✓ Active')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /holiday/i })).toBeInTheDocument();
   });
@@ -108,6 +112,7 @@ describe('Dashboard', () => {
           sources: {
             spotify: { name: 'spotify', enabled: true, isActive: false },
             appleMusic: { name: 'appleMusic', enabled: true, isActive: false },
+            youtubeMusic: { name: 'youtubeMusic', enabled: true, isActive: false },
             zoom: { name: 'zoom', enabled: true, isActive: false },
             teams: { name: 'teams', enabled: true, isActive: false },
             huddle: { name: 'huddle', enabled: true, isActive: false },
@@ -155,6 +160,7 @@ describe('Dashboard', () => {
           sources: {
             spotify: { name: 'spotify', enabled: true, isActive: false },
             appleMusic: { name: 'appleMusic', enabled: true, isActive: false },
+            youtubeMusic: { name: 'youtubeMusic', enabled: true, isActive: false },
             zoom: { name: 'zoom', enabled: true, isActive: true, message: 'In a meeting' },
             teams: { name: 'teams', enabled: true, isActive: false },
             huddle: { name: 'huddle', enabled: true, isActive: false },

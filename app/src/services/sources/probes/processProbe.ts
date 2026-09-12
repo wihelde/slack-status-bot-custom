@@ -11,6 +11,13 @@ export async function isMacProcessRunning(
   return commandHasOutput(`pgrep -x ${shellQuote(processName)}`, runner);
 }
 
+export async function isMacApplicationRunning(
+  applicationName: string,
+  runner: CommandRunner = runCommand
+): Promise<boolean> {
+  return commandHasOutput(`lsappinfo find name=${shellQuote(applicationName)}`, runner);
+}
+
 export async function isWindowsProcessRunning(
   executableName: string,
   runner: CommandRunner = runCommand

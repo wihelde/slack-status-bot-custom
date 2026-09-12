@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.2.0] - 2026-09-12
+
+## Added
+
+- YouTube Music can now update the Slack status when it is played through an installed macOS PWA
+- YouTube Music appears as a configurable source with the `:youtube-music:` Slack emoji
+
+## Changed
+
+- updated Electron and replaced the legacy frontend build tooling to resolve all reported dependency vulnerabilities
+- the Support link in Settings now opens an email to `slackbot@wihel.de`
+
+## Fixed
+
+- changing tracks in YouTube Music no longer briefly marks the source as inactive
+
 ## [2.1.1] - 2026-09-02
 
 ## Fixed

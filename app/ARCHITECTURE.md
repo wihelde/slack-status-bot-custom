@@ -3,7 +3,7 @@
 ## Overview
 
 The Slack Status Bot is a daemon that automatically manages your Slack status based on multiple sources and user preferences. It integrates with:
-- **Music services** (Spotify, Apple Music) for now-playing updates
+- **Music services** (Spotify, Apple Music, YouTube Music PWA) for now-playing updates
 - **Meeting services** (Zoom, Teams, Huddle) for in-meeting status
 - **Day-based statuses** (Monday, Friday, etc.)
 - **Manual quick actions** (Break, Focus, Holiday, Off, etc.)
@@ -31,7 +31,7 @@ interface StatusCheckState {
   - Active music/meeting sources
   - Day-based configurations
   - Polling updates
-- Sources have priority (Spotify > Apple Music > Zoom > Teams > Huddle)
+- Sources have priority (Spotify > Apple Music > YouTube Music > Zoom > Teams > Huddle)
 - The user can change the priority of this order
 
 #### `statusCheckState.value = 'not working'` (Protected Mode)
@@ -248,11 +248,14 @@ This prevents `correctStatus()` from overriding it.
 
 ## Key Files
 
-- **statusManager.ts**: Core status logic, state management, critical flows
-- **slack.ts**: Slack API wrapper, includes `status_expiration` field
-- **daemon.ts**: Polling loops, source detection, daemon orchestration
-- **ipcService.ts**: Frontend → Backend communication (dashboard)
-- **electron.js**: Electron main process, IPC handlers
+- **src/services/statusManager.ts**: Core status logic, state management, critical flows
+- **src/services/slack.ts**: Slack API wrapper, includes `status_expiration` field
+- **src/daemon.ts**: Polling loops and daemon orchestration
+- **src/services/sources/**: Source detection and arbitration
+- **src/services/ipcService.ts**: Frontend → Backend communication
+- **src/electron.ts**: Electron main process and IPC composition
+
+YouTube Music is detected only through an installed macOS PWA and system Now Playing metadata. See [ADR-003](docs/adr/ADR-003-youtube-music-pwa-detection.md) for the boundary, rejected browser-tab approach, and accepted platform risk.
 
 ## Testing Strategy
 
@@ -280,6 +283,4 @@ When new features or complex flows are added, expand this document with:
 - Updates to the protection mode logic
 - etc.
 
-**Last updated:** 2026-03-07
-
-
+**Last updated:** 2026-09-12

@@ -3,6 +3,7 @@ import { AppleMusicAdapter } from './appleMusic';
 import { ZoomAdapter, TeamsAdapter, HuddleAdapter } from './meetings';
 import { ISourceAdapter, SourceStatus } from './sourceAdapter';
 import { SpotifyAdapter } from './spotify';
+import { YouTubeMusicAdapter } from './youtubeMusic';
 
 export type RegisteredSourceStatus = SourceStatus & { enabled: boolean };
 
@@ -13,6 +14,7 @@ export class SourceRegistry {
     this.adapters = {
       spotify: new SpotifyAdapter(),
       appleMusic: new AppleMusicAdapter(),
+      youtubeMusic: new YouTubeMusicAdapter(),
       zoom: new ZoomAdapter(),
       teams: new TeamsAdapter(),
       huddle: new HuddleAdapter(),

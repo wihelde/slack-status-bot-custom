@@ -3,7 +3,7 @@ import '../styles/Settings.css';
 import { IPCService } from '../services/ipcService';
 import LogViewer from '../components/LogViewer';
 import { StatusConfigEditor } from '../components/StatusConfigEditor';
-import { DEFAULT_SOURCE_ORDER, SOURCE_CATALOG } from '../config/sourceCatalog';
+import { DEFAULT_SOURCE_ORDER, SOURCE_CATALOG, SourceName } from '../config/sourceCatalog';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'config' | 'logs' | 'system'>('config');
@@ -13,8 +13,8 @@ const Settings: React.FC = () => {
   const [error, setError] = useState('');
   const [tokens, setTokens] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [sourceOrder, setSourceOrder] = useState<string[]>([...DEFAULT_SOURCE_ORDER]);
-  const [draggedSource, setDraggedSource] = useState<string | null>(null);
+  const [sourceOrder, setSourceOrder] = useState<SourceName[]>([...DEFAULT_SOURCE_ORDER]);
+  const [draggedSource, setDraggedSource] = useState<SourceName | null>(null);
   const [logLevel, setLogLevelState] = useState<'DEBUG' | 'INFO' | 'WARN' | 'ERROR'>('ERROR');
   const [logLevelSaving, setLogLevelSaving] = useState(false);
   const [autoLaunch, setAutoLaunch] = useState(false);
@@ -111,7 +111,7 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleDragStart = (source: string) => {
+  const handleDragStart = (source: SourceName) => {
     setDraggedSource(source);
   };
 
@@ -119,7 +119,7 @@ const Settings: React.FC = () => {
     e.preventDefault();
   };
 
-  const handleDrop = (targetSource: string) => {
+  const handleDrop = (targetSource: SourceName) => {
     if (!draggedSource || draggedSource === targetSource) return;
 
     const newOrder = [...sourceOrder];
@@ -316,13 +316,13 @@ const Settings: React.FC = () => {
           <p><strong>Slack Status Bot{appVersion ? ` v${appVersion}` : ''}</strong></p>
           <p>Automatically update your Slack status based on what you're doing:</p>
           <ul>
-            <li>🎵 Music: Spotify and Apple Music</li>
+            <li>🎵 Music: Spotify, Apple Music, and the YouTube Music PWA</li>
             <li>📞 Meetings: Zoom, Teams, and Slack Huddles</li>
             <li>🗓️ Day-based: Automated status for each day (Monday to Sunday)</li>
             <li>⏰ Auto-correction: Resumes normal status when activities end</li>
           </ul>
           <p>
-            <a href="https://example.invalid/private-slack-link">
+            <a href="mailto:slackbot@wihel.de">
               Support
             </a>
           </p>

@@ -19,6 +19,14 @@ const buildStatuses = (overrides?: Partial<Record<SourceName, Partial<any>>>) =>
     message: undefined,
     ...overrides?.appleMusic,
   },
+  youtubeMusic: {
+    name: 'YouTube Music',
+    isActive: false,
+    enabled: true,
+    emoji: ':youtube-music:',
+    message: undefined,
+    ...overrides?.youtubeMusic,
+  },
   zoom: {
     name: 'Zoom',
     isActive: false,
