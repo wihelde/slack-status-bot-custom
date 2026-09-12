@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.2.1] - 2026-09-12
+
+## Added
+
+- offline status messages can now be added, edited, and deleted in Settings
+
+## Fixed
+
+- unreadable configuration files are preserved as a backup instead of being silently replaced with empty settings
+- the app now shows an error when it cannot read the configuration
+
 ## [2.2.0] - 2026-09-12
 
 ## Added
