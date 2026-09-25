@@ -28,7 +28,7 @@ Open your terminal and execute the following command:
 - Source priority management
 
 **Easy Configuration**
-- Slack API token setup (supports multiple tokens)
+- Slack authorization for multiple workspaces
 - Per-source enable/disable
 - Customizable source priority order
 - Auto-start on login
@@ -38,10 +38,52 @@ Open your terminal and execute the following command:
 Settings are stored in:
 - **macOS:** `~/Library/Application Support/slack-status-bot/config.json`
 
+Slack connections are stored separately in `workspace-connections.json` in the same directory. Access and refresh tokens are encrypted using macOS secure storage; they are not shown as plain text in the settings file. Existing tokens in `config.json` are migrated automatically.
+
+### Connect a Slack workspace
+
+An administrator sets up a private Slack app for each workspace. Users only need the Setup Link; they do not need the Slack Client ID or a Client Secret.
+
+1. In the [Slack app settings](https://api.slack.com/apps), create the app for the workspace. Copy its **Client ID** from **Basic Information → App Credentials**.
+2. Under **OAuth & Permissions**, enable **PKCE**, add `slack-status-bot://oauth` as a Redirect URL, and grant these **User Token Scopes**: `users.profile:read`, `users.profile:write`, `users:write`, `dnd:write`. See [Slack's PKCE guide](https://docs.slack.dev/authentication/using-pkce/) for the Slack settings.
+3. In the desktop app, open **Settings → Workspaces → Create Setup Link**. Enter the Client ID and optionally the workspace ID (`T...`) to restrict the link to that workspace. Generate and share the link with the user. Do not enter an app ID (`A...`) as the workspace ID.
+4. The user opens the Setup Link, or pastes it into **Settings → Workspaces → Setup Link** and selects **Connect workspace**. They approve access in the browser and allow it to reopen the desktop app. The workspace then appears under **Settings → Workspaces**.
+
+Repeat with a separate Slack app and Setup Link for each workspace. Connecting or reconnecting a workspace replaces only that workspace's credentials. Other workspace connections are unaffected. New connections renew their tokens automatically; use **Reconnect** if authorization is needed again. A migrated connection may need its Setup Link for the first reconnect.
+
+If Slack reports that the redirect URI does not match, check that the app's Redirect URL is exactly `slack-status-bot://oauth`. If the browser does not return to the desktop app, allow the browser prompt to open **Slack Status Bot** and check the message under **Settings → Workspaces**.
+
+#### Example manifest for easy copy & paste
+
+```yaml
+display_information:
+  name: Slack Status Updater
+  description: Simple app to generate a token to change your Slack-status via the Slack Status Bot
+  background_color: "#2c2d30"
+oauth_config:
+  redirect_urls:
+    - slack-status-bot://oauth
+  scopes:
+    user:
+      - dnd:read
+      - dnd:write
+      - reactions:read
+      - users.profile:read
+      - users.profile:write
+      - users:read
+      - users:write
+  pkce_enabled: true
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
+  app_level_token_rotation_enabled: false
+  is_mcp_enabled: false
+```
+
 ### Config Structure
 ```json
 {
-  "slackTokens": ["xoxb-...", "xoxb-..."],
   "sourceOrder": ["spotify", "appleMusic", "youtubeMusic", "zoom", "teams", "huddle"],
   "enabledSources": {
     "spotify": true,
