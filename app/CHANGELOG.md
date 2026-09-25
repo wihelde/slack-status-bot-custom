@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.3.0] - 2026-09-25
+
+## Added
+
+- Slack workspaces can now be connected directly through the desktop app with a Setup Link and browser authorization; the separate authorization page is no longer needed
+- Slack connections are stored per workspace with encrypted credentials and automatic token renewal; existing tokens are migrated automatically
+- Settings now offers System, Light, and Dark appearance modes
+
+## Changed
+
+- connecting or reconnecting a workspace replaces only that workspace's credentials
+- redesigned the Dashboard and Settings pages for clearer workspace and status information
+
+## Fixed
+
+- external status commands once again show visible and audible notifications on macOS
+
 ## [2.2.1] - 2026-09-12
 
 ## Added

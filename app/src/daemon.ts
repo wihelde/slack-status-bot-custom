@@ -8,6 +8,7 @@ import { SourceArbitrationEngine } from './services/sources/sourceArbitrationEng
 import { SourceRegistry } from './services/sources/sourceRegistry';
 import { RuntimeOrchestrator } from './services/runtimeOrchestrator';
 import type { AppStatusChangedEvent } from './contracts/ipc';
+import type { WorkspaceStatusSnapshot } from './contracts/appSnapshot';
 import { logger } from './utils/logger';
 import path from 'path';
 
@@ -16,10 +17,13 @@ export interface DaemonConfig {
   configDir?: string;
   configStore?: AppConfigStore;
   onAppStateChanged?: (statusData: AppStatusChangedEvent) => void;
+  onWorkspaceDeliveryChanged?: () => void;
+  workspaceConnections?: Pick<WorkspaceStatusSnapshot, 'teamId' | 'teamName' | 'userName'>[];
 }
 
 export class SlackStatusBotDaemon {
   private slackService: SlackService;
+  private workspaceConnections: Pick<WorkspaceStatusSnapshot, 'teamId' | 'teamName' | 'userName'>[];
   private slackExecutor: SlackStatusExecutor;
   private statusManager: StatusManager;
   private sourceRegistry: SourceRegistry;
@@ -30,12 +34,14 @@ export class SlackStatusBotDaemon {
   private configDir: string;
   private sourceOrder: SourceName[] = [...DEFAULT_SOURCE_ORDER];
   private onAppStateChanged?: (statusData: AppStatusChangedEvent) => void;
+  private onWorkspaceDeliveryChanged?: () => void;
   private configStore: AppConfigStore;
   private isPolling: boolean = false; // Prevent concurrent polling cycles
   private pollTimeoutId: NodeJS.Timeout | null = null; // Track polling timeout for cleanup
 
   constructor(config: DaemonConfig) {
     this.slackService = new SlackService(config.slackTokens);
+    this.workspaceConnections = config.workspaceConnections || [];
     this.slackExecutor = new SlackStatusExecutor(this.slackService);
     this.statusManager = new StatusManager(this.slackService);
     this.sourceRegistry = new SourceRegistry();
@@ -46,6 +52,7 @@ export class SlackStatusBotDaemon {
       sourceArbitrationEngine: this.sourceArbitrationEngine,
     });
     this.onAppStateChanged = config.onAppStateChanged;
+    this.onWorkspaceDeliveryChanged = config.onWorkspaceDeliveryChanged;
 
     this.configDir = config.configDir || this.getDefaultConfigDir();
     this.configStore = config.configStore || createAppConfigStore({ configDir: this.configDir });
@@ -131,6 +138,38 @@ export class SlackStatusBotDaemon {
       text: profile?.status_text || '',
       stateCheckValue: this.statusManager.getStatusCheckState().value,
     };
+  }
+
+  async getWorkspaceStatuses(): Promise<WorkspaceStatusSnapshot[]> {
+    const observations = await this.slackService.observeWorkspaces();
+    return observations.map((observation, index) => ({
+      teamId: this.workspaceConnections[index]?.teamId || null,
+      teamName: this.workspaceConnections[index]?.teamName || null,
+      userName: this.workspaceConnections[index]?.userName || null,
+      ...observation,
+    }));
+  }
+
+  async runCorrectionCycle(): Promise<void> {
+    if (this.slackService.hasExpiredProfileIntent()) {
+      const observed = await this.slackExecutor.getProfile();
+      this.slackService.refreshReferenceProfile(
+        observed && this.statusManager.isTrustedSharedProfile(observed) ? observed : null);
+    }
+    if (await this.slackService.synchronizeMissed()) this.onWorkspaceDeliveryChanged?.();
+    await this.statusManager.runCorrectionCycle();
+  }
+
+  async updateConnections(tokens: string[], connections: DaemonConfig['workspaceConnections'] = []): Promise<void> {
+    const observed = await this.slackExecutor.getProfile();
+    const reference = observed && this.statusManager.isTrustedSharedProfile(observed) ? observed : null;
+    if (observed && !reference && !this.slackService.matchesIntendedProfile(observed)) {
+      this.slackService.forgetIntendedStatus();
+    }
+    this.slackService.reconfigure(tokens, this.workspaceConnections.map(connection => connection.teamId),
+      connections.map(connection => connection.teamId), reference);
+    this.workspaceConnections = connections;
+    await this.slackService.synchronizeMissed();
   }
 
   /**
@@ -303,7 +342,7 @@ export class SlackStatusBotDaemon {
     // Correct status every 60 seconds
     const interval = setInterval(async () => {
       try {
-        await this.statusManager.runCorrectionCycle();
+        await this.runCorrectionCycle();
       } catch (error) {
         console.error('Error correcting status:', error);
       }

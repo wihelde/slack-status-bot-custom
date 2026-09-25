@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Dashboard from '../Dashboard';
 import { IPCService } from '../../services/ipcService';
@@ -88,10 +88,9 @@ describe('Dashboard', () => {
       expect(mockIPCService.getAppSnapshot).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.getByText('Slack Status Bot')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.getByText(':spotify_2:')).toBeInTheDocument();
     expect(screen.getAllByText('Playing Music')).toHaveLength(2);
-    expect(screen.getByText('🟢 Running')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /spotify/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /youtube music/i })).toBeInTheDocument();
     expect(screen.getByText('✓ Active')).toBeInTheDocument();
@@ -205,5 +204,53 @@ describe('Dashboard', () => {
     });
 
     expect(screen.getByText(/set holiday status/i)).toBeInTheDocument();
+  });
+
+  it('shows each workspace observation and partial delivery without inventing an online state', async () => {
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue(createAppSnapshot({
+      status: createStatus({ emoji: '', text: '', stateCheckValue: '' }),
+      workspaces: [
+        { teamId: 'T-A', teamName: 'Alpha', userName: 'Alice', health: 'unavailable',
+          profile: null, delivery: { profile: 'failed' } },
+        { teamId: 'T-B', teamName: 'Beta', userName: 'Bob', health: 'reachable',
+          profile: { status_emoji: ':coffee:', status_text: 'Working' },
+          delivery: { profile: 'delivered' } },
+      ],
+    }));
+
+    render(<Dashboard />);
+
+    const rows = await screen.findAllByRole('listitem');
+    const alpha = rows.find(row => within(row).queryByText('Alpha'));
+    const beta = rows.find(row => within(row).queryByText('Beta'));
+    expect(alpha).toBeDefined();
+    expect(beta).toBeDefined();
+    expect(within(alpha!).getByText('Unavailable')).toBeInTheDocument();
+    expect(within(alpha!).getByText('Profile failed')).toBeInTheDocument();
+    expect(within(beta!).getByText('Working')).toBeInTheDocument();
+    expect(within(beta!).getByText('Profile delivered')).toBeInTheDocument();
+    expect(screen.queryByText('Online', { selector: '.status-text' })).not.toBeInTheDocument();
+  });
+
+  it('summarizes matching workspace statuses and keeps differing statuses visible', async () => {
+    mockIPCService.getAppSnapshot = vi.fn().mockResolvedValue(createAppSnapshot({
+      status: createStatus({ emoji: ':coffee:', text: 'A very long status message' }),
+      workspaces: [
+        { teamId: 'T-A', teamName: 'Alpha', userName: 'Alice', health: 'reachable',
+          profile: { status_emoji: ':coffee:', status_text: 'A very long status message' },
+          delivery: { profile: 'delivered' } },
+        { teamId: 'T-B', teamName: 'Beta', userName: 'Bob', health: 'reachable',
+          profile: { status_emoji: ':phone:', status_text: 'In a call' },
+          delivery: { profile: 'failed' } },
+      ],
+    }));
+
+    render(<Dashboard />);
+
+    const rows = await screen.findAllByRole('listitem');
+    expect(within(rows[0]).getByText('Same status')).toBeInTheDocument();
+    expect(within(rows[0]).queryByText('A very long status message')).not.toBeInTheDocument();
+    expect(within(rows[1]).getByText('In a call')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('Profile failed')).toBeInTheDocument();
   });
 });

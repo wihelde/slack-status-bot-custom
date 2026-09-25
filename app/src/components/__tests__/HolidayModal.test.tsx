@@ -34,16 +34,15 @@ describe('HolidayModal', () => {
 
     it('should have date input field', () => {
       renderModal();
-      const input = screen.getByPlaceholderText(/e.g., 28.11.2025/i);
-      expect(input).toBeInTheDocument();
+      expect(screen.getByLabelText('Last holiday date')).toHaveAttribute('type', 'date');
     });
   });
 
   describe('Date Input and Preview', () => {
     it('should update preview when date is entered', async () => {
       renderModal();
-      const input = screen.getByPlaceholderText(/e.g., 28.11.2025/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: '21.11.2025' } }); // Friday
+      const input = screen.getByLabelText('Last holiday date') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '2025-11-21' } }); // Friday
 
       await waitFor(() => {
         expect(screen.getByText(/24.11.2025/)).toBeInTheDocument();
@@ -52,8 +51,8 @@ describe('HolidayModal', () => {
 
     it('should show +3 days for Friday return date', async () => {
       renderModal();
-      const input = screen.getByPlaceholderText(/e.g., 28.11.2025/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: '21.11.2025' } }); // Friday
+      const input = screen.getByLabelText('Last holiday date') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '2025-11-21' } }); // Friday
 
       await waitFor(() => {
         expect(screen.getByText(/24.11.2025/)).toBeInTheDocument();
@@ -62,8 +61,8 @@ describe('HolidayModal', () => {
 
     it('should show +1 day for non-Friday return date', async () => {
       renderModal();
-      const input = screen.getByPlaceholderText(/e.g., 28.11.2025/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: '24.11.2025' } }); // Monday
+      const input = screen.getByLabelText('Last holiday date') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '2025-11-24' } }); // Monday
 
       await waitFor(() => {
         expect(screen.getByText(/25.11.2025/)).toBeInTheDocument();
@@ -94,8 +93,8 @@ describe('HolidayModal', () => {
 
     it('should enable Set Holiday button when date is entered', async () => {
       renderModal();
-      const input = screen.getByPlaceholderText(/e.g., 28.11.2025/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: '21.11.2025' } });
+      const input = screen.getByLabelText('Last holiday date') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '2025-11-21' } });
 
       const setBtn = screen.getByRole('button', { name: /Set Holiday/i });
       await waitFor(() => {
@@ -105,8 +104,8 @@ describe('HolidayModal', () => {
 
     it('should call onSetHoliday with date when Set Holiday is clicked', async () => {
       renderModal();
-      const input = screen.getByPlaceholderText(/e.g., 28.11.2025/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: '21.11.2025' } });
+      const input = screen.getByLabelText('Last holiday date') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '2025-11-21' } });
 
       const setBtn = screen.getByRole('button', { name: /Set Holiday/i });
       await waitFor(() => {
@@ -120,8 +119,8 @@ describe('HolidayModal', () => {
 
     it('should close modal after setting holiday', async () => {
       renderModal();
-      const input = screen.getByPlaceholderText(/e.g., 28.11.2025/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: '21.11.2025' } });
+      const input = screen.getByLabelText('Last holiday date') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '2025-11-21' } });
 
       const setBtn = screen.getByRole('button', { name: /Set Holiday/i });
       await waitFor(() => {
@@ -135,23 +134,17 @@ describe('HolidayModal', () => {
   });
 
   describe('Error Handling', () => {
-    it('should show error message on invalid date', async () => {
+    it('should show an error when setting the selected date fails', async () => {
       mockOnSetHoliday.mockRejectedValueOnce(new Error('Invalid date'));
       renderModal();
       
-      const input = screen.getByPlaceholderText(/e.g., 28.11.2025/i) as HTMLInputElement;
-      fireEvent.change(input, { target: { value: 'invalid' } });
-
-      const setBtn = screen.getByRole('button', { name: /Set Holiday/i }) as HTMLButtonElement;
-      await waitFor(() => {
-        if (setBtn && !setBtn.disabled) {
-          fireEvent.click(setBtn);
-        }
-      });
+      const input = screen.getByLabelText('Last holiday date') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '2025-11-21' } });
+      fireEvent.click(screen.getByRole('button', { name: /Set Holiday/i }));
+      expect(await screen.findByText('Invalid date')).toBeInTheDocument();
     });
   });
 });
-
 
 
 

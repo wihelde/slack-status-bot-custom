@@ -100,12 +100,12 @@ export class RuntimeOrchestrator {
             winningSource.sourceName,
             winningSource.status.message
           );
-          this.config.statusManager.emitObservedStatusChange(
-            winningSource.status.emoji || '',
-            winningSource.status.message,
-            'activeSource'
-          );
         }
+        this.config.statusManager.emitObservedStatusChange(
+          winningSource.status.emoji || '',
+          winningSource.status.message,
+          'activeSource'
+        );
       }
 
       if (MEETING_SOURCE_NAMES.includes(winningSource.sourceName)) {
@@ -140,9 +140,9 @@ export class RuntimeOrchestrator {
 
       if (applied) {
         this.config.sourceArbitrationEngine.recordHandledStatus(sourceName, message);
-        this.config.statusManager.emitObservedStatusChange(emoji, message, 'activeSource');
         statusWasSet = true;
       }
+      this.config.statusManager.emitObservedStatusChange(emoji, message, 'activeSource');
     } else {
       this.config.sourceArbitrationEngine.recordHandledStatus(sourceName, message);
       logger.debug(`[polling] ${sourceName} status unchanged or blocked, skipping API call`);
@@ -189,8 +189,8 @@ export class RuntimeOrchestrator {
 
         if (applied) {
           this.config.sourceArbitrationEngine.recordHandledStatus(nextWinner.sourceName, message);
-          this.config.statusManager.emitObservedStatusChange(emoji, message, 'activeSource');
         }
+        this.config.statusManager.emitObservedStatusChange(emoji, message, 'activeSource');
       }
 
       return;
@@ -243,9 +243,9 @@ export class RuntimeOrchestrator {
     }
 
     logger.info(`[polling] ${sourceName} ${reason}, setting status`, { emoji, message });
-    await this.config.slackExecutor.setSourceStatus(emoji, message);
-    this.lastProfileSetTime = now;
-    return true;
+    const success = await this.config.slackExecutor.setSourceStatus(emoji, message);
+    if (success) this.lastProfileSetTime = now;
+    return success;
   }
 
   private async tryResetAfterSourceDeactivation(sourceName: SourceName): Promise<void> {

@@ -5,7 +5,7 @@ import { DayOfWeek, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_O
 import type { AppStatusChangedEvent } from '../contracts/ipc';
 import { StatusDomain } from './statusDomain/statusDomain';
 import type { ManualAction } from './statusDomain/types';
-import { protectedEmojis } from './statusDomain/constants';
+import { managedEmojis, protectedEmojis } from './statusDomain/constants';
 import { logger } from '../utils/logger';
 
 export interface StatusCheckState {
@@ -87,6 +87,11 @@ export class StatusManager extends EventEmitter {
    */
   async getLastKnownProfile(): Promise<SlackProfile | null> {
     return this.profileCache;
+  }
+
+  isTrustedSharedProfile(profile: SlackProfile): boolean {
+    return (!profile.status_emoji && !profile.status_text) ||
+      managedEmojis.has(profile.status_emoji) || this.allowedEmojis.has(profile.status_emoji);
   }
 
   async restoreProtectedStatusFromSlack(): Promise<boolean> {
@@ -482,10 +487,6 @@ export class StatusManager extends EventEmitter {
       dndAction: actionPlan.dndAction,
     });
 
-    if (!success) {
-      return false;
-    }
-
     this.finalStatus = actionPlan.message;
     this.invalidateProfileCache();
     this.statusCheckState.value = actionPlan.stateValue;
@@ -504,6 +505,6 @@ export class StatusManager extends EventEmitter {
       stateValue: actionPlan.stateValue,
     } satisfies AppStatusChangedEvent);
 
-    return true;
+    return success;
   }
 }

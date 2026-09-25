@@ -29,6 +29,9 @@ export const IPC_CHANNELS = {
   getAutoLaunch: 'get-auto-launch',
   completeFirstRun: 'complete-first-run',
   getSetupSnapshot: 'get-setup-snapshot',
+  openSetupLink: 'open-setup-link',
+  reconnectWorkspace: 'reconnect-workspace',
+  removeWorkspace: 'remove-workspace',
 } as const;
 
 export const IPC_RENDERER_EVENTS = {
@@ -69,6 +72,19 @@ export interface TokenStatusPayload {
 export interface TokensPayload {
   tokens: string[];
   count: number;
+  connections?: WorkspaceConnectionSummary[];
+  connectionError?: string | null;
+  oauthMessage?: string | null;
+}
+
+export interface WorkspaceConnectionSummary {
+  teamId: string | null;
+  teamName: string | null;
+  userId: string | null;
+  userName: string | null;
+  state: 'connected' | 'unverified' | 'invalid' | 'auth-required';
+  canReconnect?: boolean;
+  refreshIssue?: 'temporary';
 }
 
 export interface AutoLaunchStatusPayload {
@@ -103,4 +119,7 @@ export interface ElectronAPI {
   setAutoLaunch: (enabled: boolean) => Promise<IpcResult<AutoLaunchStatusPayload>>;
   getAutoLaunch: () => Promise<IpcResult<AutoLaunchStatusPayload>>;
   completeFirstRun: () => Promise<IpcResult>;
+  openSetupLink: (link: string) => Promise<IpcResult>;
+  reconnectWorkspace: (teamId: string) => Promise<IpcResult>;
+  removeWorkspace: (teamId: string) => Promise<IpcResult>;
 }

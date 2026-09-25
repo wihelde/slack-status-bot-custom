@@ -3,13 +3,14 @@ import '../styles/Dashboard.css';
 import { IPCService } from '../services/ipcService';
 import { CustomStatusConfig, getDefaultStatusConfiguration } from '../config/statusConfig';
 import { buildSourceDisplayStates, SOURCE_ICONS, SOURCE_LABELS, SourceDisplayState, SourceName } from '../config/sourceCatalog';
-import type { AppSnapshot } from '../contracts/appSnapshot';
+import type { AppSnapshot, WorkspaceStatusSnapshot } from '../contracts/appSnapshot';
 import HolidayModal from '../components/HolidayModal';
 
 const Dashboard: React.FC = () => {
   const [sources, setSources] = useState<SourceDisplayState[]>(buildSourceDisplayStates());
 
   const [currentStatus, setCurrentStatus] = useState({ emoji: '', text: '' });
+  const [workspaces, setWorkspaces] = useState<WorkspaceStatusSnapshot[]>([]);
   const [daemonRunning, setDaemonRunning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showHolidayModal, setShowHolidayModal] = useState(false);
@@ -21,6 +22,7 @@ const Dashboard: React.FC = () => {
       emoji: snapshot.status.emoji,
       text: snapshot.status.text,
     });
+    setWorkspaces(snapshot.workspaces || []);
     setDaemonRunning(snapshot.daemon.running);
     setSources(buildSourceDisplayStates(snapshot.sources));
     setUpdateAvailable(snapshot.update);
@@ -145,33 +147,61 @@ const Dashboard: React.FC = () => {
       )}
       
       <div className="dashboard-header">
-        <h1>Slack Status Bot</h1>
-        <div className={`daemon-status ${daemonRunning ? 'running' : 'stopped'}`}>
-          {daemonRunning ? '🟢 Running' : '🔴 Stopped'}
-        </div>
+        <h1>Dashboard</h1>
       </div>
 
       <div className="dashboard-card">
         <h2>Current Status</h2>
         <div className="current-status-display">
-          <span className="status-emoji">{currentStatus.emoji || '🟢'}</span>
-          <span className="status-text">{currentStatus.text || 'Online'}</span>
+          <span className="status-text">{currentStatus.text || (workspaces.length ? 'Unavailable' : 'Online')}</span>
+          {currentStatus.emoji && <span className="status-emoji">{currentStatus.emoji}</span>}
         </div>
+        {workspaces.length > 0 && (
+          <div className="workspace-section">
+            <h3>Workspaces <span>{workspaces.length}</span></h3>
+            <ul aria-label="Workspace statuses" className="workspace-statuses">
+              {workspaces.map((workspace, index) => {
+                const profile = workspace.health === 'reachable' ? workspace.profile : null;
+                const matchesCurrent = profile && (currentStatus.emoji || currentStatus.text)
+                  && profile.status_emoji === currentStatus.emoji
+                  && profile.status_text === currentStatus.text;
+                return (
+                  <li key={workspace.teamId || index} className="workspace-status-row">
+                    <strong className="workspace-name">{workspace.teamName || workspace.teamId || 'Unverified workspace'}</strong>
+                    <span className="workspace-observation">
+                      {profile
+                        ? matchesCurrent
+                          ? 'Same status'
+                          : <><span>{profile.status_text || 'No status'}</span>{profile.status_emoji && <span className="workspace-emoji">{profile.status_emoji}</span>}</>
+                        : 'Unavailable'}
+                    </span>
+                    <span className="workspace-delivery">
+                      {workspace.delivery.profile && <span>Profile {workspace.delivery.profile}</span>}
+                      {workspace.delivery.presence && <span>Presence {workspace.delivery.presence}</span>}
+                      {workspace.delivery.dnd && <span>DND {workspace.delivery.dnd}</span>}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         <div className="status-control">
+          <span>Set presence</span>
           <div className="button-group">
             <button
               className="status-btn online"
               onClick={handleGoOnline}
               title="Go Online"
             >
-              🟢 Online
+              Online
             </button>
             <button
               className="status-btn away"
               onClick={handleGoAway}
               title="Go Away"
             >
-              🟡 Away
+              Away
             </button>
           </div>
         </div>
@@ -181,17 +211,18 @@ const Dashboard: React.FC = () => {
         <h2>Active Sources</h2>
         {!daemonRunning && (
           <div className="sources-disabled-notice">
-            ⚠️ Configure a Slack token in Settings to enable source tracking
+            ⚠️ Connect a Slack workspace in Settings to enable source tracking
           </div>
         )}
         <div className={`sources-grid ${!daemonRunning ? 'disabled' : ''}`}>
           {sources.map((source) => (
             <div key={source.name} className={`source-item ${source.isActive ? 'active' : ''}`}>
               <div className="source-header">
-                <h3>{SOURCE_ICONS[source.name]} {SOURCE_LABELS[source.name]}</h3>
+                <h3><span className={source.name === 'spotify' || source.name === 'appleMusic' ? 'music-source-icon' : undefined}>{SOURCE_ICONS[source.name]}</span> {SOURCE_LABELS[source.name]}</h3>
                 <label className={`toggle ${!daemonRunning ? 'disabled' : ''}`}>
                   <input
                     type="checkbox"
+                    aria-label={`Enable ${SOURCE_LABELS[source.name]}`}
                     checked={source.enabled}
                     onChange={() => handleToggleSource(source.name)}
                     disabled={!daemonRunning}

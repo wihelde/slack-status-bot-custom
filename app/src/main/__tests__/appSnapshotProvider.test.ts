@@ -28,6 +28,13 @@ describe('AppSnapshotProvider', () => {
           message: 'Playing Music',
         },
       }),
+      getWorkspaceStatuses: async () => [
+        { teamId: 'T-A', teamName: 'Alpha', userName: 'Alice', health: 'unavailable' as const,
+          profile: null, delivery: { profile: 'failed' as const } },
+        { teamId: 'T-B', teamName: 'Beta', userName: 'Bob', health: 'reachable' as const,
+          profile: { status_emoji: ':coffee:', status_text: 'Working' },
+          delivery: { profile: 'delivered' as const } },
+      ],
       getDaemonSnapshot: () => ({ running: true }),
       getUpdateSnapshot: () => ({
         version: '2.1.0',
@@ -47,6 +54,11 @@ describe('AppSnapshotProvider', () => {
         emoji: ':spotify_2:',
         text: 'Playing Music',
       },
+      workspaces: [
+        { teamId: 'T-A', health: 'unavailable', profile: null, delivery: { profile: 'failed' } },
+        { teamId: 'T-B', health: 'reachable', profile: { status_text: 'Working' },
+          delivery: { profile: 'delivered' } },
+      ],
       daemon: {
         running: true,
       },

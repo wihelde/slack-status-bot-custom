@@ -4,14 +4,24 @@ import { IPCService } from '../services/ipcService';
 import LogViewer from '../components/LogViewer';
 import { StatusConfigEditor } from '../components/StatusConfigEditor';
 import { DEFAULT_SOURCE_ORDER, SOURCE_CATALOG, SourceName } from '../config/sourceCatalog';
+import type { WorkspaceConnectionSummary } from '../contracts/ipc';
+import { buildSetupLink } from '../contracts/setupLink';
+import { applyThemePreference, readThemePreference, ThemePreference } from '../theme';
 
 const Settings: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'config' | 'logs' | 'system'>('config');
-  const [slackToken, setSlackToken] = useState('');
+  const [activeTab, setActiveTab] = useState<'workspaces' | 'automation' | 'logs'>('workspaces');
+  const [setupLink, setSetupLink] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [workspaceId, setWorkspaceId] = useState('');
+  const [generatedLink, setGeneratedLink] = useState('');
+  const [showLinkGenerator, setShowLinkGenerator] = useState(false);
+  const [oauthMessage, setOAuthMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [tokens, setTokens] = useState<string[]>([]);
+  const [connections, setConnections] = useState<WorkspaceConnectionSummary[]>([]);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [sourceOrder, setSourceOrder] = useState<SourceName[]>([...DEFAULT_SOURCE_ORDER]);
   const [draggedSource, setDraggedSource] = useState<SourceName | null>(null);
@@ -20,19 +30,23 @@ const Settings: React.FC = () => {
   const [autoLaunch, setAutoLaunch] = useState(false);
   const [autoLaunchLoading, setAutoLaunchLoading] = useState(false);
   const [appVersion, setAppVersion] = useState('');
+  const [themePreference, setThemePreference] = useState<ThemePreference>(readThemePreference);
 
   useEffect(() => {
     loadConfig();
+    return IPCService.onAppSnapshotChanged(signal => {
+      if (signal.reason === 'setup') void loadConfig();
+    });
   }, []);
 
   const loadConfig = async () => {
     try {
-      console.log('[Settings] Loading tokens...');
       const tokenData = await IPCService.getTokens();
-      console.log('[Settings] Token data received:', tokenData);
       if (tokenData) {
-        console.log('[Settings] Setting tokens:', tokenData.tokens);
         setTokens(tokenData.tokens || []);
+        setConnections(tokenData.connections);
+        setConnectionError(tokenData.connectionError);
+        setOAuthMessage(tokenData.oauthMessage);
       }
 
       // Load source order
@@ -66,31 +80,44 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleSaveTokens = async () => {
-    if (!slackToken.trim()) {
-      setError('Please enter a Slack token');
-      return;
-    }
-
+  const handleOpenSetupLink = async () => {
     try {
       setError('');
-      setSaved(false);
-      const newTokens = slackToken.includes(',')
-        ? slackToken.split(',').map(t => t.trim())
-        : [slackToken.trim()];
-
-      const success = await IPCService.saveTokens(newTokens);
-      if (success) {
-        setSaved(true);
-        setSlackToken('');
-        // Reload tokens after saving
-        await loadConfig();
-        setTimeout(() => setSaved(false), 3000);
-      } else {
-        setError('Failed to save tokens');
-      }
+      const result = await IPCService.openSetupLink(setupLink.trim());
+      if (result) setError(result);
+      else setSetupLink('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error saving tokens');
+      setError(err instanceof Error ? err.message : 'Could not open Setup Link');
+    }
+  };
+
+  const handleReconnect = async (teamId: string) => {
+    try {
+      setError('');
+      const result = await IPCService.reconnectWorkspace(teamId);
+      if (result) setError(result);
+    } catch {
+      setError('Could not reconnect workspace');
+    }
+  };
+
+  const handleRemoveWorkspace = async (teamId: string) => {
+    try {
+      setError('');
+      const result = await IPCService.removeWorkspace(teamId);
+      if (result) setError(result);
+      else await loadConfig();
+    } catch {
+      setError('Could not remove workspace');
+    }
+  };
+
+  const handleGenerateLink = () => {
+    try {
+      setError('');
+      setGeneratedLink(buildSetupLink({ clientId: clientId.trim(), expectedTeamId: workspaceId.trim() || undefined }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid Slack registration');
     }
   };
 
@@ -100,6 +127,7 @@ const Settings: React.FC = () => {
       const success = await IPCService.deleteTokens();
       if (success) {
         setTokens([]);
+        setConnections([]);
         setSaved(true);
         setShowDeleteConfirm(false);
         setTimeout(() => setSaved(false), 3000);
@@ -185,6 +213,11 @@ const Settings: React.FC = () => {
     SOURCE_CATALOG.map(source => [source.id, { name: source.displayName, emoji: source.icon }])
   );
 
+  const selectTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    document.querySelector('.main-content')?.scrollTo(0, 0);
+  };
+
   if (loading) {
     return <div className="settings"><p>Loading...</p></div>;
   }
@@ -195,51 +228,90 @@ const Settings: React.FC = () => {
         <h1>Settings</h1>
         <div className="settings-tabs">
           <button 
-            className={`tab-btn ${activeTab === 'config' ? 'active' : ''}`}
-            onClick={() => setActiveTab('config')}
+            className={`tab-btn ${activeTab === 'workspaces' ? 'active' : ''}`}
+            aria-pressed={activeTab === 'workspaces'}
+            onClick={() => selectTab('workspaces')}
           >
-            ⚙️ Configuration
+            🔑 Workspaces
           </button>
           <button 
-            className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`}
-            onClick={() => setActiveTab('system')}
+            className={`tab-btn ${activeTab === 'automation' ? 'active' : ''}`}
+            aria-pressed={activeTab === 'automation'}
+            onClick={() => selectTab('automation')}
           >
-            🖥️ System
+            ⚙️ Automation
           </button>
           <button 
             className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
-            onClick={() => setActiveTab('logs')}
+            aria-pressed={activeTab === 'logs'}
+            onClick={() => selectTab('logs')}
           >
             📋 Logs
           </button>
         </div>
       </div>
 
-      {activeTab === 'config' && (
+      {activeTab === 'workspaces' && (
       <>
-      <div className="settings-card">
-        <h2>🔑 Slack Configuration</h2>
+      <div className="settings-card slack-config">
+        <h2>🔑 Slack workspaces <span className="workspace-count">{connections.length || tokens.length}</span></h2>
         
-        {tokens.length > 0 && (
+        {connectionError && <p className="error-message">Slack connection storage: {connectionError}</p>}
+        {oauthMessage && <p className="connection-message" role="status">{oauthMessage}</p>}
+        {(connections.length > 0 || tokens.length > 0) && (
           <div className="token-display">
-            <h3>Configured Tokens ({tokens.length})</h3>
             <div className="token-list">
-              {tokens.map((token, index) => (
-                <div key={index} className="token-item">
-                  <code>{token}</code>
-                </div>
-              ))}
+              {connections.length > 0
+                ? connections.map((connection, index) => (
+                    <div key={connection.teamId || `unverified-${index}`} className="token-item">
+                      <div className="workspace-details">
+                        <div className="workspace-name">{connection.state === 'invalid'
+                          ? 'Previous connection'
+                          : connection.teamName || connection.teamId || 'Unknown workspace'}</div>
+                        <div className="workspace-meta">
+                          {connection.userName && <span>{connection.userName}</span>}
+                          <span className={connection.state === 'auth-required' || connection.state === 'invalid' ||
+                            connection.refreshIssue === 'temporary'
+                            ? 'workspace-state needs-attention'
+                            : 'workspace-state'}>
+                            {connection.state === 'connected'
+                              ? connection.refreshIssue === 'temporary'
+                                ? 'Connection retrying'
+                                : connection.canReconnect
+                                  ? 'Connected'
+                                  : 'Setup Link needed for first reconnect'
+                              : connection.state === 'auth-required'
+                                ? 'Reconnect required'
+                                : connection.state === 'invalid'
+                                  ? 'Token invalid · Use a Setup Link to reconnect'
+                                  : 'Checking previous connection'}
+                          </span>
+                        </div>
+                      </div>
+                      {connection.teamId && <div className="workspace-actions">
+                        {connection.canReconnect && (
+                          <button className="secondary-action" onClick={() => void handleReconnect(connection.teamId!)}>Reconnect</button>
+                        )}
+                        <button className="subtle-action danger-action"
+                          aria-label={`Remove ${connection.teamName || connection.teamId} locally`}
+                          onClick={() => void handleRemoveWorkspace(connection.teamId!)}>Remove locally</button>
+                      </div>}
+                    </div>
+                  ))
+                : tokens.map((token, index) => (
+                    <div key={index} className="token-item"><code>{token}</code></div>
+                  ))}
             </div>
             {!showDeleteConfirm ? (
               <button className="delete-btn" onClick={() => setShowDeleteConfirm(true)}>
-                🗑️ Delete All Tokens
+                Remove all connections
               </button>
             ) : (
               <div className="delete-confirm">
-                <p>Are you sure? This will stop the daemon from running.</p>
+                <p>Remove all Slack connections from this device?</p>
                 <div className="confirm-buttons">
                   <button className="confirm-delete-btn" onClick={handleDeleteTokens}>
-                    Yes, Delete
+                    Remove all
                   </button>
                   <button className="cancel-btn" onClick={() => setShowDeleteConfirm(false)}>
                     Cancel
@@ -250,36 +322,70 @@ const Settings: React.FC = () => {
           </div>
         )}
         
-        <div className="form-group">
-          <label htmlFor="token">Add Slack Bot Token(s)</label>
-          <textarea
-            id="token"
-            placeholder="Enter your Slack bot token (xoxb-...)"
-            value={slackToken}
-            onChange={(e) => setSlackToken(e.target.value)}
-            className="input-field"
-            rows={3}
-          />
-          <small className="help-text">
-            📖 Get your token from the{' '}
-            <a href="https://open-source.pages.gitlab.esome.info/slack-token-service/" target="_blank" rel="noopener noreferrer">
-              Slack Bot Token Service
-            </a>
-            . You can add multiple tokens separated by commas.
-          </small>
+        <div className="form-group setup-link-section">
+          <label htmlFor="setup-link">Setup Link</label>
+          <div className="setup-link-controls">
+            <input id="setup-link" className="input-field" value={setupLink}
+              onChange={event => setSetupLink(event.target.value)}
+              placeholder="Paste a Setup Link" />
+            <button className="save-btn" disabled={!setupLink.trim()}
+              onClick={() => void handleOpenSetupLink()}>Connect workspace</button>
+          </div>
           {error && <div className="error-message">{error}</div>}
-          <button className="save-btn" onClick={handleSaveTokens}>
-            💾 Save Token
-          </button>
-          {saved && <div className="success-message">✓ Token saved successfully</div>}
+          {saved && <div className="success-message">✓ Connections updated</div>}
+          <button className="setup-link-toggle" aria-expanded={showLinkGenerator}
+            onClick={() => setShowLinkGenerator(value => !value)}>Create Setup Link</button>
+          {showLinkGenerator && <div className="setup-link-generator">
+            <div className="setup-link-fields">
+              <div>
+                <label htmlFor="client-id">Slack Client ID</label>
+                <input id="client-id" className="input-field" value={clientId}
+                  onChange={event => setClientId(event.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="workspace-id">Workspace ID</label>
+                <input id="workspace-id" className="input-field" value={workspaceId}
+                  onChange={event => setWorkspaceId(event.target.value)} placeholder="Optional · starts with T" />
+              </div>
+            </div>
+            <small className="help-text">In the Slack app, enable PKCE, add redirect URL
+              <code> slack-status-bot://oauth</code>, and grant user scopes
+              <code> users.profile:read, users.profile:write, users:write, dnd:write</code>.
+              The Workspace ID restricts this link to one workspace.</small>
+            <button className="secondary-action" onClick={handleGenerateLink}>Generate link</button>
+            {generatedLink && <div className="setup-link-output">
+              <label htmlFor="generated-setup-link">Generated Setup Link</label>
+              <div className="setup-link-controls">
+                <input id="generated-setup-link" className="input-field" readOnly value={generatedLink} />
+                <button className="secondary-action" onClick={() => void navigator.clipboard.writeText(generatedLink)
+                  .catch(() => setError('Copy failed; select the link above instead'))}>Copy link</button>
+              </div>
+            </div>}
+          </div>}
         </div>
       </div>
+      </>
+      )}
 
+      {activeTab === 'automation' && (
+      <>
+      <div className="settings-card appearance-setting">
+        <h2>🌓 Appearance</h2>
+        <label htmlFor="theme-preference">Theme</label>
+        <select id="theme-preference" value={themePreference} onChange={event => {
+          const preference = event.target.value as ThemePreference;
+          setThemePreference(preference);
+          applyThemePreference(preference);
+        }}>
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
       <div className="settings-card">
-        <h2>🎵 Source Priority (Drag to Reorder)</h2>
+        <h2>🎵 Source Priority</h2>
         <p className="priority-info">
-          When multiple sources are active, the one appearing first in this list will be displayed. 
-          Drag and drop to set your priority.
+          Drag sources to choose which status wins when several are active.
         </p>
         <div className="source-priority-list">
           {sourceOrder.map((source) => (
@@ -292,7 +398,7 @@ const Settings: React.FC = () => {
               onDrop={() => handleDrop(source)}
             >
               <span className="drag-handle">⋮⋮</span>
-              <span className="source-emoji">{sourceLabels[source]?.emoji}</span>
+              <span className={`source-emoji ${source === 'spotify' || source === 'appleMusic' ? 'music-source-icon' : ''}`}>{sourceLabels[source]?.emoji}</span>
               <span className="source-name">{sourceLabels[source]?.name}</span>
             </div>
           ))}
@@ -304,37 +410,11 @@ const Settings: React.FC = () => {
 
       <div className="settings-card">
         <h2>📝 Status Configuration</h2>
-        <p className="settings-description">
-          Configure your custom status messages, emojis, and when they should be automatically set.
-        </p>
         <StatusConfigEditor />
       </div>
 
-      <div className="settings-card">
-        <h2>ℹ️ About</h2>
-        <div className="about-section">
-          <p><strong>Slack Status Bot{appVersion ? ` v${appVersion}` : ''}</strong></p>
-          <p>Automatically update your Slack status based on what you're doing:</p>
-          <ul>
-            <li>🎵 Music: Spotify, Apple Music, and the YouTube Music PWA</li>
-            <li>📞 Meetings: Zoom, Teams, and Slack Huddles</li>
-            <li>🗓️ Day-based: Automated status for each day (Monday to Sunday)</li>
-            <li>⏰ Auto-correction: Resumes normal status when activities end</li>
-          </ul>
-          <p>
-            <a href="mailto:slackbot@wihel.de">
-              Support
-            </a>
-          </p>
-        </div>
-      </div>
-      </>
-      )}
-
-      {activeTab === 'system' && (
-        <>
         <div className="settings-card">
-          <h2>🚀 System Settings</h2>
+          <h2>🚀 Startup</h2>
           <div className="system-setting">
             <label htmlFor="auto-launch" className="setting-label">
               <input 
@@ -347,11 +427,9 @@ const Settings: React.FC = () => {
               />
               <span className="checkbox-text">Start App when computer boots</span>
             </label>
-            <p className="setting-description">
-              When enabled, the app will automatically start and run in the background when your Mac boots up.
-            </p>
           </div>
         </div>
+        <p className="settings-about">Slack Status Bot{appVersion ? ` v${appVersion}` : ''} · <a href="mailto:slackbot@wihel.de">Support</a></p>
         </>
       )}
 
@@ -359,9 +437,6 @@ const Settings: React.FC = () => {
         <>
         <div className="settings-card">
           <h2>🔍 Log Level</h2>
-          <p className="log-level-info">
-            Choose what level of detail to display in logs:
-          </p>
           <div className="log-level-selector">
             <div className="log-levels">
               <button 

@@ -35,7 +35,7 @@ const FirstRunDialog: React.FC<FirstRunDialogProps> = ({ onComplete }) => {
         
         <div className="dialog-content">
           <p className="welcome-text">
-            Your Slack status is about to get smarter!
+            Choose whether Slack Status Bot starts with your Mac.
           </p>
           
           <div className="setup-option">
@@ -52,7 +52,7 @@ const FirstRunDialog: React.FC<FirstRunDialogProps> = ({ onComplete }) => {
               </span>
             </label>
             <p className="setup-description">
-              The app will run in the background and keep your Slack status up-to-date based on your activities.
+              The app runs in the background to keep your status up to date.
             </p>
           </div>
 

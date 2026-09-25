@@ -6,6 +6,19 @@ export interface AppStatusSnapshot {
   stateCheckValue: string;
 }
 
+export interface WorkspaceStatusSnapshot {
+  teamId: string | null;
+  teamName: string | null;
+  userName: string | null;
+  health: 'reachable' | 'unavailable';
+  profile: { status_emoji: string; status_text: string; status_expiration?: number } | null;
+  delivery: {
+    profile?: 'delivered' | 'failed';
+    presence?: 'delivered' | 'failed';
+    dnd?: 'delivered' | 'failed';
+  };
+}
+
 export interface AppDaemonSnapshot {
   running: boolean;
 }
@@ -47,6 +60,7 @@ export type AppSourcesSnapshot = Record<SourceName, AppSourceSnapshot>;
 export interface AppSnapshot {
   app: AppMetadataSnapshot;
   status: AppStatusSnapshot;
+  workspaces?: WorkspaceStatusSnapshot[];
   daemon: AppDaemonSnapshot;
   sources: AppSourcesSnapshot;
   update: AppUpdateSnapshot | null;

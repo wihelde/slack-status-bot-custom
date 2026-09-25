@@ -82,6 +82,18 @@ describe('RuntimeOrchestrator', () => {
     expect(slackExecutor.setMeetingDnd).toHaveBeenCalledWith(true);
   });
 
+  it('signals a partially delivered source status without recording it as fully handled', async () => {
+    slackExecutor.setSourceStatus.mockResolvedValue(false);
+    const recorded = vi.spyOn(sourceArbitrationEngine, 'recordHandledStatus');
+    const statuses = createStatuses({ zoom: { isActive: true, message: 'In a meeting' } });
+    const snapshot = sourceArbitrationEngine.evaluate(DEFAULT_SOURCE_ORDER, statuses);
+
+    await orchestrator.handlePollingSnapshot({ sourceOrder: DEFAULT_SOURCE_ORDER, sourceStatuses: statuses, snapshot });
+
+    expect(statusManager.emitObservedStatusChange).toHaveBeenCalledWith(':zoom:', 'In a meeting', 'activeSource');
+    expect(recorded).not.toHaveBeenCalled();
+  });
+
   it('switches to the fallback winner when the current winner deactivates', async () => {
     const initialStatuses = createStatuses({
       spotify: { isActive: true, message: 'Playing music' },

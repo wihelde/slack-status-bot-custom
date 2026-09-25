@@ -12,12 +12,12 @@
 }
 
 .modal-content {
-  background: white;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: 10px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   width: 90%;
   max-width: 400px;
-  animation: slideIn 0.3s ease-out;
+  animation: slideIn 0.2s ease-out;
 }
 
 @keyframes slideIn {
@@ -36,13 +36,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 24px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border);
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 20px;
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 .modal-close {
@@ -50,7 +50,7 @@
   border: none;
   font-size: 28px;
   cursor: pointer;
-  color: #666;
+  color: var(--muted);
   padding: 0;
   width: 32px;
   height: 32px;
@@ -62,7 +62,7 @@
 }
 
 .modal-close:hover {
-  background-color: #f0f0f0;
+  background-color: var(--surface-muted);
 }
 
 form {
@@ -77,43 +77,46 @@ form {
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: #333;
+  color: var(--ink);
   font-size: 14px;
 }
 
 .date-input {
   width: 100%;
   padding: 10px 12px;
-  border: 2px solid #ddd;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   font-size: 14px;
-  font-family: 'Monaco', 'Courier New', monospace;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--ink);
   box-sizing: border-box;
   transition: border-color 0.2s;
 }
 
 .date-input:focus {
   outline: none;
-  border-color: #4CAF50;
+  border-color: var(--accent-fill);
+  box-shadow: 0 0 0 3px rgba(29, 93, 139, 0.12);
 }
 
 .date-input:disabled {
-  background-color: #f5f5f5;
-  color: #999;
+  background-color: var(--surface-muted);
+  color: var(--muted);
   cursor: not-allowed;
 }
 
 .help-text {
   display: block;
   margin-top: 6px;
-  color: #666;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
 }
 
 .preview {
-  background-color: #f9f9f9;
-  border: 2px solid #e0e0e0;
+  background-color: var(--surface-muted);
+  border: 2px solid var(--border);
   border-radius: 6px;
   padding: 12px;
   margin-bottom: 20px;
@@ -122,7 +125,7 @@ form {
 .preview-label {
   font-size: 12px;
   font-weight: 600;
-  color: #666;
+  color: var(--muted);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -132,7 +135,7 @@ form {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #333;
+  color: var(--ink);
   font-size: 14px;
 }
 
@@ -141,13 +144,13 @@ form {
 }
 
 .error-message {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: var(--danger-soft);
+  color: var(--danger);
   padding: 10px 12px;
   border-radius: 6px;
   font-size: 13px;
   margin-bottom: 16px;
-  border-left: 4px solid #c62828;
+  border-left: 4px solid var(--danger);
 }
 
 .modal-actions {
@@ -167,22 +170,21 @@ form {
 }
 
 .cancel-btn {
-  background-color: #f0f0f0;
-  color: #333;
+  background-color: var(--surface-muted);
+  color: var(--ink);
 }
 
 .cancel-btn:hover:not(:disabled) {
-  background-color: #e0e0e0;
+  background-color: var(--border);
 }
 
 .set-btn {
-  background-color: #4CAF50;
+  background-color: var(--accent-fill);
   color: white;
 }
 
 .set-btn:hover:not(:disabled) {
-  background-color: #45a049;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  background-color: var(--accent-hover);
 }
 
 .btn:disabled {
@@ -190,8 +192,11 @@ form {
   cursor: not-allowed;
 }
 
-
-
+@media (prefers-reduced-motion: reduce) {
+  .modal-content {
+    animation: none;
+  }
+}
 
 
 

@@ -5,6 +5,9 @@ import { IPC_CHANNELS, IPC_RENDERER_EVENTS, type ElectronAPI } from './contracts
 const electronAPI: ElectronAPI = {
   saveTokens: tokens => ipcRenderer.invoke(IPC_CHANNELS.saveTokens, tokens),
   getTokens: () => ipcRenderer.invoke(IPC_CHANNELS.getTokens),
+  openSetupLink: link => ipcRenderer.invoke(IPC_CHANNELS.openSetupLink, link),
+  reconnectWorkspace: teamId => ipcRenderer.invoke(IPC_CHANNELS.reconnectWorkspace, teamId),
+  removeWorkspace: teamId => ipcRenderer.invoke(IPC_CHANNELS.removeWorkspace, teamId),
   deleteTokens: () => ipcRenderer.invoke(IPC_CHANNELS.deleteTokens),
   getAppSnapshot: () => ipcRenderer.invoke(IPC_CHANNELS.getAppSnapshot),
   onAppSnapshotChanged: callback => {

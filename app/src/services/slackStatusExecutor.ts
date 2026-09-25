@@ -16,27 +16,22 @@ export class SlackStatusExecutor {
   }
 
   async applyStatusChange(change: SlackStatusChange): Promise<boolean> {
-    const success = await this.slackService.setProfile(
+    const profileSuccess = await this.slackService.setProfile(
       change.emoji,
       change.text,
       change.expiration ?? 0
     );
 
-    if (change.presence) {
-      await this.slackService.setPresence(change.presence);
-    }
+    const presenceSuccess = change.presence ? await this.slackService.setPresence(change.presence) : true;
 
-    if (!success) {
-      return false;
-    }
-
+    let dndSuccess = true;
     if (change.dndAction === 'enable') {
-      await this.slackService.enableDND();
+      dndSuccess = await this.slackService.enableDND();
     } else if (change.dndAction === 'disable') {
-      await this.slackService.disableDND();
+      dndSuccess = await this.slackService.disableDND();
     }
 
-    return true;
+    return profileSuccess && presenceSuccess && dndSuccess;
   }
 
   async setSourceStatus(emoji: string, text: string): Promise<boolean> {
