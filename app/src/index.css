@@ -1,3 +1,37 @@
+/* Native color-scheme follows macOS unless the user picks Light or Dark. */
+:root {
+  color-scheme: light dark;
+  --canvas: light-dark(#f5f5f7, #14191d);
+  --surface: light-dark(#fff, #20272c);
+  --surface-muted: light-dark(#f7f9fb, #293238);
+  --surface-hover: light-dark(#f2f6fa, #324047);
+  --surface-disabled: light-dark(#e4ebf0, #39434a);
+  --ink: light-dark(#1a1a1a, #f0f4f6);
+  --heading: light-dark(#20364b, #f2f7f9);
+  --muted: light-dark(#596575, #bac9d1);
+  --border: light-dark(#e2e8ee, #3c4a52);
+  --border-strong: light-dark(#cbd3dc, #596a75);
+  --accent-fill: #17777d;
+  --accent-hover: #13676d;
+  --accent-soft: light-dark(#e4f2f3, #28464a);
+  --accent-soft-ink: light-dark(#143b40, #dbf7f8);
+  --link: light-dark(#13676d, #8edce1);
+  --success: light-dark(#197044, #80dea9);
+  --success-soft: light-dark(#e7f5e7, #203b2d);
+  --danger: light-dark(#a1342f, #ffa19b);
+  --danger-fill: light-dark(#ad3531, #9e3430);
+  --danger-soft: light-dark(#fee2e2, #43282c);
+  --warning: light-dark(#925900, #f6c982);
+  --warning-soft: light-dark(#fff3cd, #45391f);
+  --console-bg: light-dark(#eef2f5, #121a20);
+  --console-ink: light-dark(#33424d, #dce8ee);
+  --console-track: light-dark(#e3e9ed, #253039);
+  --console-thumb: light-dark(#aab8c0, #647681);
+}
+
+:root[data-theme='light'] { color-scheme: light; }
+:root[data-theme='dark'] { color-scheme: dark; }
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -10,8 +44,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #ffffff;
-  color: #333;
+  background: var(--canvas);
+  color: var(--ink);
 }
 
 code {
@@ -24,5 +58,22 @@ html, body, #root {
   height: 100%;
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
 
+.music-source-icon {
+  display: inline-block;
+}
 
+:root[data-theme='dark'] .music-source-icon {
+  filter: invert(1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .music-source-icon {
+    filter: invert(1);
+  }
+}

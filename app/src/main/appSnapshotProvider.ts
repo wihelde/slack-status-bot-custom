@@ -4,6 +4,7 @@ import {
   AppSetupSnapshot,
   AppSnapshot,
   AppStatusSnapshot,
+  WorkspaceStatusSnapshot,
   AppUpdateSnapshot,
   AppSourcesSnapshot,
   AppSourceSnapshot,
@@ -20,6 +21,7 @@ export interface AppSnapshotProviderDependencies {
   getAppMetadataSnapshot: () => Partial<AppMetadataSnapshot> | null | undefined;
   getSlackStatus: () => Promise<Partial<AppStatusSnapshot> | null | undefined>;
   getSourceStatuses: () => Promise<RawSourceStatuses | null | undefined>;
+  getWorkspaceStatuses?: () => Promise<WorkspaceStatusSnapshot[]>;
   getDaemonSnapshot: () => Partial<AppDaemonSnapshot> | null | undefined;
   getUpdateSnapshot: () => AppUpdateSnapshot | null | undefined;
   getSetupSnapshot: () => Partial<AppSetupSnapshot> | null | undefined;
@@ -29,14 +31,16 @@ export class AppSnapshotProvider {
   constructor(private readonly dependencies: AppSnapshotProviderDependencies) {}
 
   async getSnapshot(): Promise<AppSnapshot> {
-    const [status, rawSources] = await Promise.all([
+    const [status, rawSources, workspaces] = await Promise.all([
       this.dependencies.getSlackStatus(),
       this.dependencies.getSourceStatuses(),
+      this.dependencies.getWorkspaceStatuses?.(),
     ]);
 
     return {
       app: normalizeAppMetadataSnapshot(this.dependencies.getAppMetadataSnapshot()),
       status: normalizeAppStatusSnapshot(status),
+      ...(workspaces ? { workspaces } : {}),
       daemon: normalizeAppDaemonSnapshot(this.dependencies.getDaemonSnapshot()),
       sources: normalizeAppSourcesSnapshot(rawSources),
       update: normalizeAppUpdateSnapshot(this.dependencies.getUpdateSnapshot()),

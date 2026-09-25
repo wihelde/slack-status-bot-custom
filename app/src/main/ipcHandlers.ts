@@ -1,6 +1,7 @@
 import type { CustomStatusConfig } from '../config/statusConfig';
 import { DEFAULT_SOURCE_ORDER, type SourceName } from '../config/sourceCatalog';
 import type { AppSnapshot, AppSnapshotRefreshReason, AppSetupSnapshot } from '../contracts/appSnapshot';
+import type { WorkspaceConnectionSummary } from '../contracts/ipc';
 import {
   type AutoLaunchStatusPayload,
   IPC_CHANNELS,
@@ -39,6 +40,12 @@ interface HostConfig {
 
 export interface MainIpcDependencies {
   getConfig: () => HostConfig;
+  getWorkspaceConnections?: () => WorkspaceConnectionSummary[];
+  getWorkspaceConnectionError?: () => string | null;
+  getOAuthMessage?: () => string | null;
+  openSetupLink?: (link: string) => Promise<void>;
+  reconnectWorkspace?: (teamId: string) => Promise<void>;
+  removeWorkspace?: (teamId: string) => Promise<void>;
   refreshConfig: () => HostConfig;
   updateSourceOrder: (sourceOrder: SourceName[]) => void;
   getSetupSnapshot: () => AppSetupSnapshot;
@@ -123,6 +130,11 @@ export function registerSetupIpcHandlers(
         data: {
           tokens: maskTokens(tokens),
           count: tokens.length,
+          ...(dependencies.getWorkspaceConnections ? {
+            connections: dependencies.getWorkspaceConnections(),
+            connectionError: dependencies.getWorkspaceConnectionError?.() || null,
+            oauthMessage: dependencies.getOAuthMessage?.() || null,
+          } : {}),
         },
       };
     },
@@ -155,6 +167,21 @@ export function registerSetupIpcHandlers(
       success: true,
       data: getSetupSnapshot(),
     }),
+    [IPC_CHANNELS.openSetupLink]: async link => {
+      if (typeof link !== 'string' || !dependencies.openSetupLink) throw new Error('Invalid Setup Link');
+      await dependencies.openSetupLink(link);
+      return { success: true };
+    },
+    [IPC_CHANNELS.reconnectWorkspace]: async teamId => {
+      if (typeof teamId !== 'string' || !dependencies.reconnectWorkspace) throw new Error('Invalid workspace');
+      await dependencies.reconnectWorkspace(teamId);
+      return { success: true };
+    },
+    [IPC_CHANNELS.removeWorkspace]: async teamId => {
+      if (typeof teamId !== 'string' || !dependencies.removeWorkspace) throw new Error('Invalid workspace');
+      await dependencies.removeWorkspace(teamId);
+      return { success: true };
+    },
   });
 }
 

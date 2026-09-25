@@ -1,10 +1,11 @@
-import { app, BrowserWindow, Notification, dialog, ipcMain, Menu, Tray, nativeImage, shell } from 'electron';
+import { app, BrowserWindow, Notification, dialog, ipcMain, Menu, Tray, nativeImage, powerMonitor, safeStorage, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import https from 'https';
 import path from 'path';
 import { createAppConfigStore } from './config/appConfigStore';
+import { parseSetupLink } from './contracts/setupLink';
 import type { SourceName } from './config/sourceCatalog';
 import { createDaemon, type SlackStatusBotDaemon } from './daemon';
 import { type AppSnapshot, type AppSnapshotRefreshReason, type AppUpdateSnapshot } from './contracts/appSnapshot';
@@ -17,10 +18,13 @@ import {
 } from './main/externalStatusCommand';
 import { registerMainIpcHandlers } from './main/ipcHandlers';
 import { createMainLogger } from './main/logging';
+import { showMacosNotification } from './main/macosNotification';
+import { exchangeSlackCode, NativeSlackOAuth } from './main/nativeSlackOAuth';
 import { createSnapshotBridge } from './main/snapshotBridge';
 import { createTrayBridge } from './main/trayBridge';
 import { createUpdateBridge } from './main/updateBridge';
 import { createWindowLifecycle } from './main/windowLifecycle';
+import { WorkspaceConnections, verifySlackToken } from './main/workspaceConnections';
 
 console.log('[Electron] Starting up...');
 
@@ -72,12 +76,30 @@ let config: RuntimeConfig = {};
 let currentLogLevel: RendererLogLevel = 'ERROR';
 let updateAvailable: AppUpdateSnapshot | null = null;
 let updateIntervalId: NodeJS.Timeout | null = null;
+let migrationRetryTimer: NodeJS.Timeout | null = null;
+let renewalTimer: NodeJS.Timeout | null = null;
 let externalStatusLaunchRequested = false;
+let workspaceConnections: WorkspaceConnections | null = null;
+let workspaceConnectionError: string | null = null;
+let oauthMessage: string | null = null;
+let slackOAuth: NativeSlackOAuth | null = null;
+const pendingOAuthUrls: string[] = [];
+let appStartupComplete = false;
+
+const renewWorkspaceConnections = (): void => {
+  void slackOAuth?.renewDue().catch(() => log('[Connections] Renewal cycle unavailable'));
+};
 
 const externalStatusCommandHandler = createExternalStatusCommandHandler({
   getDaemon: () => daemon,
   log,
   notify: notification => {
+    if (process.platform === 'darwin') {
+      // Electron 42+ requires a signed app bundle for macOS notifications; osascript keeps unsigned builds working.
+      showMacosNotification(notification, log);
+      return;
+    }
+
     if (Notification.isSupported()) {
       new Notification(notification).show();
     }
@@ -95,6 +117,15 @@ const loadConfig = (): RuntimeConfig => {
 
 const refreshConfig = (): RuntimeConfig => {
   config = loadConfig();
+  if (workspaceConnections) {
+    try {
+      config.slackTokens = workspaceConnections.activeTokens();
+      workspaceConnectionError = null;
+    } catch (error) {
+      config.slackTokens = [];
+      workspaceConnectionError = error instanceof Error ? error.message : String(error);
+    }
+  }
   currentLogLevel = config.logLevel || 'ERROR';
   log(
     `[Config] Loaded config ${JSON.stringify({
@@ -211,6 +242,20 @@ const getAppSnapshot = async (): Promise<AppSnapshot> =>
 
       return daemon.getSourceStatuses();
     },
+    getWorkspaceStatuses: async () => {
+      const observed = daemon ? await daemon.getWorkspaceStatuses() : [];
+      const unavailable = workspaceConnections?.list()
+        .filter(connection => !observed.some(workspace => workspace.teamId === connection.teamId && workspace.teamId !== null))
+        .map(connection => ({
+          teamId: connection.teamId,
+          teamName: connection.teamName,
+          userName: connection.userName,
+          health: 'unavailable' as const,
+          profile: null,
+          delivery: {},
+        })) || [];
+      return [...observed, ...unavailable];
+    },
     getDaemonSnapshot: () => ({
       running: daemon ? daemon.isRunning() : false,
     }),
@@ -224,7 +269,7 @@ const applyDaemonLogLevel = (): void => {
   }
 };
 
-const registerExternalStatusProtocol = (): void => {
+const registerAppProtocol = (): void => {
   const processWithDefaultApp = process as NodeJS.Process & { defaultApp?: boolean };
   const registered = processWithDefaultApp.defaultApp && process.argv.length >= 2
     ? app.setAsDefaultProtocolClient(
@@ -234,41 +279,68 @@ const registerExternalStatusProtocol = (): void => {
       )
     : app.setAsDefaultProtocolClient(EXTERNAL_STATUS_PROTOCOL);
 
-  log(`[ExternalStatusCommand] Protocol registration result: ${registered}`);
+  log(`[App] Protocol registration result: ${registered}`);
 };
 
-const handleExternalStatusUrlFromArgv = (argv: string[]): boolean => {
-  const externalStatusUrl = argv.find(arg => arg.startsWith(`${EXTERNAL_STATUS_PROTOCOL}://`));
-  if (!externalStatusUrl) {
-    return false;
-  }
-
-  const handled = externalStatusCommandHandler.handleUrl(externalStatusUrl);
-  if (handled) {
+const handleAppUrl = (rawUrl: string): boolean => {
+  if (externalStatusCommandHandler.handleUrl(rawUrl)) {
     externalStatusLaunchRequested = true;
+    return true;
   }
-  return handled;
+  let url: URL;
+  try { url = new URL(rawUrl); } catch { return false; }
+  if (url.protocol !== `${EXTERNAL_STATUS_PROTOCOL}:` || !['connect', 'oauth'].includes(url.hostname)) return false;
+  if (appStartupComplete && slackOAuth) void slackOAuth.handleUrl(rawUrl);
+  else pendingOAuthUrls.push(rawUrl);
+  if (appStartupComplete) {
+    if (windowLifecycle.getWindow()) void windowLifecycle.showWindow();
+    else windowLifecycle.createWindow();
+  }
+  return true;
 };
 
-const createDaemonInstance = (slackTokens: string[]): SlackStatusBotDaemon =>
-  createDaemon({
+const handleAppUrlFromArgv = (argv: string[]): boolean => {
+  const url = argv.find(arg => arg.startsWith(`${EXTERNAL_STATUS_PROTOCOL}://`));
+  return url ? handleAppUrl(url) : false;
+};
+
+const createDaemonInstance = (slackTokens: string[]): SlackStatusBotDaemon => {
+  const activeConnections = workspaceConnections?.activeWorkspaceConnections() || [];
+  return createDaemon({
     slackTokens,
+    workspaceConnections: slackTokens.map(token => {
+      const connection = activeConnections.find(active => active.token === token);
+      return {
+        teamId: connection?.teamId || null,
+        teamName: connection?.teamName || null,
+        userName: connection?.userName || null,
+      };
+    }),
     configStore,
     onAppStateChanged: statusData => {
       logStatusBridgeInfo('Daemon status change forwarded to renderer', statusData);
       snapshotBridge.emitAppSnapshotChanged('daemon-status');
     },
+    onWorkspaceDeliveryChanged: () => snapshotBridge.emitAppSnapshotChanged('daemon-status'),
   });
+};
 
 const restartDaemon = async (slackTokens: string[]): Promise<void> => {
   if (daemon) {
-    await daemon.stop();
-    daemon = null;
+    const activeConnections = workspaceConnections?.activeWorkspaceConnections() || [];
+    await daemon.updateConnections(slackTokens, slackTokens.map(token => {
+      const connection = activeConnections.find(active => active.token === token);
+      return {
+        teamId: connection?.teamId || null,
+        teamName: connection?.teamName || null,
+        userName: connection?.userName || null,
+      };
+    }));
+  } else {
+    daemon = createDaemonInstance(slackTokens);
+    applyDaemonLogLevel();
+    await daemon.start();
   }
-
-  daemon = createDaemonInstance(slackTokens);
-  applyDaemonLogLevel();
-  await daemon.start();
   await externalStatusCommandHandler.flushPending();
   trayBridge.refreshMenu();
   snapshotBridge.emitAppSnapshotChanged('daemon-status');
@@ -284,6 +356,29 @@ const stopDaemon = async (): Promise<void> => {
   } finally {
     daemon = null;
   }
+};
+
+const retryPendingConnections = (): void => {
+  if (!workspaceConnections?.hasPendingVerification() || migrationRetryTimer) return;
+  migrationRetryTimer = setTimeout(async () => {
+    migrationRetryTimer = null;
+    if (!workspaceConnections) return;
+    const previousTokens = config.slackTokens || [];
+    try {
+      await workspaceConnections.migrate();
+      refreshConfig();
+      const nextTokens = config.slackTokens || [];
+      if (JSON.stringify(previousTokens) !== JSON.stringify(nextTokens)) {
+        if (nextTokens.length > 0) await restartDaemon(nextTokens);
+        else await stopDaemon();
+      }
+      snapshotBridge.emitAppSnapshotChanged('setup');
+    } catch (error) {
+      workspaceConnectionError = error instanceof Error ? error.message : String(error);
+      log(`[Connections] Verification retry unavailable: ${workspaceConnectionError}`);
+    }
+    retryPendingConnections();
+  }, 60_000);
 };
 
 const getLogDir = (): string => path.join(app.getPath('userData'), 'logs');
@@ -324,14 +419,23 @@ const setLogLevel = (level: RendererLogLevel): RendererLogLevel => {
 
 const saveTokens = async (tokens: string | string[]): Promise<void> => {
   const normalizedTokens = Array.isArray(tokens) ? tokens : [tokens];
-  configStore.updateSlackTokens(normalizedTokens);
+  if (!workspaceConnections) {
+    throw new Error(workspaceConnectionError || 'Secure workspace storage is unavailable');
+  }
+  await workspaceConnections.addTokens(normalizedTokens);
   refreshConfig();
-  await restartDaemon(normalizedTokens);
+  if (config.slackTokens?.length) await restartDaemon(config.slackTokens);
+  else await stopDaemon();
+  retryPendingConnections();
   snapshotBridge.emitAppSnapshotChanged('setup');
 };
 
 const deleteTokens = async (): Promise<void> => {
-  configStore.clearSlackTokens();
+  if (workspaceConnections) {
+    workspaceConnections.clearAll();
+  } else {
+    configStore.clearSlackTokens();
+  }
   refreshConfig();
   await stopDaemon();
   trayBridge.refreshMenu();
@@ -353,18 +457,11 @@ if (!gotTheLock) {
 } else {
   app.on('open-url', (event, url) => {
     event.preventDefault();
-    if (externalStatusCommandHandler.handleUrl(url)) {
-      externalStatusLaunchRequested = true;
-    } else {
-      log(`[ExternalStatusCommand] Ignored URL: ${url}`);
-    }
+    handleAppUrl(url);
   });
 
   app.on('second-instance', (_event, argv) => {
-    if (handleExternalStatusUrlFromArgv(argv)) {
-      log('[ExternalStatusCommand] Handled URL from second instance');
-      return;
-    }
+    if (handleAppUrlFromArgv(argv)) return;
 
     log('[App] Second instance attempted - focusing existing window');
     void windowLifecycle.showWindow();
@@ -376,11 +473,77 @@ if (!gotTheLock) {
     log(`[App] __dirname: ${__dirname}`);
 
     refreshConfig();
-    registerExternalStatusProtocol();
-    handleExternalStatusUrlFromArgv(process.argv);
+    try {
+      const connections = new WorkspaceConnections({
+        directory: app.getPath('userData'),
+        config: configStore,
+        encryption: safeStorage,
+        verify: verifySlackToken,
+      });
+      await connections.migrate();
+      workspaceConnections = connections;
+      slackOAuth = new NativeSlackOAuth({
+        connections,
+        openExternal: url => shell.openExternal(url).then(() => undefined),
+        exchange: exchangeSlackCode,
+        verify: verifySlackToken,
+        onConnected: async () => {
+          refreshConfig();
+          if (appStartupComplete) {
+            if (config.slackTokens?.length) await restartDaemon(config.slackTokens);
+            else await stopDaemon();
+          }
+          snapshotBridge.emitAppSnapshotChanged('setup');
+        },
+        onReconnectRequired: teamId => {
+          const name = connections.list().find(connection => connection.teamId === teamId)?.teamName || teamId;
+          const notification = { title: 'Slack connection needs attention',
+            body: `Reconnect ${name} in Slack Status Bot settings` };
+          if (process.platform === 'darwin') showMacosNotification(notification, log);
+          else if (Notification.isSupported()) new Notification(notification).show();
+        },
+        onRenewalOutcome: (teamId, outcome) => log(`[Connections] ${teamId}: ${outcome}`),
+        onResult: message => {
+          oauthMessage = message;
+          snapshotBridge.emitAppSnapshotChanged('setup');
+        },
+      });
+      try {
+        await slackOAuth.renewDue();
+      } catch {
+        log('[Connections] Startup renewal unavailable');
+      }
+      refreshConfig();
+      retryPendingConnections();
+    } catch (error) {
+      workspaceConnectionError = error instanceof Error ? error.message : String(error);
+      log(`[Connections] Migration unavailable: ${workspaceConnectionError}`);
+      dialog.showErrorBox('Slack connections need attention', workspaceConnectionError);
+    }
+    registerAppProtocol();
+    handleAppUrlFromArgv(process.argv);
 
     registerMainIpcHandlers(ipcMain, {
       getConfig: () => config,
+      getWorkspaceConnections: () => workspaceConnections?.list() || [],
+      getWorkspaceConnectionError: () => workspaceConnectionError,
+      getOAuthMessage: () => oauthMessage,
+      openSetupLink: async link => {
+        if (!slackOAuth || !parseSetupLink(link)) throw new Error('Invalid Setup Link');
+        await slackOAuth.handleUrl(link);
+      },
+      reconnectWorkspace: async teamId => {
+        if (!slackOAuth) throw new Error('Slack connections are unavailable');
+        await slackOAuth.reconnect(teamId);
+      },
+      removeWorkspace: async teamId => {
+        if (!slackOAuth || !slackOAuth.removeWorkspace(teamId)) throw new Error('Workspace connection not found');
+        refreshConfig();
+        if (config.slackTokens?.length) await restartDaemon(config.slackTokens);
+        else await stopDaemon();
+        trayBridge.refreshMenu();
+        snapshotBridge.emitAppSnapshotChanged('setup');
+      },
       refreshConfig,
       updateSourceOrder: sourceOrder => configStore.updateSourceOrder(sourceOrder),
       getSetupSnapshot,
@@ -407,6 +570,8 @@ if (!gotTheLock) {
     trayBridge.createTray();
     updateBridge.setupUpdateListeners();
     updateIntervalId = updateBridge.startScheduledChecks();
+    renewalTimer = setInterval(renewWorkspaceConnections, 60_000);
+    powerMonitor.on('resume', renewWorkspaceConnections);
 
     try {
       if (hasConfiguredTokens()) {
@@ -420,6 +585,8 @@ if (!gotTheLock) {
         console.error('[Daemon] Stack:', stack);
       }
     }
+    appStartupComplete = true;
+    for (const url of pendingOAuthUrls.splice(0)) await slackOAuth?.handleUrl(url);
   });
 
   app.on('window-all-closed', () => {
@@ -438,6 +605,9 @@ if (!gotTheLock) {
   });
 
   app.on('before-quit', async () => {
+    if (migrationRetryTimer) clearTimeout(migrationRetryTimer);
+    if (renewalTimer) clearInterval(renewalTimer);
+    powerMonitor.removeListener('resume', renewWorkspaceConnections);
     electronApp.isQuitting = true;
 
     if (updateIntervalId) {

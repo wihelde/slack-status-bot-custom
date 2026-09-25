@@ -194,11 +194,38 @@ export class IPCService {
     }
     try {
       const result = await electronAPI.getTokens();
-      return result.success ? { tokens: result.data?.tokens || [], count: result.data?.count || 0 } : null;
+      return result.success ? {
+        tokens: result.data?.tokens || [],
+        count: result.data?.count || 0,
+        connections: result.data?.connections || [],
+        connectionError: result.data?.connectionError || null,
+        oauthMessage: result.data?.oauthMessage || null,
+      } : null;
     } catch (error) {
       logRendererError('Error getting tokens', error);
       return null;
     }
+  }
+
+  static async openSetupLink(link: string): Promise<string | null> {
+    const api = this.getElectronAPI();
+    if (!api) return 'Desktop app unavailable';
+    const result = await api.openSetupLink(link);
+    return result.success ? null : result.error || 'Could not open Setup Link';
+  }
+
+  static async reconnectWorkspace(teamId: string): Promise<string | null> {
+    const api = this.getElectronAPI();
+    if (!api) return 'Desktop app unavailable';
+    const result = await api.reconnectWorkspace(teamId);
+    return result.success ? null : result.error || 'Could not reconnect workspace';
+  }
+
+  static async removeWorkspace(teamId: string): Promise<string | null> {
+    const api = this.getElectronAPI();
+    if (!api) return 'Desktop app unavailable';
+    const result = await api.removeWorkspace(teamId);
+    return result.success ? null : result.error || 'Could not remove workspace';
   }
 
   /**

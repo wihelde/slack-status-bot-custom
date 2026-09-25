@@ -39,7 +39,7 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
     if (!returnDate) return '';
     
     try {
-      const [day, month, year] = returnDate.split('.').map(Number);
+      const [year, month, day] = returnDate.split('-').map(Number);
       const date = new Date(year, month - 1, day);
       
       // Get day of week (0 = Sunday, 5 = Friday, 6 = Saturday)
@@ -83,7 +83,8 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
     try {
       setError('');
       setLoading(true);
-      await onSetHoliday(returnDate);
+      const [year, month, day] = returnDate.split('-');
+      await onSetHoliday(`${day}.${month}.${year}`);
       setReturnDate('');
       onClose();
     } catch (err) {
@@ -105,19 +106,17 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="returnDate">Last holiday date (DD.MM.YYYY)</label>
+            <label htmlFor="returnDate">Last holiday date</label>
             <input
               id="returnDate"
-              type="text"
-              placeholder="e.g., 28.11.2025"
+              type="date"
               value={returnDate}
               onChange={(e) => setReturnDate(e.target.value)}
               className="date-input"
-              maxLength={10}
               disabled={loading}
             />
             <small className="help-text">
-              Enter the last day of your holiday. The bot takes care of showing the correct day when you are back, e.g. if it's a Friday, the status will expire on Monday.
+              The status expires after this date.
             </small>
           </div>
 
@@ -157,4 +156,3 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
 };
 
 export default HolidayModal;
-

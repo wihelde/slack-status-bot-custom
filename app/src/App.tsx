@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
@@ -13,6 +13,12 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [showFirstRun, setShowFirstRun] = useState(false);
   const [loading, setLoading] = useState(true);
+  const lastOAuthMessage = useRef<string | null>(null);
+  const mainContent = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    mainContent.current?.scrollTo(0, 0);
+  }, [currentPage]);
 
   useEffect(() => {
     const applySnapshot = (snapshot: AppSnapshot | null) => {
@@ -34,8 +40,16 @@ const App: React.FC = () => {
 
     void loadAppState();
 
-    const cleanupSnapshot = IPCService.onAppSnapshotChanged(() => {
+    const showOAuthResult = async () => {
+      const message = (await IPCService.getTokens())?.oauthMessage || null;
+      if (message && message !== lastOAuthMessage.current) setCurrentPage('settings');
+      lastOAuthMessage.current = message;
+    };
+    void showOAuthResult();
+
+    const cleanupSnapshot = IPCService.onAppSnapshotChanged(signal => {
       void loadAppState();
+      if (signal.reason === 'setup') void showOAuthResult();
     });
 
     return () => {
@@ -63,12 +77,14 @@ const App: React.FC = () => {
         <div className="navbar-menu">
           <button
             className={`nav-button ${currentPage === 'dashboard' ? 'active' : ''}`}
+            aria-current={currentPage === 'dashboard' ? 'page' : undefined}
             onClick={() => setCurrentPage('dashboard')}
           >
             Dashboard
           </button>
           <button
             className={`nav-button ${currentPage === 'settings' ? 'active' : ''}`}
+            aria-current={currentPage === 'settings' ? 'page' : undefined}
             onClick={() => setCurrentPage('settings')}
           >
             Settings
@@ -76,7 +92,7 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      <main className="main-content">
+      <main className="main-content" ref={mainContent}>
         {currentPage === 'dashboard' && <Dashboard />}
         {currentPage === 'settings' && <Settings />}
       </main>

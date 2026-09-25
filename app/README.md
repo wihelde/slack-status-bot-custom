@@ -18,7 +18,7 @@ Desktop application for automating your Slack status based on music playback, me
 - Log viewer for debugging
 
 ⚙️ **Easy Configuration**
-- Slack API token setup (supports multiple tokens)
+- Slack authorization for multiple workspaces
 - Per-source enable/disable
 - Customizable source priority order
 - Auto-start on login
@@ -69,6 +69,7 @@ npm test
 Settings are stored in:
 - **macOS:** `~/Library/Application Support/slack-status-bot/config.json`
 
+Encrypted Slack connections are stored in `workspace-connections.json` in the same directory. For the private Slack app setup and authorization steps, see [Connect a Slack workspace](../README.md#connect-a-slack-workspace).
 
 ## Usage
 
@@ -128,7 +129,7 @@ When an update is available, the app shows a native notification in addition to 
 - Check logs for errors (Settings → Logs tab)
 
 ### Status not updating
-- Check Slack token in Settings
+- Check the workspace connection in Settings → Workspaces
 - Verify the source app is running. YouTube Music must run as an installed browser app, not an ordinary tab.
 - Check daemon status in Dashboard
 - Check logs for errors (Settings → Logs tab)

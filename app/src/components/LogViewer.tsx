@@ -141,16 +141,12 @@ const LogViewer: React.FC = () => {
         )}
       </div>
 
-      <div className="log-info">
-        <small>
-          📁 Logs saved to: ~/.config/slack-status-bot/logs/app.log
-          <br />
-          Showing last 300 lines • Auto-rotates at 10MB
-        </small>
-      </div>
+      <footer className="log-info">
+        <span>Log file: <code>~/.config/slack-status-bot/logs/app.log</code></span>
+        <span>Last 300 lines · rotates at 10 MB</span>
+      </footer>
     </div>
   );
 };
 
 export default LogViewer;
-
