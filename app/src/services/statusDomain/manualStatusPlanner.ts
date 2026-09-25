@@ -61,7 +61,7 @@ export class ManualStatusPlanner {
           emoji: STATUS_MESSAGES.OFF_EMOJI,
           message: this.getRandomOfflineMessage(action.customStatuses),
           presence: 'away',
-          dndAction: 'ignore',
+          dndAction: 'disable',
           stateValue: 'not working',
         };
       case 'custom-status': {

@@ -30,6 +30,7 @@ describe('RuntimeOrchestrator', () => {
     markObservedSourceActive: vi.fn(),
     clearObservedSourceActive: vi.fn(),
     shouldApplyObservedStatus: vi.fn(),
+    isStatusClean: vi.fn(),
     emitObservedStatusChange: vi.fn(),
     reset: vi.fn(),
   };
@@ -54,6 +55,7 @@ describe('RuntimeOrchestrator', () => {
 
     getNow.mockReturnValue(100_000);
     statusManager.shouldApplyObservedStatus.mockResolvedValue(true);
+    statusManager.isStatusClean.mockResolvedValue(true);
     statusManager.reset.mockResolvedValue(true);
     slackExecutor.getProfile.mockResolvedValue({
       status_emoji: ':current:',
@@ -80,6 +82,30 @@ describe('RuntimeOrchestrator', () => {
     expect(slackExecutor.setSourceStatus).toHaveBeenCalledWith(':zoom:', 'In a meeting');
     expect(statusManager.emitObservedStatusChange).toHaveBeenCalledWith(':zoom:', 'In a meeting', 'activeSource');
     expect(slackExecutor.setMeetingDnd).toHaveBeenCalledWith(true);
+  });
+
+  it('leaves DND untouched when a meeting starts and ends during an offline status', async () => {
+    statusManager.shouldApplyObservedStatus.mockResolvedValue(false);
+    statusManager.isStatusClean.mockResolvedValue(false);
+    statusManager.reset.mockResolvedValue(false);
+    const activeStatuses = createStatuses({ zoom: { isActive: true, message: 'In a meeting' } });
+
+    await orchestrator.handleReprioritization({ sourceOrder: DEFAULT_SOURCE_ORDER, sourceStatuses: activeStatuses });
+    await orchestrator.handlePollingSnapshot({
+      sourceOrder: DEFAULT_SOURCE_ORDER,
+      sourceStatuses: activeStatuses,
+      snapshot: sourceArbitrationEngine.evaluate(DEFAULT_SOURCE_ORDER, activeStatuses),
+    });
+
+    const inactiveStatuses = createStatuses();
+    await orchestrator.handlePollingSnapshot({
+      sourceOrder: DEFAULT_SOURCE_ORDER,
+      sourceStatuses: inactiveStatuses,
+      snapshot: sourceArbitrationEngine.evaluate(DEFAULT_SOURCE_ORDER, inactiveStatuses),
+    });
+
+    expect(slackExecutor.setSourceStatus).not.toHaveBeenCalled();
+    expect(slackExecutor.setMeetingDnd).not.toHaveBeenCalled();
   });
 
   it('signals a partially delivered source status without recording it as fully handled', async () => {

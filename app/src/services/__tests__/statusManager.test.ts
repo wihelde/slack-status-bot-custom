@@ -55,6 +55,7 @@ describe('StatusManager', () => {
         0
       );
       expect(mockSlackService.setPresence).toHaveBeenCalledWith('away');
+      expect(mockSlackService.disableDND).toHaveBeenCalledTimes(1);
     });
 
     it('should set statusCheckState to "not working"', async () => {
@@ -102,6 +103,32 @@ describe('StatusManager', () => {
         '',
         0
       );
+    });
+
+    it('keeps the configured offline status when Spotify starts', async () => {
+      let profile = { status_emoji: '', status_text: '' };
+      mockSlackService.getProfile.mockImplementation(async () => profile);
+      mockSlackService.setProfile.mockImplementation(async (emoji: string, text: string) => {
+        profile = { status_emoji: emoji, status_text: text };
+        return true;
+      });
+      const configuredStatusManager = new StatusManager(mockSlackService, [{
+        id: 'offline_1',
+        emoji: STATUS_MESSAGES.OFF_EMOJI,
+        message: 'See you tomorrow',
+        days: [],
+        enableDND: false,
+        presence: 'away',
+        quickActionLabel: null,
+        category: 'offline',
+      }]);
+
+      await configuredStatusManager.goAway();
+
+      expect(await configuredStatusManager.shouldApplyObservedStatus(
+        STATUS_MESSAGES.SPOTIFY_EMOJI, 'Playing music'
+      )).toBe(false);
+      expect(mockSlackService.setProfile).toHaveBeenCalledTimes(1);
     });
   });
 

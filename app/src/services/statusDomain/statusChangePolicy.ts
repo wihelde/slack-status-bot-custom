@@ -20,13 +20,12 @@ export class StatusChangePolicy {
       return !emoji && !text;
     }
 
-    if (this.isOverridableThirdPartyStatus(emoji, text, overridablePatterns)) {
-      return true;
+    if (state.value === 'not working') {
+      return !emoji && !text;
     }
 
-    if (state.value === 'not working') {
-      if (!emoji && !text) return true;
-      if (managedEmojis.has(emoji)) return false;
+    if (this.isOverridableThirdPartyStatus(emoji, text, overridablePatterns)) {
+      return true;
     }
 
     if (allowedEmojis.has(emoji)) return true;
