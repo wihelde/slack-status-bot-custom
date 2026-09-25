@@ -11,6 +11,7 @@ interface RuntimeOrchestratorConfig {
     | 'markObservedSourceActive'
     | 'clearObservedSourceActive'
     | 'shouldApplyObservedStatus'
+    | 'isStatusClean'
     | 'emitObservedStatusChange'
     | 'reset'
   >;
@@ -109,7 +110,7 @@ export class RuntimeOrchestrator {
       }
 
       if (MEETING_SOURCE_NAMES.includes(winningSource.sourceName)) {
-        await this.config.slackExecutor.setMeetingDnd(true);
+        await this.setMeetingDndIfAllowed(true);
       }
 
       return;
@@ -150,7 +151,7 @@ export class RuntimeOrchestrator {
 
     if (MEETING_SOURCE_NAMES.includes(sourceName) && type === 'activated') {
       logger.info(`[polling] ${sourceName} meeting started, ensuring DND is enabled...`);
-      await this.config.slackExecutor.setMeetingDnd(true);
+      await this.setMeetingDndIfAllowed(true);
     }
 
     return statusWasSet;
@@ -221,7 +222,15 @@ export class RuntimeOrchestrator {
     }
 
     logger.info(`[polling] ${sourceName} meeting ended and no other meetings active, disabling DND...`);
-    await this.config.slackExecutor.setMeetingDnd(false);
+    await this.setMeetingDndIfAllowed(false);
+  }
+
+  private async setMeetingDndIfAllowed(enabled: boolean): Promise<void> {
+    if (!await this.config.statusManager.isStatusClean()) {
+      logger.debug('[polling] Meeting DND unchanged because status is protected');
+      return;
+    }
+    await this.config.slackExecutor.setMeetingDnd(enabled);
   }
 
   private async tryApplyObservedStatus(

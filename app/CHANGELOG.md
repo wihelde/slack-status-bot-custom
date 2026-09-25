@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.01] - 2026-09-25
+
+## Fixed
+
+- restored offline as protected status
+
+
 ## [2.3.0] - 2026-09-25
 
 ## Added
