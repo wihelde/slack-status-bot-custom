@@ -67,7 +67,10 @@ const App: React.FC = () => {
 
   return (
     <div className="app">
-      <nav className="navbar">
+      <nav className="navbar" onPointerMove={event => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        event.currentTarget.style.setProperty('--glass-x', `${event.clientX - bounds.left}px`);
+      }} onPointerLeave={event => event.currentTarget.style.removeProperty('--glass-x')}>
         <div className="navbar-brand">
           <h1>Slack Status Bot</h1>
           <span className={`status-badge ${isOnline ? 'online' : 'offline'}`}>

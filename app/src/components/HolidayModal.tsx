@@ -98,10 +98,11 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" role="dialog" aria-modal="true" aria-labelledby="holiday-dialog-title"
+        onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>🏖️ Set Holiday Status</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <h2 id="holiday-dialog-title">🏖️ Set Holiday Status</h2>
+          <button className="modal-close" aria-label="Close holiday dialog" onClick={onClose}>×</button>
         </div>
 
         <form onSubmit={handleSubmit}>
