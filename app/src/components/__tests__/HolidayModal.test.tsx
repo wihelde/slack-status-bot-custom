@@ -80,7 +80,7 @@ describe('HolidayModal', () => {
 
     it('should call onClose when close button is clicked', async () => {
       renderModal();
-      const closeBtn = screen.getByRole('button', { name: '×' });
+      const closeBtn = screen.getByRole('button', { name: 'Close holiday dialog' });
       fireEvent.click(closeBtn);
       expect(mockOnClose).toHaveBeenCalled();
     });
@@ -145,7 +145,6 @@ describe('HolidayModal', () => {
     });
   });
 });
-
 
 
 

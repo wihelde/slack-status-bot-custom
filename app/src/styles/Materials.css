@@ -1,0 +1,151 @@
+/* Shared depth across navigation, controls, and content surfaces. */
+:root {
+  --control-glass: linear-gradient(145deg,
+    light-dark(rgb(255 255 255 / 92%), rgb(146 191 202 / 25%)),
+    light-dark(rgb(229 244 247 / 72%), rgb(58 82 91 / 30%)));
+  --control-glass-hover: linear-gradient(145deg,
+    light-dark(rgb(255 255 255 / 100%), rgb(167 216 225 / 34%)),
+    light-dark(rgb(218 242 245 / 90%), rgb(68 99 108 / 40%)));
+  --control-edge: light-dark(rgb(255 255 255 / 98%), rgb(225 249 252 / 25%));
+  --control-shadow: 0 2px 5px light-dark(rgb(34 66 76 / 12%), rgb(0 0 0 / 26%)),
+    inset 0 1px var(--control-edge);
+}
+
+:is(.dashboard-card, .settings-card) {
+  border: 1px solid light-dark(rgb(255 255 255 / 86%), rgb(192 231 236 / 9%));
+  background: linear-gradient(145deg,
+    light-dark(#fff, #252f35), var(--surface));
+  box-shadow: 0 6px 20px light-dark(rgb(36 62 72 / 6%), rgb(0 0 0 / 16%)),
+    inset 0 1px light-dark(rgb(255 255 255 / 96%), rgb(229 250 252 / 9%));
+}
+
+:is(.tab-btn, .status-btn, .action-btn, .log-level-btn,
+  .secondary-action, .slack-config .secondary-action,
+  .refresh-btn, .copy-btn, .btn-secondary,
+  .cancel-btn) {
+  border: 1px solid light-dark(#d8e4e8, #53636c);
+  border-radius: 10px;
+  background: var(--control-glass);
+  color: var(--heading);
+  box-shadow: var(--control-shadow);
+  transition: background 160ms ease-out, box-shadow 160ms ease-out,
+    border-color 160ms ease-out, transform 160ms ease-out;
+}
+
+:is(.tab-btn, .status-btn, .action-btn, .log-level-btn,
+  .secondary-action, .slack-config .secondary-action,
+  .refresh-btn, .copy-btn, .btn-secondary,
+  .cancel-btn):hover:not(:disabled) {
+  background: var(--control-glass-hover);
+  border-color: light-dark(#a9d4d9, #799ca4);
+  box-shadow: 0 3px 8px light-dark(rgb(34 66 76 / 16%), rgb(0 0 0 / 32%)),
+    inset 0 1px var(--control-edge);
+}
+
+:is(.tab-btn.active, .log-level-btn.active),
+:is(.tab-btn.active, .log-level-btn.active):hover:not(:disabled) {
+  background: light-dark(rgb(223 247 249 / 94%), rgb(93 157 167 / 38%));
+  border-color: light-dark(#a4d6db, #82c3c9);
+  color: var(--accent-soft-ink);
+  box-shadow: 0 2px 6px light-dark(rgb(31 105 113 / 17%), rgb(0 0 0 / 30%)),
+    inset 0 1px var(--control-edge);
+}
+
+.log-level-btn.active small {
+  color: var(--accent-soft-ink);
+}
+
+:is(.save-btn, .btn-primary, .first-run-dialog .btn-primary,
+  .set-btn, .scroll-to-bottom-btn, .update-link) {
+  border: 1px solid light-dark(#126b71, #59aeb4);
+  border-radius: 10px;
+  background: linear-gradient(145deg, #237a7f, #126a70);
+  color: #fff;
+  box-shadow: 0 3px 7px light-dark(rgb(19 94 101 / 23%), rgb(0 0 0 / 30%)),
+    inset 0 1px rgb(255 255 255 / 30%);
+}
+
+:is(.save-btn, .btn-primary, .first-run-dialog .btn-primary,
+  .set-btn, .scroll-to-bottom-btn, .update-link):hover:not(:disabled) {
+  background: linear-gradient(145deg, #267d82, #156b71);
+  box-shadow: 0 4px 10px light-dark(rgb(19 94 101 / 27%), rgb(0 0 0 / 36%)),
+    inset 0 1px rgb(255 255 255 / 35%);
+}
+
+:is(.confirm-delete-btn, .btn-danger) {
+  border: 1px solid var(--danger-fill);
+  border-radius: 10px;
+  box-shadow: 0 2px 5px light-dark(rgb(122 39 35 / 20%), rgb(0 0 0 / 30%)),
+    inset 0 1px rgb(255 255 255 / 24%);
+}
+
+:is(.clear-btn, .btn-outline-danger) {
+  border: 1px solid light-dark(rgb(161 52 47 / 42%), rgb(255 161 155 / 50%));
+  border-radius: 10px;
+  background: var(--control-glass);
+  color: var(--danger);
+  box-shadow: var(--control-shadow);
+  transition: background 160ms ease-out, border-color 160ms ease-out,
+    box-shadow 160ms ease-out, transform 160ms ease-out;
+}
+
+:is(.clear-btn, .btn-outline-danger):hover:not(:disabled) {
+  background: linear-gradient(145deg,
+    light-dark(rgb(255 249 249 / 98%), rgb(117 63 66 / 42%)),
+    light-dark(rgb(251 231 230 / 88%), rgb(63 43 48 / 46%)));
+  border-color: var(--danger);
+  box-shadow: 0 3px 8px light-dark(rgb(122 39 35 / 16%), rgb(0 0 0 / 32%)),
+    inset 0 1px var(--control-edge);
+}
+
+.delete-btn {
+  border-radius: 10px;
+}
+
+:is(.tab-btn, .status-btn, .action-btn, .log-level-btn,
+  .secondary-action, .slack-config .secondary-action,
+  .refresh-btn, .copy-btn, .btn,
+  .save-btn, .cancel-btn, .confirm-delete-btn, .delete-btn,
+  .clear-btn, .first-run-dialog .btn-primary):active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: inset 0 2px 4px light-dark(rgb(35 75 82 / 16%), rgb(0 0 0 / 26%));
+}
+
+:is(.tab-btn, .status-btn, .action-btn, .log-level-btn,
+  .secondary-action, .slack-config .secondary-action,
+  .refresh-btn, .copy-btn, .btn,
+  .save-btn, .cancel-btn, .confirm-delete-btn, .delete-btn,
+  .clear-btn):focus-visible {
+  outline: 2px solid var(--accent-fill);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :is(.tab-btn, .status-btn, .action-btn, .log-level-btn,
+    .secondary-action, .slack-config .secondary-action,
+    .refresh-btn, .copy-btn, .btn-secondary,
+    .cancel-btn) {
+    background: var(--surface);
+    border-color: var(--border-strong);
+  }
+
+  :is(.tab-btn.active, .log-level-btn.active) {
+    background: var(--accent-soft);
+  }
+
+  :is(.clear-btn, .btn-outline-danger),
+  :is(.clear-btn, .btn-outline-danger):hover:not(:disabled) {
+    background: var(--surface);
+    border-color: var(--danger);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.tab-btn, .status-btn, .action-btn, .log-level-btn,
+    .secondary-action, .slack-config .secondary-action,
+    .refresh-btn, .copy-btn, .btn,
+    .save-btn, .cancel-btn, .confirm-delete-btn, .delete-btn,
+    .clear-btn) {
+    transition: none;
+  }
+}

@@ -1,6 +1,12 @@
 # Changelog
 
-## [2.3.01] - 2026-09-25
+## [2.3.0.2] - 2026-09-26
+
+## Changed
+
+- more UI-changes for more consistency
+
+## [2.3.0.1] - 2026-09-25
 
 ## Fixed
 
