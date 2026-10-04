@@ -38,6 +38,7 @@ export class SlackStatusBotDaemon {
   private configStore: AppConfigStore;
   private isPolling: boolean = false; // Prevent concurrent polling cycles
   private pollTimeoutId: NodeJS.Timeout | null = null; // Track polling timeout for cleanup
+  private statusOperations: Promise<void> = Promise.resolve();
 
   constructor(config: DaemonConfig) {
     this.slackService = new SlackService(config.slackTokens);
@@ -79,7 +80,7 @@ export class SlackStatusBotDaemon {
     this.running = true;
     console.log('🚀 Starting Slack Status Bot Daemon...');
 
-    await this.statusManager.restoreProtectedStatusFromSlack();
+    await this.runStatusOperation(() => this.statusManager.restoreProtectedStatusFromSlack());
 
     // Start polling loops
     this.startSourcePolling();
@@ -110,6 +111,7 @@ export class SlackStatusBotDaemon {
       this.pollTimeoutId = null;
     }
 
+    await this.statusOperations;
     this.saveConfig();
     console.log('✅ Daemon stopped');
   }
@@ -151,6 +153,10 @@ export class SlackStatusBotDaemon {
   }
 
   async runCorrectionCycle(): Promise<void> {
+    return this.runStatusOperation(() => this.performCorrectionCycle());
+  }
+
+  private async performCorrectionCycle(): Promise<void> {
     if (this.slackService.hasExpiredProfileIntent()) {
       const observed = await this.slackExecutor.getProfile();
       this.slackService.refreshReferenceProfile(
@@ -161,6 +167,10 @@ export class SlackStatusBotDaemon {
   }
 
   async updateConnections(tokens: string[], connections: DaemonConfig['workspaceConnections'] = []): Promise<void> {
+    return this.runStatusOperation(() => this.performConnectionUpdate(tokens, connections));
+  }
+
+  private async performConnectionUpdate(tokens: string[], connections: NonNullable<DaemonConfig['workspaceConnections']>): Promise<void> {
     const observed = await this.slackExecutor.getProfile();
     const reference = observed && this.statusManager.isTrustedSharedProfile(observed) ? observed : null;
     if (observed && !reference && !this.slackService.matchesIntendedProfile(observed)) {
@@ -176,32 +186,32 @@ export class SlackStatusBotDaemon {
    * Manually set status
    */
   async setStatus(emoji: string, message: string): Promise<boolean> {
-    return this.statusManager.setCustomStatus(emoji, message);
+    return this.runStatusOperation(() => this.statusManager.setCustomStatus(emoji, message));
   }
 
   async setExternalStatus(emoji: string, message: string, presence: 'auto' | 'away' = 'auto'): Promise<boolean> {
-    return this.statusManager.setExternalStatus(emoji, message, presence);
+    return this.runStatusOperation(() => this.statusManager.setExternalStatus(emoji, message, presence));
   }
 
   /**
    * Go online
    */
   async goOnline(): Promise<boolean> {
-    return this.statusManager.goOnline();
+    return this.runStatusOperation(() => this.statusManager.goOnline());
   }
 
   /**
    * Go away
    */
   async goAway(): Promise<boolean> {
-    return this.statusManager.goAway();
+    return this.runStatusOperation(() => this.statusManager.goAway());
   }
 
   /**
    * Set holiday status with return date
    */
   async setHoliday(returnDate: string): Promise<boolean> {
-    return this.statusManager.setHoliday(returnDate);
+    return this.runStatusOperation(() => this.statusManager.setHoliday(returnDate));
   }
 
   /**
@@ -262,6 +272,10 @@ export class SlackStatusBotDaemon {
    * Update source priority order at runtime
    */
   async setSourceOrder(newOrder: SourceName[]): Promise<void> {
+    return this.runStatusOperation(() => this.performSourceOrderUpdate(newOrder));
+  }
+
+  private async performSourceOrderUpdate(newOrder: SourceName[]): Promise<void> {
     this.sourceOrder = [...newOrder];
     this.saveConfig();
     console.log('[Daemon] Source order updated at runtime:', this.sourceOrder);
@@ -280,6 +294,14 @@ export class SlackStatusBotDaemon {
 
   // Private helpers
 
+  /** Serialize complete status operations, including their checks and state updates. */
+  private runStatusOperation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.statusOperations.then(operation);
+    // A failed operation is reported to its caller without blocking subsequent actions.
+    this.statusOperations = result.then(() => undefined, () => undefined);
+    return result;
+  }
+
   private startSourcePolling(): void {
     this.sourceArbitrationEngine.resetTrackingState(this.sourceRegistry.getSourceNames());
 
@@ -295,32 +317,35 @@ export class SlackStatusBotDaemon {
 
       try {
         const sourceStatuses = await this.getSourceStatuses();
-        const arbitrationSnapshot = this.sourceArbitrationEngine.evaluate(this.sourceOrder, sourceStatuses);
-        const { winningSource, activeSources: activeSourcesDebug, changes, trackingState } = arbitrationSnapshot;
-        if (activeSourcesDebug.length > 0) {
-          logger.debug(`[polling] Active sources: ${activeSourcesDebug.join(', ')}`);
-        }
-        await this.runtimeOrchestrator.handlePollingSnapshot({
-          sourceOrder: this.sourceOrder,
-          sourceStatuses,
-          snapshot: arbitrationSnapshot,
-        });
+        await this.runStatusOperation(async () => {
+          if (!this.running) return;
+          const arbitrationSnapshot = this.sourceArbitrationEngine.evaluate(this.sourceOrder, sourceStatuses);
+          const { winningSource, activeSources: activeSourcesDebug, changes, trackingState } = arbitrationSnapshot;
+          if (activeSourcesDebug.length > 0) {
+            logger.debug(`[polling] Active sources: ${activeSourcesDebug.join(', ')}`);
+          }
+          await this.runtimeOrchestrator.handlePollingSnapshot({
+            sourceOrder: this.sourceOrder,
+            sourceStatuses,
+            snapshot: arbitrationSnapshot,
+          });
 
-        const anyActive = !!winningSource;
-        const anyWasActive = Object.values(trackingState).some(s => s.wasActive);
-        
-        logger.debug(`[polling] Polling cycle end`, {
-          anyActive,
-          anyWasActive,
-          currentState: Object.entries(trackingState).reduce(
-            (acc, [name, state]) => ({ ...acc, [name]: state.wasActive }),
-            {}
-          ),
+          const anyActive = !!winningSource;
+          const anyWasActive = Object.values(trackingState).some(s => s.wasActive);
+
+          logger.debug(`[polling] Polling cycle end`, {
+            anyActive,
+            anyWasActive,
+            currentState: Object.entries(trackingState).reduce(
+              (acc, [name, state]) => ({ ...acc, [name]: state.wasActive }),
+              {}
+            ),
+          });
+
+          if (!anyActive && anyWasActive) {
+            // This is handled above when each source transitions to inactive
+          }
         });
-        
-        if (!anyActive && anyWasActive) {
-          // This is handled above when each source transitions to inactive
-        }
       } catch (error) {
         console.error('Error polling sources:', error);
       } finally {

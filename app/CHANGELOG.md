@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.3] - 2026-10-04
+
+## Fixed
+
+- automatic resets no longer undo a manual Offline action when status updates overlap
+- manually selected quick-action statuses, including offline meetings, are no longer overwritten by music or meeting sources; selecting Online resumes automation
+
 ## [2.3.0.2] - 2026-09-26
 
 ## Changed

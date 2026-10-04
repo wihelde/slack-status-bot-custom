@@ -403,6 +403,167 @@ describe('SlackStatusBotDaemon', () => {
     });
   });
 
+  describe('Manual status protection and concurrent updates', () => {
+    let profile: { status_emoji: string; status_text: string };
+
+    const deferred = () => {
+      let resolve!: () => void;
+      const promise = new Promise<void>(done => { resolve = done; });
+      return { promise, resolve };
+    };
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-10-02T13:00:00Z'));
+      profile = { status_emoji: STATUS_MESSAGES.SPOTIFY_EMOJI, status_text: 'Last track' };
+      const slack = vi.mocked(daemon['slackService']);
+      slack.getProfile.mockImplementation(async () => profile);
+      slack.setProfile.mockImplementation(async (emoji, text) => {
+        profile = { status_emoji: emoji, status_text: text };
+        return true;
+      });
+    });
+
+    it('finishes an in-flight reset before applying offline', async () => {
+      const slack = vi.mocked(daemon['slackService']);
+      const started = deferred();
+      const release = deferred();
+      slack.setProfile.mockImplementationOnce(async (emoji, text) => {
+        started.resolve();
+        await release.promise;
+        profile = { status_emoji: emoji, status_text: text };
+        return true;
+      });
+
+      const correction = daemon.runCorrectionCycle();
+      await started.promise;
+      const offline = daemon.goAway();
+      await vi.advanceTimersByTimeAsync(0);
+      const callsWhileResetting = slack.setProfile.mock.calls.length;
+      release.resolve();
+      await Promise.all([correction, offline]);
+
+      expect(callsWhileResetting).toBe(1);
+      expect(profile.status_emoji).toBe(STATUS_MESSAGES.OFF_EMOJI);
+      expect(slack.setPresence.mock.calls.map(([presence]) => presence)).toEqual(['auto', 'away']);
+      expect((await daemon.getSlackStatus()).stateCheckValue).toBe('not working');
+    });
+
+    it('blocks correction queued while offline is being applied', async () => {
+      const slack = vi.mocked(daemon['slackService']);
+      const started = deferred();
+      const release = deferred();
+      slack.setProfile.mockImplementationOnce(async (emoji, text) => {
+        profile = { status_emoji: emoji, status_text: text };
+        started.resolve();
+        await release.promise;
+        return true;
+      });
+
+      const offline = daemon.goAway();
+      await started.promise;
+      const correction = daemon.runCorrectionCycle();
+      await vi.advanceTimersByTimeAsync(0);
+      release.resolve();
+      await Promise.all([offline, correction]);
+
+      expect(slack.setProfile).toHaveBeenCalledTimes(1);
+      expect(profile.status_emoji).toBe(STATUS_MESSAGES.OFF_EMOJI);
+      expect(slack.setPresence).toHaveBeenCalledWith('away');
+      expect(slack.setPresence).not.toHaveBeenCalledWith('auto');
+      expect((await daemon.getSlackStatus()).stateCheckValue).toBe('not working');
+    });
+
+    it.each(['spotify', 'zoom'] as const)('protects a manual meeting from %s polling and reprioritization until Online', async source => {
+      const slack = vi.mocked(daemon['slackService']);
+      await daemon.setStatus(STATUS_MESSAGES.MEETING_EMOJI, 'in some offline-meeting - will answer later');
+      await daemon.start();
+      await vi.advanceTimersByTimeAsync(0);
+      slack.setProfile.mockClear();
+      slack.enableDND.mockClear();
+      slack.disableDND.mockClear();
+
+      setSourceActive(source, true);
+      await vi.advanceTimersByTimeAsync(1000);
+      await daemon.setSourceOrder(daemon.getSourceOrder());
+      setSourceActive(source, false);
+      await vi.advanceTimersByTimeAsync(1000);
+      await daemon.runCorrectionCycle();
+
+      expect(slack.setProfile).not.toHaveBeenCalled();
+      expect(slack.enableDND).not.toHaveBeenCalled();
+      expect(slack.disableDND).not.toHaveBeenCalled();
+      expect(profile).toEqual({ status_emoji: STATUS_MESSAGES.MEETING_EMOJI, status_text: 'in some offline-meeting - will answer later' });
+
+      await daemon.goOnline();
+      setSourceActive(source, true);
+      await daemon.setSourceOrder(daemon.getSourceOrder());
+      expect(profile.status_emoji).toBe(source === 'spotify' ? ':spotify:' : ':zoom:');
+    });
+
+    it('finishes an in-flight source update before applying offline', async () => {
+      const slack = vi.mocked(daemon['slackService']);
+      const started = deferred();
+      const release = deferred();
+      slack.setProfile.mockImplementationOnce(async (emoji, text) => {
+        started.resolve();
+        await release.promise;
+        profile = { status_emoji: emoji, status_text: text };
+        return true;
+      });
+      setSourceActive('spotify', true);
+      await daemon.start();
+      await started.promise;
+      const offline = daemon.goAway();
+      await vi.advanceTimersByTimeAsync(0);
+      const callsWhileSourceUpdating = slack.setProfile.mock.calls.length;
+      release.resolve();
+      await offline;
+
+      expect(callsWhileSourceUpdating).toBe(1);
+      expect(profile.status_emoji).toBe(STATUS_MESSAGES.OFF_EMOJI);
+      expect((await daemon.getSlackStatus()).stateCheckValue).toBe('not working');
+    });
+
+    it.each(['polling', 'reprioritization'] as const)('checks protection after a pending manual action during %s', async path => {
+      const slack = vi.mocked(daemon['slackService']);
+      await daemon.start();
+      await vi.advanceTimersByTimeAsync(0);
+      const started = deferred();
+      const release = deferred();
+      slack.setProfile.mockImplementationOnce(async (emoji, text) => {
+        profile = { status_emoji: emoji, status_text: text };
+        started.resolve();
+        await release.promise;
+        return true;
+      });
+
+      const manual = daemon.setStatus(STATUS_MESSAGES.MEETING_EMOJI, 'Manual meeting');
+      await started.promise;
+      setSourceActive('spotify', true);
+      const sourceUpdate = path === 'polling'
+        ? vi.advanceTimersByTimeAsync(1000)
+        : daemon.setSourceOrder(daemon.getSourceOrder());
+      await vi.advanceTimersByTimeAsync(0);
+      release.resolve();
+      await Promise.all([manual, sourceUpdate]);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(slack.setProfile).toHaveBeenCalledTimes(1);
+      expect(profile).toEqual({ status_emoji: STATUS_MESSAGES.MEETING_EMOJI, status_text: 'Manual meeting' });
+    });
+
+    it('continues processing manual actions after a rejected Slack operation', async () => {
+      const slack = vi.mocked(daemon['slackService']);
+      slack.setProfile.mockRejectedValueOnce(new Error('Slack unavailable'));
+
+      await expect(daemon.setStatus(STATUS_MESSAGES.MEETING_EMOJI, 'Meeting')).rejects.toThrow('Slack unavailable');
+      await expect(daemon.goAway()).resolves.toBe(true);
+
+      expect(profile.status_emoji).toBe(STATUS_MESSAGES.OFF_EMOJI);
+    });
+  });
+
 
 
   describe('Error Handling', () => {

@@ -74,6 +74,7 @@ export class ManualStatusPlanner {
           dndAction: manualStatusPlan.dndAction,
           stateValue: manualStatusPlan.stateValue,
           activeSource: manualStatusPlan.activeSource,
+          userOwned: true,
         };
       }
       case 'external-status': {
