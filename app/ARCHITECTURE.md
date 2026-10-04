@@ -64,6 +64,14 @@ The bot uses Slack's `status_expiration` field as the source of truth. When the 
 
 ## Critical Flows
 
+### Concurrent Status Updates and Manual Ownership
+
+The daemon serializes complete status operations through one Promise queue: manual actions, source polling, reprioritization, correction (including delivery retries), startup restoration, and workspace connection updates. Permission checks, Slack writes, and local state updates run together inside the queued operation. A failed operation rejects to its caller without blocking the queue.
+
+A reset already in progress completes before a queued manual action. Automatic work queued after that action checks the updated protection state before writing. Source detection runs outside the queue; applying its result runs inside it.
+
+Manual custom statuses and external commands set `userOwned`, so managed emojis such as the meeting emoji are protected from source updates, DND changes, and resets as well. The Online action clears ownership and restores automation. Concurrency and manual meeting protection are covered at the daemon boundary in `daemon.test.ts`.
+
 ### Flow 1: Setting Holiday Status (User Action)
 
 ```
@@ -283,4 +291,4 @@ When new features or complex flows are added, expand this document with:
 - Updates to the protection mode logic
 - etc.
 
-**Last updated:** 2026-09-12
+**Last updated:** 2026-10-02
