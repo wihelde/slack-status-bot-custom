@@ -166,7 +166,7 @@ Access debug logs in Settings → Logs tab. Use log level dropdown to adjust ver
 
 ## License
 
-MIT
+You may use and modify Fahrtenbuch for your own private or business trips. Versions shared with others must be free of charge and include access to their source code under the same terms. Selling the software, charging for access or hosting, and incorporating it into paid products or services are prohibited.
 
 ## Release Notes
 
