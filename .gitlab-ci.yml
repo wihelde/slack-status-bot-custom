@@ -1,6 +1,24 @@
 
 stages:
+  - test
   - release
+
+app_checks:
+  stage: test
+  image: node:22.22.2-bookworm-slim
+  tags:
+    - home-linux
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - cd app
+    # The host is compiled, not launched; skip the Electron binary installer.
+    - npm ci --ignore-scripts
+    - npm test
+    - npm run host:smoke
+    - npm run react-build
+
 create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest

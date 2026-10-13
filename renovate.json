@@ -1,0 +1,34 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["local>wihel_de/renovate"],
+  "minimumReleaseAge": "21 days",
+  "minimumReleaseAgeBehaviour": "timestamp-required",
+  "internalChecksFilter": "strict",
+  "dependencyDashboardApproval": false,
+  "packageRules": [
+    {
+      "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom", "@testing-library/react"],
+      "groupName": "React renderer and types",
+      "description": "Keep the React renderer, its types and renderer tests compatible.",
+      "separateMajorMinor": false
+    },
+    {
+      "matchPackageNames": ["node", "@types/node"],
+      "groupName": "Node.js CI runtime and types",
+      "description": "Review the CI Node.js image and host API types together.",
+      "separateMajorMinor": false
+    },
+    {
+      "matchPackageNames": ["vite", "vitest"],
+      "groupName": "Vite build and tests",
+      "description": "Vitest uses Vite to transform the same application sources.",
+      "separateMajorMinor": false
+    },
+    {
+      "matchPackageNames": ["electron-builder", "electron-updater", "@electron/asar"],
+      "groupName": "Electron packaging and updates",
+      "description": "Review release metadata, its updater and the packaged ASAR verifier together.",
+      "separateMajorMinor": false
+    }
+  ]
+}
