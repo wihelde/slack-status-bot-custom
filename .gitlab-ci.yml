@@ -15,6 +15,7 @@ app_checks:
     # App checks do not need release installers or repository history.
     GIT_LFS_SKIP_SMUDGE: "1"
     GIT_DEPTH: "1"
+    GIT_STRATEGY: clone
   script:
     - cd app
     # The host is compiled, not launched; skip the Electron binary installer.
