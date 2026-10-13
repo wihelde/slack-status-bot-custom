@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppleMusicAdapter } from '../appleMusic';
 
 vi.mock('../probes/appleScriptProbe', () => ({
@@ -8,23 +8,26 @@ vi.mock('../probes/appleScriptProbe', () => ({
 import { readAppleScriptOutput } from '../probes/appleScriptProbe';
 
 describe('AppleMusicAdapter', () => {
+  const originalPlatform = process.platform;
   let adapter: AppleMusicAdapter;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
     adapter = new AppleMusicAdapter();
   });
 
-  it('is only available on macOS', () => {
-    const originalPlatform = process.platform;
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+  });
 
+  it('is only available on macOS', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
     expect(new AppleMusicAdapter().isAvailable()).toBe(true);
 
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
     expect(new AppleMusicAdapter().isAvailable()).toBe(false);
 
-    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
   });
 
   it('returns inactive status when disabled without probing', async () => {
