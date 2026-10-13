@@ -16,16 +16,18 @@ app_checks:
     GIT_LFS_SKIP_SMUDGE: "1"
     GIT_DEPTH: "1"
     GIT_STRATEGY: clone
+    XDG_CURRENT_DESKTOP: GNOME
   before_script:
     - apt-get update
-    - apt-get install -y --no-install-recommends bats python3 xvfb xauth libgtk-3-0 libnss3 libasound2 libgbm1
+    - apt-get install -y --no-install-recommends bats python3 xvfb xauth libgtk-3-0 libnss3 libasound2 libgbm1 dbus gnome-keyring libsecret-1-0
   script:
     - bats tests
     - cd app
     # The package test gets its runtime from electron-builder; skip the dev installer.
     - npm ci --ignore-scripts
     - npm test
-    - xvfb-run -a npm run package:smoke
+    # A disposable keyring supplies real secure storage to the Linux app.
+    - dbus-run-session -- xvfb-run -a bash -ec 'printf ci-test-keyring | gnome-keyring-daemon --unlock --components=secrets; npm run package:smoke'
 
 create_release:
   stage: release

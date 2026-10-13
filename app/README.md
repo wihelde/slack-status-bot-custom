@@ -65,7 +65,7 @@ npm test
 ```
 
 Merge-request pipelines also run the legacy shell tests and `npm run package:smoke`
-on Linux with Xvfb. The package check builds the app, verifies its ASAR and updater
+on Linux with Xvfb and an isolated D-Bus/GNOME keyring session. The package check builds the app, verifies its ASAR and updater
 configuration, starts the packaged executable, and checks rendered UI, IPC and
 persisted settings using an empty temporary profile. No release is published.
 

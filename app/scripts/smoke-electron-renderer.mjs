@@ -225,7 +225,7 @@ async function waitForRendererTarget(port) {
 }
 
 async function getJson(url) {
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(1000) });
 
   if (!response.ok) {
     throw new Error(`${url} returned ${response.status}`);
