@@ -64,6 +64,24 @@ Creates production build and packages for distribution.
 npm test
 ```
 
+Merge-request pipelines also run the legacy shell tests and `npm run package:smoke`
+on Linux with Xvfb and an isolated D-Bus/GNOME keyring session. The package check builds the app, verifies its ASAR and updater
+configuration, starts the packaged executable, and checks rendered UI, IPC and
+persisted settings using an empty temporary profile. No release is published.
+
+Before merging dependency updates, run this on macOS:
+
+```bash
+npm run macos:smoke
+```
+
+This creates temporary unsigned DMG/ZIP artifacts, verifies their integrity and
+URI registration, starts the macOS app, and checks real AppleScript, process and
+MediaRemote probes plus encrypted workspace migration with dummy credentials.
+These macOS checks run locally because the project has no macOS CI runner.
+They do not test visible notifications, live playback in third-party apps,
+signed releases or an installed app's update flow.
+
 ## Configuration
 
 Settings are stored in:

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SpotifyAdapter } from '../spotify';
 
 vi.mock('../probes/appleScriptProbe', () => ({
@@ -13,23 +13,26 @@ import { readAppleScriptOutput } from '../probes/appleScriptProbe';
 import { isMacProcessRunning } from '../probes/processProbe';
 
 describe('SpotifyAdapter', () => {
+  const originalPlatform = process.platform;
   let adapter: SpotifyAdapter;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
     adapter = new SpotifyAdapter();
   });
 
-  it('is only available on macOS', () => {
-    const originalPlatform = process.platform;
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+  });
 
+  it('is only available on macOS', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
     expect(new SpotifyAdapter().isAvailable()).toBe(true);
 
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
     expect(new SpotifyAdapter().isAvailable()).toBe(false);
 
-    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
   });
 
   it('returns inactive status when disabled without probing', async () => {

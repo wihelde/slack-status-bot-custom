@@ -1,6 +1,34 @@
 
 stages:
+  - test
   - release
+
+app_checks:
+  stage: test
+  image: node:22.22.2-bookworm-slim
+  tags:
+    - home-linux
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  variables:
+    # App checks do not need release installers or repository history.
+    GIT_LFS_SKIP_SMUDGE: "1"
+    GIT_DEPTH: "1"
+    GIT_STRATEGY: clone
+    XDG_CURRENT_DESKTOP: GNOME
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends bats python3 xvfb xauth libgtk-3-0 libnss3 libasound2 libgbm1 dbus gnome-keyring libsecret-1-0
+  script:
+    - bats tests
+    - cd app
+    # The package test gets its runtime from electron-builder; skip the dev installer.
+    - npm ci --ignore-scripts
+    - npm test
+    # A disposable keyring supplies real secure storage to the Linux app.
+    - dbus-run-session -- xvfb-run -a bash -ec 'printf ci-test-keyring | gnome-keyring-daemon --unlock --components=secrets; npm run package:smoke'
+
 create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
