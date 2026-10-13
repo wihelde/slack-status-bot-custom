@@ -11,6 +11,10 @@ app_checks:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  variables:
+    # App checks do not need release installers or repository history.
+    GIT_LFS_SKIP_SMUDGE: "1"
+    GIT_DEPTH: "1"
   script:
     - cd app
     # The host is compiled, not launched; skip the Electron binary installer.
