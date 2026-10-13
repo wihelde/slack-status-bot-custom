@@ -14,17 +14,35 @@ teardown() {
   fixture_teardown
 }
 
-@test "Microsoft Teams meeting can call function without error" {
+@test "Microsoft Teams meeting sends its profile and enables DND" {
+  export MOCK_IN_TEAMS=1
   : > "${MOCK_CURL_LOG}"
   run run_function "setStatusInMicrosoftTeamsMeeting"
-  # Function should not crash; complex env-dependent behavior
-  true
+  assert_profile ":teams:" "In a meeting - will answer later"
+  assert_call_count 'dnd.setSnooze' 1
 }
 
-@test "Slack huddle sets status and resets after end" {
+@test "Slack huddle sends its profile and enables DND" {
+  export MOCK_IN_HUDDLE=1
   : > "${MOCK_CURL_LOG}"
   run run_function "setStatusInAHuddle"
   [ "$status" -eq 0 ]
+  assert_profile ":headphones:" "In a huddle - will answer later"
+  assert_call_count 'dnd.setSnooze' 1
+}
+
+@test "Microsoft Teams restores the weekday profile and disables DND after the call" {
+  export FINAL_STATUS=inAMicrosoftTeamsCall
+  run run_function "setStatusInMicrosoftTeamsMeeting"
+  assert_profile ":shark:" "Working"
+  assert_call_count 'dnd.endDnd' 1
+}
+
+@test "Slack huddle restores the weekday profile and disables DND after the call" {
+  export FINAL_STATUS=inAhuddle
+  run run_function "setStatusInAHuddle"
+  assert_profile ":shark:" "Working"
+  assert_call_count 'dnd.endDnd' 1
 }
 
 

@@ -21,14 +21,36 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
-@test "setStatusSpotify can call function without error" {
+@test "Spotify sends the playing track as the Slack profile" {
   export MOCK_SPOTIFY_PROCESS=1
   export MOCK_SPOTIFY_STATE="playing"
   export MOCK_SPOTIFY_TRACK="Artist - Song"
   : > "${MOCK_CURL_LOG}"
   run run_function "setStatusSpotify"
-  # Function should not crash; it's a complex function with env-dependent behavior
-  true
+  assert_profile ":spotify_2:" "Artist - Song"
+  assert_call_count 'users.profile.set' 1
+}
+
+@test "Spotify does not send the same track twice" {
+  export MOCK_SPOTIFY_PROCESS=1 MOCK_SPOTIFY_STATE=playing
+  export MOCK_SPOTIFY_TRACK="Artist - Song" FINAL_STATUS="Artist - Song"
+  run run_function "setStatusSpotify"
+  assert_call_count 'users.profile.set' 0
+}
+
+@test "Spotify restores the weekday profile after playback stops" {
+  export MOCK_SPOTIFY_TRACK="Artist - Song" FINAL_STATUS="Artist - Song"
+  run run_function "setStatusSpotify"
+  assert_profile ":shark:" "Working"
+  assert_call_count 'dnd.endDnd' 1
+}
+
+@test "Spotify preserves a protected user status" {
+  export MOCK_SPOTIFY_PROCESS=1 MOCK_SPOTIFY_STATE=playing
+  mock_set_status ":palm_tree:" "Vacation"
+  echo "not working" > ./logs/status_check.txt
+  run run_function "setStatusSpotify"
+  assert_call_count 'users.profile.set' 0
 }
 
 

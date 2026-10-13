@@ -4,13 +4,11 @@
 # We only simulate lines needed for grep patterns in the code
 
 if [[ "${MOCK_IN_ZOOM}" == "1" ]]; then
-  echo "zoom  12345 user  123u  IPv4 0x0      0t0  UDP *:*
-... 99"
+  echo "zoom  12345 user  123u  IPv4 0x0      0t0  UDP 127.0.0.1:99"
 fi
 
 if [[ "${MOCK_IN_HUDDLE}" == "1" ]]; then
-  echo "Slack 23456 user  456u  IPv4 0x0      0t0  UDP *:*
-... 54321"
+  echo "Slack 23456 user  456u  IPv4 0x0      0t0  UDP 127.0.0.1:54321"
 fi
 
 if [[ "${MOCK_IN_TEAMS}" == "1" ]]; then

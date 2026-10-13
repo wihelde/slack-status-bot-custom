@@ -7,7 +7,7 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const require = createRequire(import.meta.url);
-const electronPath = require('electron');
+const electronPath = process.argv[2] || require('electron');
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const appDir = path.resolve(scriptDir, '..');
@@ -20,6 +20,7 @@ const childEnv = { ...process.env };
 delete childEnv.ELECTRON_RUN_AS_NODE;
 
 let electronProcess;
+let electronClosed;
 let webSocket;
 
 try {
@@ -40,7 +41,11 @@ try {
 
   electronProcess = spawn(
     electronPath,
-    [appDir],
+    [
+      ...(process.argv[2] ? [] : [appDir]),
+      // Chromium cannot use its sandbox when CI runs this test container as root.
+      ...(process.platform === 'linux' && process.getuid() === 0 ? ['--no-sandbox'] : []),
+    ],
     {
       cwd: appDir,
       env: {
@@ -53,6 +58,10 @@ try {
       stdio: ['ignore', 'pipe', 'pipe'],
     }
   );
+  electronClosed = new Promise(resolve => {
+    electronProcess.once('close', resolve);
+  });
+  electronProcess.once('error', error => stderr.push(error.message));
 
   collectOutput(electronProcess.stdout, stdout);
   collectOutput(electronProcess.stderr, stderr);
@@ -80,6 +89,12 @@ try {
           api.getAppSnapshot(),
           api.getTokens(),
         ]);
+        const deadline = Date.now() + 5000;
+        while (!document.querySelector('h1') && Date.now() < deadline) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        const savedLevel = await api.setLogLevel('WARN');
+        const level = await api.getLogLevel();
 
         return {
           hasElectronAPI: true,
@@ -89,6 +104,8 @@ try {
           tokensConfigured: snapshot?.data?.setup?.tokensConfigured ?? null,
           daemonRunning: snapshot?.data?.daemon?.running ?? null,
           isFirstRun: snapshot?.data?.setup?.isFirstRun ?? null,
+          renderedTitle: document.querySelector('h1')?.textContent,
+          settingsRoundTrip: savedLevel?.success === true && level?.data === 'WARN',
         };
       }
     )()`,
@@ -105,8 +122,11 @@ try {
   assertEqual(smokeResult?.tokensConfigured, false, 'snapshot should report no configured tokens');
   assertEqual(smokeResult?.daemonRunning, false, 'daemon should stay stopped without tokens');
   assertEqual(smokeResult?.isFirstRun, false, 'seeded config should skip first-run state');
+  assertEqual(smokeResult?.renderedTitle, 'Slack Status Bot', 'the built React UI should render');
+  assertEqual(smokeResult?.settingsRoundTrip, true, 'settings should round-trip through preload and host IPC');
+  assertEqual(JSON.parse(fs.readFileSync(path.join(userDataDir, 'config.json'), 'utf8')).logLevel, 'WARN',
+    'host IPC should persist settings in the isolated profile');
 
-  console.log('[smoke] Electron renderer IPC smoke test passed.');
 } catch (error) {
   console.error('[smoke] Electron renderer IPC smoke test failed.');
   console.error(error instanceof Error ? error.message : String(error));
@@ -117,12 +137,18 @@ try {
     webSocket.close();
   }
 
-  if (electronProcess && electronProcess.exitCode === null) {
+  if (electronProcess) {
+    // Wait for Chromium to stop writing its profile before deleting it.
+    const killTimer = setTimeout(() => electronProcess.kill('SIGKILL'), 5000);
     electronProcess.kill();
+    await electronClosed;
+    clearTimeout(killTimer);
   }
 
-  fs.rmSync(tmpRoot, { recursive: true, force: true });
+  fs.rmSync(tmpRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 }
+
+if (!process.exitCode) console.log('[smoke] Electron renderer, IPC and persisted settings passed.');
 
 function collectOutput(stream, sink) {
   stream.setEncoding('utf-8');
@@ -235,6 +261,10 @@ async function connectToDevTools(url) {
 
     request.resolve(message.result);
   });
+  webSocket.addEventListener('close', () => {
+    for (const request of pending.values()) request.reject(new Error('Electron DevTools connection closed'));
+    pending.clear();
+  });
 
   return {
     webSocket,
@@ -243,7 +273,14 @@ async function connectToDevTools(url) {
       nextId += 1;
 
       return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
+        const timer = setTimeout(() => {
+          pending.delete(id);
+          reject(new Error(`Electron DevTools ${method} timed out`));
+        }, 10000);
+        pending.set(id, {
+          resolve: result => { clearTimeout(timer); resolve(result); },
+          reject: error => { clearTimeout(timer); reject(error); },
+        });
         webSocket.send(JSON.stringify({ id, method, params }));
       });
     },

@@ -21,6 +21,7 @@ teardown() {
   [ "$status" -eq 0 ]
   run cat "${PROJECT_ROOT}/logs/status_check.txt"
   [[ "${output}" == "monday" ]]
+  assert_profile ":monday:" "Pretty sure I smell a Monday here ..."
 }
 
 @test "reset on Friday sets friday payload and log" {
@@ -30,6 +31,7 @@ teardown() {
   [ "$status" -eq 0 ]
   run cat "${PROJECT_ROOT}/logs/status_check.txt"
   [[ "${output}" == "friday" ]]
+  assert_profile ":tgif:" "TGIF!"
 }
 
 @test "reset on weekday sets weekday payload and log" {
@@ -39,6 +41,7 @@ teardown() {
   [ "$status" -eq 0 ]
   run cat "${PROJECT_ROOT}/logs/status_check.txt"
   [[ "${output}" == "weekday" ]]
+  assert_profile ":shark:" "Working"
 }
 
 

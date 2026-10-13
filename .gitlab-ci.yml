@@ -16,13 +16,16 @@ app_checks:
     GIT_LFS_SKIP_SMUDGE: "1"
     GIT_DEPTH: "1"
     GIT_STRATEGY: clone
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends bats python3 xvfb xauth libgtk-3-0 libnss3 libasound2 libgbm1
   script:
+    - bats tests
     - cd app
-    # The host is compiled, not launched; skip the Electron binary installer.
+    # The package test gets its runtime from electron-builder; skip the dev installer.
     - npm ci --ignore-scripts
     - npm test
-    - npm run host:smoke
-    - npm run react-build
+    - xvfb-run -a npm run package:smoke
 
 create_release:
   stage: release
