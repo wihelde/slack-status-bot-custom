@@ -1386,7 +1386,7 @@ describe('SlackStatusBotDaemon', () => {
       const configDir = `/tmp/test-daemon-config-${Date.now()}-${Math.random()}`;
       
       // Get default statuses
-      const { getDefaultStatusConfiguration } = await import('../config/statusConfig');
+      const { getDefaultStatusConfiguration } = await import('../config/statusConfig.js');
       const defaults = getDefaultStatusConfiguration();
       
       // Create a daemon and save config with only some default statuses removed
