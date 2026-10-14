@@ -10,9 +10,11 @@ export default defineConfig({
     testTimeout: 10000,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      include: ['src/**/*.ts'],
-      exclude: ['src/**/*.d.ts', 'src/**/__tests__/**'],
+      reporter: ['text-summary', 'json', 'html', 'cobertura'],
+      reportsDirectory: '../coverage',
+      // Patterns are relative to the test root (src), including unimported files.
+      include: ['**/*.{ts,tsx}'],
+      exclude: ['**/*.d.ts', '**/__tests__/**'],
     },
   },
 });

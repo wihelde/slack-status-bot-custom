@@ -22,9 +22,9 @@
       "separateMajorMinor": false
     },
     {
-      "matchPackageNames": ["vite", "vitest"],
+      "matchPackageNames": ["vite", "vitest", "@vitest/coverage-v8"],
       "groupName": "Vite build and tests",
-      "description": "Vitest uses Vite to transform the same application sources.",
+      "description": "Vitest uses Vite; its coverage provider requires the same Vitest version.",
       "separateMajorMinor": false
     },
     {

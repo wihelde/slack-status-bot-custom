@@ -25,9 +25,21 @@ app_checks:
     - cd app
     # The package test gets its runtime from electron-builder; skip the dev installer.
     - npm ci --ignore-scripts
-    - npm test
+    - npm run test:coverage
     # A disposable keyring supplies real secure storage to the Linux app.
     - dbus-run-session -- xvfb-run -a bash -ec 'printf ci-test-keyring | gnome-keyring-daemon --unlock --components=secrets; npm run package:smoke'
+
+  coverage: '/^Lines\s*:\s*([\d.]+)%/'
+  artifacts:
+    when: always
+    expire_in: 1 week
+    expose_as: 'App coverage'
+    paths:
+      - app/coverage/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: app/coverage/cobertura-coverage.xml
 
 create_release:
   stage: release
