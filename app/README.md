@@ -64,6 +64,13 @@ Creates production build and packages for distribution.
 npm test
 ```
 
+Each test prints its result with a checkmark when it passes. Deliberately triggered
+errors are checked and labelled `[Erwarteter Fehler geprüft]`; expected warnings
+use `[Erwarteter Hinweis geprüft]`. Other warnings and errors remain visible.
+Error-case tests use `src/__tests__/helpers/expectedConsole.ts` to check their
+specific messages. A missing expected message or an additional message fails
+that test. Routine `console.log` progress is hidden so the results stay readable.
+
 Merge-request pipelines also run the legacy shell tests and `npm run package:smoke`
 on Linux with Xvfb and an isolated D-Bus/GNOME keyring session. The package check builds the app, verifies its ASAR and updater
 configuration, starts the packaged executable, and checks rendered UI, IPC and

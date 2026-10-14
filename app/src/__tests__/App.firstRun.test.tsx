@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { expectConsoleMessages } from './helpers/expectedConsole';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from '../App';
@@ -132,6 +133,8 @@ describe('App - First Run Integration', () => {
   });
 
   it('should handle app snapshot errors gracefully', async () => {
+    const diagnostic = expectConsoleMessages('error', [/^Error loading app snapshot:$/],
+      'Snapshot-Abfrage schlägt absichtlich fehl; Dashboard bleibt erreichbar.');
     const mockIPCService = IPCService as any;
     mockIPCService.getAppSnapshot = vi.fn().mockRejectedValue(new Error('snapshot failed'));
     mockIPCService.onAppSnapshotChanged = vi.fn(() => () => {});
@@ -141,6 +144,10 @@ describe('App - First Run Integration', () => {
     await waitFor(() => {
       expect(screen.getByTestId('dashboard')).toBeInTheDocument();
     }, { timeout: 3000 });
+    expect(diagnostic).toHaveBeenCalledWith(
+      'Error loading app snapshot:',
+      expect.objectContaining({ message: 'snapshot failed' }),
+    );
   });
 
   it('should show loading state initially', async () => {

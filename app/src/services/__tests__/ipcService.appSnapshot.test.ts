@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { IPCService } from '../ipcService';
+import { expectConsoleMessages } from '../../__tests__/helpers/expectedConsole';
 import type { AppSnapshotRefreshSignal } from '../../contracts/appSnapshot';
 
 describe('IPCService - App Snapshot', () => {
@@ -8,6 +9,8 @@ describe('IPCService - App Snapshot', () => {
   });
 
   it('returns null when not running in Electron', async () => {
+    expectConsoleMessages('warn', [/^\[IPCService\] Not running in Electron$/],
+      'Electron fehlt absichtlich; der IPC-Ersatzpfad wird geprüft.');
     const originalWindow = global.window;
     Object.defineProperty(global, 'window', {
       value: {},

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { IPCService } from '../ipcService';
+import { expectConsoleMessages } from '../../__tests__/helpers/expectedConsole';
 
 describe('IPCService - First Run & Auto Launch', () => {
   const setWindowMock = (value: unknown) => {
@@ -23,6 +24,8 @@ describe('IPCService - First Run & Auto Launch', () => {
 
   describe('completeFirstRun', () => {
     it('returns false when not running in Electron', async () => {
+      expectConsoleMessages('warn', [/^\[IPCService\] Not running in Electron$/],
+        'Electron fehlt absichtlich; der IPC-Ersatzpfad wird geprüft.');
       const restoreWindow = setWindowMock({});
       await expect(IPCService.completeFirstRun()).resolves.toBe(false);
       restoreWindow();

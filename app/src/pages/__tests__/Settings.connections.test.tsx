@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Settings from '../Settings';
 import type { ElectronAPI, TokensPayload } from '../../contracts/ipc';
@@ -58,6 +58,7 @@ describe('Slack Workspace settings', () => {
     fireEvent.change(screen.getByLabelText('Setup Link'), { target: { value: link.value } });
     fireEvent.click(screen.getByText('Connect workspace'));
     expect(openSetupLink).toHaveBeenCalledWith(link.value);
+    await waitFor(() => expect(screen.getByLabelText('Setup Link')).toHaveValue(''));
   });
 
   it('rejects a Slack App ID entered as the workspace ID', async () => {
@@ -134,7 +135,10 @@ describe('Slack Workspace settings', () => {
     Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: scrollTo });
     render(<main className="main-content"><Settings /></main>);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Automation/ }));
+    const automation = await screen.findByRole('button', { name: /Automation/ });
+    await act(async () => {
+      fireEvent.click(automation);
+    });
 
     expect(screen.getByRole('heading', { name: /Source Priority/ })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /Start App when computer boots/ })).toBeInTheDocument();

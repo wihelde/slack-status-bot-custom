@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    reporters: ['verbose'],
     root: 'src',
     include: ['**/__tests__/**/*.test.{ts,tsx}'],
     setupFiles: ['../vitest.setup.ts'],
