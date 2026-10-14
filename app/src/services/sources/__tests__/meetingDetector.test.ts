@@ -1,3 +1,4 @@
+import { expectConsoleMessages } from '../../../__tests__/helpers/expectedConsole';
 import { describe, expect, it, vi } from 'vitest';
 import { MeetingDetector } from '../detectors/meetingDetector';
 
@@ -72,7 +73,8 @@ describe('MeetingDetector', () => {
   });
 
   it('falls back to inactive when the probe throws', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = expectConsoleMessages('error', [/^Error getting Zoom status:$/],
+      'Zoom-Abfrage schlägt absichtlich fehl; Quelle bleibt inaktiv.');
     const detector = new MeetingDetector({
       name: 'Zoom',
       emoji: ':zoom_3:',
@@ -86,8 +88,10 @@ describe('MeetingDetector', () => {
       emoji: ':zoom_3:',
       message: undefined,
     });
-    expect(errorSpy).toHaveBeenCalled();
-    errorSpy.mockRestore();
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Error getting Zoom status:',
+      expect.objectContaining({ message: 'boom' }),
+    );
   });
 
   it('keeps inactive output normalized across meeting family members', async () => {

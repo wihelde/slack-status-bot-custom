@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import HolidayModal from '../HolidayModal';
+import { IPCService } from '../../services/ipcService';
+
+vi.mock('../../services/ipcService');
 
 describe('HolidayModal', () => {
   const mockOnClose = vi.fn();
@@ -19,6 +22,7 @@ describe('HolidayModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(IPCService.getStatusConfiguration).mockResolvedValue([]);
   });
 
   describe('Modal Display', () => {

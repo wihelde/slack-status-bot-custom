@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SlackService } from '../slack';
+import { expectConsoleMessages } from '../../__tests__/helpers/expectedConsole';
 import axios from 'axios';
 
 vi.mock('axios');
@@ -12,8 +13,6 @@ describe('SlackService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Suppress expected console.error messages in tests
-    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -57,6 +56,8 @@ describe('SlackService', () => {
     });
 
     it('should return null when API call fails', async () => {
+      expectConsoleMessages('error', [/\[slack\] getProfile failed/],
+        'Slack-Profilabfrage schlägt auch nach Wiederholung absichtlich fehl.');
       const getMock = vi.fn().mockRejectedValue(new Error('Network error'));
       mockedAxios.create.mockReturnValue({ get: getMock } as any);
 
@@ -116,6 +117,8 @@ describe('SlackService', () => {
     });
 
     it('should handle API error', async () => {
+      expectConsoleMessages('error', [/\[slack\] setProfile failed for some workspaces/],
+        'Slack lehnt die Profiländerung absichtlich ab.');
       mockedAxios.create.mockReturnValue({
         post: vi.fn().mockRejectedValue(new Error('Network error')),
       } as any);
@@ -241,6 +244,8 @@ describe('SlackService', () => {
     });
 
     it('should return null on error', async () => {
+      expectConsoleMessages('error', [/\[slack\] getPresence failed/],
+        'Slack-Anwesenheitsabfrage schlägt absichtlich fehl.');
       mockedAxios.create.mockReturnValue({
         get: vi.fn().mockRejectedValue(new Error('Network error')),
       } as any);

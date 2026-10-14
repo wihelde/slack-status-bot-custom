@@ -1,3 +1,4 @@
+import { expectConsoleMessages } from '../../../__tests__/helpers/expectedConsole';
 import { describe, expect, it, vi } from 'vitest';
 import { MusicDetector } from '../detectors/musicDetector';
 
@@ -72,7 +73,8 @@ describe('MusicDetector', () => {
   });
 
   it('falls back to inactive when a probe throws', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = expectConsoleMessages('error', [/^Error getting Spotify status:$/],
+      'Spotify-Abfrage schlägt absichtlich fehl; Quelle bleibt inaktiv.');
     const detector = new MusicDetector({
       name: 'Spotify',
       emoji: ':spotify_2:',
@@ -86,8 +88,10 @@ describe('MusicDetector', () => {
       name: 'Spotify',
       isActive: false,
     });
-    expect(errorSpy).toHaveBeenCalled();
-    errorSpy.mockRestore();
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Error getting Spotify status:',
+      expect.objectContaining({ message: 'boom' }),
+    );
   });
 
   it('supports music sources that do not need a separate running probe', async () => {

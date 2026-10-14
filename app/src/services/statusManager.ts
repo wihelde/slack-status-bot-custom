@@ -390,7 +390,7 @@ export class StatusManager extends EventEmitter {
     try {
       const success = await this.applyManualAction({ type: 'holiday', returnDateString });
       if (!success) {
-        logger.error(`[statusManager] Invalid date format: ${returnDateString}`);
+        logger.error(`[statusManager] Could not set holiday status: ${returnDateString}`);
       }
       return success;
     } catch (error) {

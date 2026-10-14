@@ -5,8 +5,11 @@ import path from 'path';
 import axios from 'axios';
 import { SlackStatusBotDaemon } from '../../daemon';
 import { STATUS_MESSAGES } from '../../config/statusConfig';
+import { expectConsoleMessages } from '../../__tests__/helpers/expectedConsole';
 
 vi.mock('axios');
+
+const workspaceAProfileFailure = /^\[[^\]]+\] \[ERROR\] \[slack\] setProfile failed for some workspaces \{"failedTokenIndexes":\[0\]\}$/;
 
 describe('Shared Status delivery across Workspace Connections', () => {
   let directory: string;
@@ -19,6 +22,8 @@ describe('Shared Status delivery across Workspace Connections', () => {
   });
 
   it('sends a manual profile update to B even when A throws, without claiming full success', async () => {
+    expectConsoleMessages('error', [workspaceAProfileFailure],
+      'Workspace A fällt absichtlich aus; die manuelle Änderung erreicht weiterhin B.');
     const sentTo: string[] = [];
     const post = vi.fn(async (url: string, _body: unknown, options: { headers: { Authorization: string } }) => {
       const token = options.headers.Authorization;
@@ -36,6 +41,8 @@ describe('Shared Status delivery across Workspace Connections', () => {
   });
 
   it('delivers meeting profile, presence, and DND to B when A is unavailable', async () => {
+    expectConsoleMessages('error', [workspaceAProfileFailure],
+      'Workspace A fällt absichtlich aus; Meeting, Anwesenheit und DND erreichen B.');
     const delivered: string[] = [];
     const post = vi.fn(async (url: string, _body: unknown, options: { headers: { Authorization: string } }) => {
       if (options.headers.Authorization === 'Bearer token-a') throw new Error('A is offline');
@@ -57,6 +64,8 @@ describe('Shared Status delivery across Workspace Connections', () => {
   });
 
   it('uses B as the Reference Workspace when A has no reachable profile', async () => {
+    expectConsoleMessages('error', [/^\[[^\]]+\] \[ERROR\] \[slack\] getProfile failed \{"tokenIndex":0,"attempt":2\}$/],
+      'Profilabfrage für Workspace A schlägt absichtlich fehl; B liefert den Referenzstatus.');
     const readFrom: string[] = [];
     const get = vi.fn(async (_url: string, options: { headers: { Authorization: string } }) => {
       readFrom.push(options.headers.Authorization);
@@ -73,6 +82,8 @@ describe('Shared Status delivery across Workspace Connections', () => {
   });
 
   it('reports A as unavailable and B with its own observed profile and delivery result', async () => {
+    expectConsoleMessages('error', [workspaceAProfileFailure],
+      'Workspace A fällt absichtlich aus; die Übersicht zeigt die Zustellung je Workspace.');
     const post = vi.fn(async (_url: string, _body: unknown, options: { headers: { Authorization: string } }) => {
       if (options.headers.Authorization === 'Bearer token-a') throw new Error('A is offline');
       return { data: { ok: true } };
@@ -103,6 +114,8 @@ describe('Shared Status delivery across Workspace Connections', () => {
   });
 
   it('keeps a partially delivered holiday protected as the shared custom status', async () => {
+    expectConsoleMessages('error', [workspaceAProfileFailure],
+      'Urlaub erreicht absichtlich nur B; der gemeinsame Status bleibt geschützt.');
     const post = vi.fn(async (_url: string, _body: unknown, options: { headers: { Authorization: string } }) =>
       ({ data: { ok: options.headers.Authorization === 'Bearer token-b' } }));
     const get = vi.fn(async (_url: string, options: { headers: { Authorization: string } }) =>
@@ -121,6 +134,8 @@ describe('Shared Status delivery across Workspace Connections', () => {
   });
 
   it('catches up only A to the latest shared profile on the correction cycle', async () => {
+    expectConsoleMessages('error', [workspaceAProfileFailure],
+      'Workspace A fällt zunächst aus und erhält beim nächsten Versuch den aktuellen Status.');
     let aAvailable = false;
     const profiles = new Map([
       ['Bearer token-a', { status_emoji: ':old:', status_text: 'Old' }],
@@ -157,6 +172,8 @@ describe('Shared Status delivery across Workspace Connections', () => {
   });
 
   it('restores profile, presence and DND intent in A without rewriting B', async () => {
+    expectConsoleMessages('error', [workspaceAProfileFailure],
+      'Workspace A fällt zunächst aus; Profil, Anwesenheit und DND werden später nachgeholt.');
     let aAvailable = false;
     const requests: string[] = [];
     const recoveredDndMinutes: number[] = [];
@@ -245,6 +262,8 @@ describe('Shared Status delivery across Workspace Connections', () => {
   });
 
   it('waits for Slack retry-after before catching up a rate-limited workspace', async () => {
+    expectConsoleMessages('error', [workspaceAProfileFailure],
+      'Slack begrenzt Workspace A absichtlich; der nächste Versuch wartet auf retry-after.');
     const start = Date.now();
     const post = vi.fn(async (_url: string, _body: unknown, options: { headers: { Authorization: string } }) =>
       options.headers.Authorization === 'Bearer token-a'
@@ -283,7 +302,7 @@ describe('Shared Status delivery across Workspace Connections', () => {
       slackTokens: ['token-b'], configDir: directory,
       workspaceConnections: [{ teamId: 'T-B', teamName: 'Beta', userName: 'Bob' }],
     });
-    await daemon.setHoliday('26.09.2026');
+    await expect(daemon.setHoliday('26.09.2026')).resolves.toBe(true);
     posts.length = 0;
     profiles.set('Bearer token-b', { status_emoji: '', status_text: '' });
     vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-09-27T12:00:00Z').getTime());
@@ -341,6 +360,11 @@ describe('Shared Status delivery across Workspace Connections', () => {
   });
 
   it('catches up an offline workspace to the cleared status after a holiday expires', async () => {
+    expectConsoleMessages('error', [
+      workspaceAProfileFailure,
+      /^\[[^\]]+\] \[ERROR\] \[statusManager\] Could not set holiday status: 26\.09\.2026$/,
+    ],
+      'Urlaub erreicht zunächst nur B; nach Ablauf erhält A den leeren Status.');
     const profiles = new Map<string, { status_emoji: string; status_text: string; status_expiration?: number }>();
     const posts: Array<{ token: string; emoji: string }> = [];
     const post = vi.fn(async (url: string, body: { profile?: { status_emoji: string; status_text: string;
@@ -358,7 +382,7 @@ describe('Shared Status delivery across Workspace Connections', () => {
       ({ data: { ok: true, profile: profiles.get(options.headers.Authorization) } }));
     vi.mocked(axios.create).mockReturnValue({ post, get } as unknown as ReturnType<typeof axios.create>);
     const daemon = new SlackStatusBotDaemon({ slackTokens: ['token-a', 'token-b'], configDir: directory });
-    await daemon.setHoliday('26.09.2026');
+    await expect(daemon.setHoliday('26.09.2026')).resolves.toBe(false);
     posts.length = 0;
     profiles.set('Bearer token-b', { status_emoji: '', status_text: '' });
     vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-09-27T12:00:00Z').getTime());

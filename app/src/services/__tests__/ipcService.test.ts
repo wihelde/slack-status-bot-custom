@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { IPCService } from '../ipcService';
+import { expectConsoleMessages } from '../../__tests__/helpers/expectedConsole';
 
 describe('IPCService - Tray Integration', () => {
   const setWindowMock = (value: unknown) => {
@@ -41,14 +42,13 @@ describe('IPCService - Tray Integration', () => {
     });
 
     it('returns undefined and logs a warning outside Electron', () => {
-      const consoleSpy = vi.spyOn(console, 'warn');
+      expectConsoleMessages('warn', [/^\[IPCService\] Not running in Electron$/],
+        'Electron fehlt absichtlich; der IPC-Ersatzpfad wird geprüft.');
       const mockCallback = vi.fn();
       const restoreWindow = setWindowMock({});
 
       expect(IPCService.onOpenHolidayModal(mockCallback)).toBeUndefined();
-      expect(consoleSpy).toHaveBeenCalledWith('[IPCService] Not running in Electron');
 
-      consoleSpy.mockRestore();
       restoreWindow();
     });
   });
@@ -75,6 +75,8 @@ describe('IPCService - Tray Integration', () => {
     });
 
     it('returns undefined for renderer subscriptions when Electron is unavailable', () => {
+      expectConsoleMessages('warn', [/^\[IPCService\] Not running in Electron$/],
+        'Electron fehlt absichtlich; der IPC-Ersatzpfad wird geprüft.');
       const restoreWindow = setWindowMock({});
 
       const result1 = IPCService.onOpenHolidayModal(() => {});
