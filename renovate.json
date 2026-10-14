@@ -2,7 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["local>wihel_de/renovate"],
   "constraints": {
-    "npm": "10.9.7"
+    "npm": "10.9.9"
   },
   "minimumReleaseAge": "21 days",
   "minimumReleaseAgeBehaviour": "timestamp-required",
