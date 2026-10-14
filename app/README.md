@@ -69,6 +69,11 @@ on Linux with Xvfb and an isolated D-Bus/GNOME keyring session. The package chec
 configuration, starts the packaged executable, and checks rendered UI, IPC and
 persisted settings using an empty temporary profile. No release is published.
 
+Renovate generates lockfiles with npm 10.9.7, matching the version bundled in the
+CI Node.js image. Newer npm versions remove optional peer entries that npm 10
+requires for `npm ci`. When changing the CI image, check its npm version and
+update the constraint in `../renovate.json` together.
+
 Before merging dependency updates, run this on macOS:
 
 ```bash
