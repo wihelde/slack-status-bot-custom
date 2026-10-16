@@ -38,13 +38,15 @@ Support coming in future releases.
 ## Development
 
 ### Prerequisites
-- Node.js 22.13+ and npm
+- Node.js 22.22.2 (the CI version) and npm 12.1.0
 - macOS 10.13+ (for development)
 
 ### Setup
 ```bash
 cd app
-npm install
+project_npm_version=$(node -p 'require("./package.json").engines.npm')
+npx --yes "npm@$project_npm_version" install --global "npm@$project_npm_version"
+npm ci
 ```
 
 ### Development Mode
@@ -76,10 +78,11 @@ on Linux with Xvfb and an isolated D-Bus/GNOME keyring session. The package chec
 configuration, starts the packaged executable, and checks rendered UI, IPC and
 persisted settings using an empty temporary profile. No release is published.
 
-Renovate generates lockfiles with npm 10.9.7, matching the version bundled in the
-CI Node.js image. Newer npm versions remove optional peer entries that npm 10
-requires for `npm ci`. When changing the CI image, check its npm version and
-update the constraint in `../renovate.json` together.
+The npm version is pinned in `package.json` under `engines.npm`. CI installs that
+version explicitly, Renovate uses it for lockfile updates, and `.npmrc` rejects
+installs with a different version. This prevents optional peer entries from being
+removed by one npm version and required by another. Update `engines.npm` when
+upgrading npm; the CI image's bundled npm version does not determine it.
 
 Before merging dependency updates, run this on macOS:
 
