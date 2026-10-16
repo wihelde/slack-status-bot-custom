@@ -19,15 +19,13 @@ app_checks:
     XDG_CURRENT_DESKTOP: GNOME
   before_script:
     # npx avoids npm 10 replacing its own modules during the npm 12 upgrade.
-    - export PROJECT_NPM_VERSION=$(node -p 'require("./app/package.json").engines.npm')
+    - export PROJECT_NPM_VERSION=$(node -p 'require("./package.json").engines.npm')
     - npx --yes "npm@$PROJECT_NPM_VERSION" install --global "npm@$PROJECT_NPM_VERSION"
     - node --version
     - npm --version
     - apt-get update
-    - apt-get install -y --no-install-recommends bats python3 xvfb xauth libgtk-3-0 libnss3 libasound2 libgbm1 dbus gnome-keyring libsecret-1-0
+    - apt-get install -y --no-install-recommends xvfb xauth libgtk-3-0 libnss3 libasound2 libgbm1 dbus gnome-keyring libsecret-1-0
   script:
-    - bats tests
-    - cd app
     # The package test gets its runtime from electron-builder; skip the dev installer.
     - npm ci --ignore-scripts
     - npm run test:coverage
@@ -40,11 +38,11 @@ app_checks:
     expire_in: 1 week
     expose_as: 'App coverage'
     paths:
-      - app/coverage/
+      - coverage/
     reports:
       coverage_report:
         coverage_format: cobertura
-        path: app/coverage/cobertura-coverage.xml
+        path: coverage/cobertura-coverage.xml
 
 create_release:
   stage: release
@@ -56,8 +54,8 @@ create_release:
       --tag-name $CI_COMMIT_TAG 
       --name "Release $CI_COMMIT_TAG" 
       --description "Slack Status Bot Release $CI_COMMIT_TAG" 
-      --assets-link "{\"name\":\"Slack Status Bot macOS (dmg)\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-$VERSION-arm64.dmg\",\"link_type\":\"package\"}"
-      #--assets-link "{\"name\":\"Slack Status Bot macOS (zip)\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/Slack Status Bot-$VERSION-arm64-mac.zip\",\"link_type\":\"package\"}"
-      #--assets-link "{\"name\":\"latest-mac.yml\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/app/dist/latest-mac.yml\",\"link_type\":\"other\"}"
+      --assets-link "{\"name\":\"Slack Status Bot macOS (dmg)\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/dist/Slack Status Bot-$VERSION-arm64.dmg\",\"link_type\":\"package\"}"
+      #--assets-link "{\"name\":\"Slack Status Bot macOS (zip)\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/dist/Slack Status Bot-$VERSION-arm64-mac.zip\",\"link_type\":\"package\"}"
+      #--assets-link "{\"name\":\"latest-mac.yml\",\"url\":\"$CI_SERVER_URL/$CI_PROJECT_PATH/-/raw/$CI_COMMIT_TAG/dist/latest-mac.yml\",\"link_type\":\"other\"}"
   only:
     - tags

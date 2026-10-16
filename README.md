@@ -5,7 +5,7 @@ Desktop application for automating your Slack status based on music playback, me
 ## Installation
 
 ### macOS (Currently Supported)
-Download the latest `.dmg` installer from [Releases](https://github.com/yourusername/slack-status-bot/releases)
+Download the latest `.dmg` installer from [Releases](https://gitlab.com/wihel_de/slack-status-bot-custom/-/releases)
 Move the app to your applications-folder
 Open your terminal and execute the following command: 
 
@@ -32,6 +32,74 @@ Open your terminal and execute the following command:
 - Per-source enable/disable
 - Customizable source priority order
 - Auto-start on login
+
+## Development
+
+### Prerequisites
+- Node.js 22.22.2 (the CI version) and npm 12.1.0
+- macOS 10.13+ (for development)
+
+### Setup
+```bash
+project_npm_version=$(node -p 'require("./package.json").engines.npm')
+npx --yes "npm@$project_npm_version" install --global "npm@$project_npm_version"
+npm ci
+```
+
+### Development Mode
+```bash
+npm run dev
+```
+Runs the Vite development server and Electron in watch mode with hot reload.
+
+### Build
+```bash
+npm run build
+```
+Creates production build and packages for distribution.
+
+### Testing
+```bash
+npm test
+```
+
+Each test prints its result with a checkmark when it passes. Deliberately triggered
+errors are checked and labelled `[Erwarteter Fehler geprüft]`; expected warnings
+use `[Erwarteter Hinweis geprüft]`. Other warnings and errors remain visible.
+Error-case tests use `src/__tests__/helpers/expectedConsole.ts` to check their
+specific messages. A missing expected message or an additional message fails
+that test. Routine `console.log` progress is hidden so the results stay readable.
+
+Merge-request pipelines run `npm run test:coverage` and `npm run package:smoke`
+on Linux with Xvfb and an isolated D-Bus/GNOME keyring session. The package check builds the app, verifies its ASAR and updater
+configuration, starts the packaged executable, and checks rendered UI, IPC and
+persisted settings using an empty temporary profile. No release is published.
+
+The npm version is pinned in `package.json` under `engines.npm`. CI installs that
+version explicitly, Renovate uses it for lockfile updates, and `.npmrc` rejects
+installs with a different version. This prevents optional peer entries from being
+removed by one npm version and required by another. Update `engines.npm` when
+upgrading npm; the CI image's bundled npm version does not determine it.
+
+Before merging dependency updates, run this on macOS:
+
+```bash
+npm run macos:smoke
+```
+
+This creates temporary unsigned DMG/ZIP artifacts, verifies their integrity and
+URI registration, starts the macOS app, and checks real AppleScript, process and
+MediaRemote probes plus encrypted workspace migration with dummy credentials.
+These macOS checks run locally because the project has no macOS CI runner.
+They do not test visible notifications, live playback in third-party apps,
+signed releases or an installed app's update flow.
+
+## Legacy Bash Version
+
+The Electron app lives at the repository root and is the maintained version.
+The former Bash bot, its helpers and tests are archived in
+[`deprecated/`](deprecated/README.md). The Bash version is no longer maintained
+or run in CI.
 
 ## Configuration
 
@@ -163,6 +231,9 @@ When an update is available, the app shows a native notification in addition to 
 
 ### Logs
 Access debug logs in Settings → Logs tab. Use log level dropdown to adjust verbosity.
+
+### Missing Slack-Emojis
+In case the status is not changed due to a unknown slack-emoji in your workspace, you can check the emojis-folder and upload the missing ones from there.
 
 ## License
 

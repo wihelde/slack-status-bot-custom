@@ -76,7 +76,7 @@
     ],
     "publish": {
       "provider": "generic",
-      "url": "https://gitlab.com/wihel_de/slack-status-bot-custom/-/raw/v${version}/app/dist"
+      "url": "https://gitlab.com/wihel_de/slack-status-bot-custom/-/raw/v${version}/dist"
     },
     "protocols": [
       {

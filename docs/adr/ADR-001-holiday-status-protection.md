@@ -88,6 +88,6 @@ Three locations MUST check `'not working'` mode (in order of importance):
 
 ## References
 
-- `app/ARCHITECTURE.md` - Core Concepts, Critical Flows
-- `app/src/services/statusManager.ts` - Implementation
-- `app/src/services/__tests__/statusManager.test.ts` - Test coverage
+- `ARCHITECTURE.md` - Core Concepts, Critical Flows
+- `src/services/statusManager.ts` - Implementation
+- `src/services/__tests__/statusManager.test.ts` - Test coverage
