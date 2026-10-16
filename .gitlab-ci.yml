@@ -18,6 +18,11 @@ app_checks:
     GIT_STRATEGY: clone
     XDG_CURRENT_DESKTOP: GNOME
   before_script:
+    # npx avoids npm 10 replacing its own modules during the npm 12 upgrade.
+    - export PROJECT_NPM_VERSION=$(node -p 'require("./app/package.json").engines.npm')
+    - npx --yes "npm@$PROJECT_NPM_VERSION" install --global "npm@$PROJECT_NPM_VERSION"
+    - node --version
+    - npm --version
     - apt-get update
     - apt-get install -y --no-install-recommends bats python3 xvfb xauth libgtk-3-0 libnss3 libasound2 libgbm1 dbus gnome-keyring libsecret-1-0
   script:

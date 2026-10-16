@@ -76,6 +76,7 @@ fallow.toml
 !.gitlab-ci.yml
 !.gitignore
 !.gitattributes
+!app/.npmrc
 # Exception for release DMG files
 !**/dist/*.dmg
 !.github*

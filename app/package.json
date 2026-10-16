@@ -9,6 +9,9 @@
     "email": "slack-status-bot@wihel.de"
   },
   "license": "MIT",
+  "engines": {
+    "npm": "12.1.0"
+  },
   "scripts": {
     "postinstall": "install-electron",
     "dev": "concurrently \"npm run react-start\" \"npm run host:watch\" \"wait-on http://localhost:3000 dist/electron.js && npm run electron-dev\"",
