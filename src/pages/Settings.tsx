@@ -27,6 +27,8 @@ const Settings: React.FC = () => {
   const [draggedSource, setDraggedSource] = useState<SourceName | null>(null);
   const [logLevel, setLogLevelState] = useState<'DEBUG' | 'INFO' | 'WARN' | 'ERROR'>('ERROR');
   const [logLevelSaving, setLogLevelSaving] = useState(false);
+  const [meetingDnd, setMeetingDnd] = useState(true);
+  const [meetingDndSaving, setMeetingDndSaving] = useState(false);
   const [autoLaunch, setAutoLaunch] = useState(false);
   const [autoLaunchLoading, setAutoLaunchLoading] = useState(false);
   const [appVersion, setAppVersion] = useState('');
@@ -48,6 +50,8 @@ const Settings: React.FC = () => {
         setConnectionError(tokenData.connectionError);
         setOAuthMessage(tokenData.oauthMessage);
       }
+
+      setMeetingDnd((await IPCService.getMeetingDnd()) ?? true);
 
       // Load source order
       const order = await IPCService.getSourceOrder();
@@ -369,6 +373,7 @@ const Settings: React.FC = () => {
 
       {activeTab === 'automation' && (
       <>
+      {error && <div className="error-message" role="alert">{error}</div>}
       <div className="settings-card appearance-setting">
         <h2>🌓 Appearance</h2>
         <label htmlFor="theme-preference">Theme</label>
@@ -381,6 +386,20 @@ const Settings: React.FC = () => {
           <option value="light">Light</option>
           <option value="dark">Dark</option>
         </select>
+      </div>
+      <div className="settings-card">
+        <h2>Meetings</h2>
+        <label>
+          <input type="checkbox" checked={meetingDnd} disabled={meetingDndSaving} onChange={async event => {
+            const enabled = event.target.checked;
+            setMeetingDndSaving(true);
+            setError('');
+            if (await IPCService.setMeetingDnd(enabled)) setMeetingDnd(enabled);
+            else setError('Could not save meeting preference. Please try again.');
+            setMeetingDndSaving(false);
+          }} />
+          {' '}Automatically enable Do Not Disturb during meetings
+        </label>
       </div>
       <div className="settings-card">
         <h2>🎵 Source Priority</h2>

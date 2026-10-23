@@ -29,6 +29,7 @@ export class SlackStatusBotDaemon {
   private sourceRegistry: SourceRegistry;
   private sourceArbitrationEngine: SourceArbitrationEngine;
   private runtimeOrchestrator: RuntimeOrchestrator;
+  private meetingDnd = true;
   private running: boolean = false;
   private intervals: NodeJS.Timeout[] = [];
   private configDir: string;
@@ -48,6 +49,7 @@ export class SlackStatusBotDaemon {
     this.sourceRegistry = new SourceRegistry();
     this.sourceArbitrationEngine = new SourceArbitrationEngine();
     this.runtimeOrchestrator = new RuntimeOrchestrator({
+      isMeetingDndEnabled: () => this.meetingDnd,
       statusManager: this.statusManager,
       slackExecutor: this.slackExecutor,
       sourceArbitrationEngine: this.sourceArbitrationEngine,
@@ -261,9 +263,14 @@ export class SlackStatusBotDaemon {
     this.saveConfig();
   }
 
-  /**
-   * Get current source priority order
-   */
+  /** Persist and apply the meeting DND preference. */
+  setMeetingDnd(enabled: boolean): void {
+    this.configStore.updateDaemonSettings({ meetingDnd: enabled });
+    this.meetingDnd = enabled;
+    this.statusManager.setMeetingDnd(enabled);
+    logger.info('[daemon] Meeting DND preference updated', { enabled });
+  }
+
   getSourceOrder(): SourceName[] {
     return [...this.sourceOrder];
   }
@@ -389,6 +396,8 @@ export class SlackStatusBotDaemon {
   private loadConfig(): void {
     const config = this.configStore.getDaemonSettings();
 
+    this.meetingDnd = config.meetingDnd;
+    this.statusManager.setMeetingDnd(config.meetingDnd);
     this.sourceRegistry.applyEnabledConfig(config.sources);
     this.sourceOrder = [...config.sourceOrder];
     this.statusManager.setCustomStatuses([

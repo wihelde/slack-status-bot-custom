@@ -17,6 +17,7 @@ interface RuntimeOrchestratorConfig {
   >;
   slackExecutor: Pick<SlackStatusExecutor, 'getProfile' | 'setSourceStatus' | 'setMeetingDnd'>;
   sourceArbitrationEngine: Pick<SourceArbitrationEngine, 'listActiveSources' | 'pickWinner' | 'recordHandledStatus'>;
+  isMeetingDndEnabled?: () => boolean;
   getNow?: () => number;
   profileSetCooldownMs?: number;
   resetBlockedCooldownMs?: number;
@@ -226,6 +227,7 @@ export class RuntimeOrchestrator {
   }
 
   private async setMeetingDndIfAllowed(enabled: boolean): Promise<void> {
+    if (this.config.isMeetingDndEnabled?.() === false) return;
     if (!await this.config.statusManager.isStatusClean()) {
       logger.debug('[polling] Meeting DND unchanged because status is protected');
       return;

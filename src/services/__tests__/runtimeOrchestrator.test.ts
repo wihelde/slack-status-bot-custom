@@ -65,6 +65,25 @@ describe('RuntimeOrchestrator', () => {
     slackExecutor.setMeetingDnd.mockResolvedValue(true);
   });
 
+  it('updates meeting status without touching DND when opted out', async () => {
+    orchestrator = new RuntimeOrchestrator({
+      statusManager, slackExecutor, sourceArbitrationEngine, getNow,
+      isMeetingDndEnabled: () => false,
+    });
+    const statuses = createStatuses({ zoom: { isActive: true, message: 'In a meeting' } });
+    await orchestrator.handlePollingSnapshot({
+      sourceOrder: DEFAULT_SOURCE_ORDER, sourceStatuses: statuses,
+      snapshot: sourceArbitrationEngine.evaluate(DEFAULT_SOURCE_ORDER, statuses),
+    });
+    expect(slackExecutor.setSourceStatus).toHaveBeenCalled();
+    statuses.zoom.isActive = false;
+    await orchestrator.handlePollingSnapshot({
+      sourceOrder: DEFAULT_SOURCE_ORDER, sourceStatuses: statuses,
+      snapshot: sourceArbitrationEngine.evaluate(DEFAULT_SOURCE_ORDER, statuses),
+    });
+    expect(slackExecutor.setMeetingDnd).not.toHaveBeenCalled();
+  });
+
   it('applies winning-source activation through the runtime boundary and enables meeting DND', async () => {
     const statuses = createStatuses({
       zoom: { isActive: true, message: 'In a meeting' },

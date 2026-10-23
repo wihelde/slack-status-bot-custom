@@ -14,6 +14,8 @@ export const IPC_CHANNELS = {
   goAway: 'go-away',
   toggleSource: 'toggle-source',
   setSourceOrder: 'set-source-order',
+  getMeetingDnd: 'get-meeting-dnd',
+  setMeetingDnd: 'set-meeting-dnd',
   getSourceOrder: 'get-source-order',
   getTokenStatus: 'get-token-status',
   getLogs: 'get-logs',
@@ -105,6 +107,8 @@ export interface ElectronAPI {
   goAway: () => Promise<IpcResult<boolean>>;
   toggleSource: (source: SourceName, enabled: boolean) => Promise<IpcResult>;
   setSourceOrder: (sourceOrder: SourceName[]) => Promise<IpcResult>;
+  getMeetingDnd: () => Promise<IpcResult<boolean>>;
+  setMeetingDnd: (enabled: boolean) => Promise<IpcResult>;
   getSourceOrder: () => Promise<IpcResult<SourceName[]>>;
   getTokenStatus: () => Promise<IpcResult<TokenStatusPayload>>;
   getLogs: (lines?: number) => Promise<IpcResult<string>>;

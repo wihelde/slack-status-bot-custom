@@ -14,6 +14,7 @@ const CONFIG_FILE_NAME = 'config.json';
 const MANAGED_KEYS = new Set([
   'slackTokens',
   'sources',
+  'meetingDnd',
   'sourceOrder',
   'statusConfiguration',
   'hasCompletedFirstRun',
@@ -23,6 +24,7 @@ const MANAGED_KEYS = new Set([
 const VALID_LOG_LEVELS: LogLevel[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
 
 export interface PersistedAppConfig {
+  meetingDnd: boolean;
   slackTokens: string[];
   sources: Record<SourceName, boolean>;
   sourceOrder: SourceName[];
@@ -33,6 +35,7 @@ export interface PersistedAppConfig {
 }
 
 export interface DaemonPersistedSettings {
+  meetingDnd: boolean;
   sources: Record<SourceName, boolean>;
   sourceOrder: SourceName[];
   statusConfiguration: StatusConfiguration;
@@ -81,6 +84,7 @@ export class AppConfigStore {
   getDaemonSettings(): DaemonPersistedSettings {
     const config = this.load();
     return {
+      meetingDnd: config.meetingDnd,
       sources: { ...config.sources },
       sourceOrder: [...config.sourceOrder],
       statusConfiguration: cloneStatusConfiguration(config.statusConfiguration),
@@ -125,6 +129,7 @@ export class AppConfigStore {
   updateDaemonSettings(settings: Partial<DaemonPersistedSettings>): PersistedAppConfig {
     return this.update(config => ({
       ...config,
+      meetingDnd: settings.meetingDnd ?? config.meetingDnd,
       sources: settings.sources ? normalizeSources(settings.sources) : config.sources,
       sourceOrder: settings.sourceOrder ? normalizeSourceOrder(settings.sourceOrder) : config.sourceOrder,
       statusConfiguration: settings.statusConfiguration
@@ -214,6 +219,7 @@ export function createAppConfigStore(options: AppConfigStoreOptions): AppConfigS
 
 function createDefaultConfig(): PersistedAppConfig {
   return {
+    meetingDnd: true,
     slackTokens: [],
     sources: normalizeSources({}),
     sourceOrder: [...DEFAULT_SOURCE_ORDER],
@@ -227,6 +233,7 @@ function normalizeConfig(value: unknown): PersistedAppConfig {
   const record = asRecord(value);
 
   return {
+    meetingDnd: record.meetingDnd !== false,
     slackTokens: normalizeSlackTokens(record.slackTokens),
     sources: normalizeSources(record.sources),
     sourceOrder: normalizeSourceOrder(record.sourceOrder),
@@ -314,6 +321,7 @@ function buildPersistedPayload(
 ): Record<string, unknown> {
   return {
     ...extras,
+    meetingDnd: config.meetingDnd,
     slackTokens: [...config.slackTokens],
     sources: { ...config.sources },
     sourceOrder: [...config.sourceOrder],

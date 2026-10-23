@@ -18,6 +18,16 @@ describe('AppConfigStore', () => {
     fs.rmSync(testConfigDir, { recursive: true, force: true });
   });
 
+  it('keeps the meeting DND opt-out across restarts and unrelated saves', () => {
+    const store = createAppConfigStore({ configDir: testConfigDir });
+    expect(store.load().meetingDnd).toBe(true);
+    store.updateDaemonSettings({ meetingDnd: false });
+    store.updateSlackTokens(['test-token']);
+    store.clearSlackTokens();
+    const restarted = createAppConfigStore({ configDir: testConfigDir });
+    expect(restarted.getDaemonSettings().meetingDnd).toBe(false);
+  });
+
   it('persists slack tokens without losing daemon-managed fields', () => {
     const store = createAppConfigStore({ configDir: testConfigDir });
 

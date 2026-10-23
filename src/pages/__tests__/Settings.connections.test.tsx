@@ -16,12 +16,25 @@ describe('Slack Workspace settings', () => {
       openSetupLink,
       removeWorkspace,
       onAppSnapshotChanged: () => () => {},
+      getMeetingDnd: async () => ({ success: true, data: false }),
+      setMeetingDnd: vi.fn(async () => ({ success: true })),
       getSourceOrder: async () => ({ success: false }),
       getLogLevel: async () => ({ success: false }),
       getAutoLaunch: async () => ({ success: false }),
       getAppSnapshot: async () => ({ success: false }),
       getStatusConfiguration: async () => ({ success: true, data: [] }),
     } as unknown as ElectronAPI;
+  });
+
+  it('loads and saves the meeting DND preference', async () => {
+    getTokens.mockResolvedValue({ success: true, data: { tokens: [], count: 0, connectionError: null, oauthMessage: null, connections: [] } });
+    render(<Settings />);
+    fireEvent.click(await screen.findByRole('button', { name: /Automation/ }));
+    const toggle = screen.getByRole('checkbox', { name: /Automatically enable Do Not Disturb/ });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(window.electronAPI.setMeetingDnd).toHaveBeenCalledWith(true);
   });
 
   it('shows verified workspace identities and an invalid legacy connection without displaying tokens', async () => {
