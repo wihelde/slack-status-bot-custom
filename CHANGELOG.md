@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.3.4] - 2026-10-23
+
+## Added
+
+- Settings now lets users turn automatic Do Not Disturb during meetings on or off; the preference is remembered across restarts and remains enabled by default
+
+## Fixed
+
+- the keyboard focus outline around navigation buttons now has consistent spacing on all sides
+
 ## [2.3.3] - 2026-10-04
 
 ## Fixed
