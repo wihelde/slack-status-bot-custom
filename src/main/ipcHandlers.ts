@@ -24,6 +24,7 @@ interface HostDaemon {
   setStatus: (emoji: string, message: string) => Promise<boolean>;
   toggleSource: (source: SourceName, enabled: boolean) => void;
   setSourceOrder: (sourceOrder: SourceName[]) => Promise<void>;
+  setMeetingDnd?: (enabled: boolean) => void;
   getSourceOrder: () => SourceName[];
   setHoliday: (returnDate: string) => Promise<boolean>;
   getStatusConfiguration: () => CustomStatusConfig[];
@@ -32,6 +33,7 @@ interface HostDaemon {
 }
 
 interface HostConfig {
+  meetingDnd?: boolean;
   slackTokens?: string[];
   sourceOrder?: SourceName[];
   logLevel?: RendererLogLevel;
@@ -47,6 +49,7 @@ export interface MainIpcDependencies {
   reconnectWorkspace?: (teamId: string) => Promise<void>;
   removeWorkspace?: (teamId: string) => Promise<void>;
   refreshConfig: () => HostConfig;
+  updateMeetingDnd?: (enabled: boolean) => void;
   updateSourceOrder: (sourceOrder: SourceName[]) => void;
   getSetupSnapshot: () => AppSetupSnapshot;
   saveTokens: (tokens: string | string[]) => Promise<void>;
@@ -258,6 +261,16 @@ export function registerStatusIpcHandlers(
         dependencies.updateSourceOrder(sourceOrder as SourceName[]);
       }
 
+      dependencies.refreshConfig();
+      return { success: true };
+    },
+    [IPC_CHANNELS.getMeetingDnd]: async () => ({ success: true, data: dependencies.getConfig().meetingDnd !== false }),
+    [IPC_CHANNELS.setMeetingDnd]: async enabled => {
+      if (typeof enabled !== 'boolean') return { success: false, error: 'Invalid meeting DND preference' };
+      const daemon = getDaemon();
+      if (daemon?.setMeetingDnd) daemon.setMeetingDnd(enabled);
+      else if (dependencies.updateMeetingDnd) dependencies.updateMeetingDnd(enabled);
+      else return { success: false, error: 'Settings unavailable' };
       dependencies.refreshConfig();
       return { success: true };
     },

@@ -168,8 +168,28 @@ export class IPCService {
   }
 
   /**
-   * Get current source priority order
+   * Get the persisted meeting DND preference.
    */
+  static async getMeetingDnd(): Promise<boolean | null> {
+    try {
+      const result = await this.getElectronAPI()?.getMeetingDnd();
+      return result?.success ? result.data ?? null : null;
+    } catch (error) {
+      logRendererError('Error loading meeting DND preference', error);
+      return null;
+    }
+  }
+
+  static async setMeetingDnd(enabled: boolean): Promise<boolean> {
+    try {
+      const result = await this.getElectronAPI()?.setMeetingDnd(enabled);
+      return result?.success === true;
+    } catch (error) {
+      logRendererError('Error saving meeting DND preference', error);
+      return false;
+    }
+  }
+
   static async getSourceOrder(): Promise<SourceName[] | null> {
     const electronAPI = this.getElectronAPI();
     if (!electronAPI) {

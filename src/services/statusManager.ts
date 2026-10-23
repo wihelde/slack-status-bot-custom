@@ -24,6 +24,7 @@ export class StatusManager extends EventEmitter {
   private slackService: SlackService;
   private slackExecutor: SlackStatusExecutor;
   private statusCheckState: StatusCheckState = { value: '' };
+  private meetingDnd = true;
   private finalStatus: string = '';
   private allowedEmojis: Set<string> = new Set();
   private customStatuses: CustomStatusConfig[];
@@ -473,6 +474,10 @@ export class StatusManager extends EventEmitter {
     return day as DayOfWeek; // 0=Sunday, 1=Monday, ..., 6=Saturday
   }
 
+  setMeetingDnd(enabled: boolean): void {
+    this.meetingDnd = enabled;
+  }
+
   private async applyManualAction(action: ManualAction): Promise<boolean> {
     const actionPlan = this.statusDomain.getManualActionPlan(action);
     if (!actionPlan) {
@@ -484,7 +489,9 @@ export class StatusManager extends EventEmitter {
       text: actionPlan.message,
       expiration: actionPlan.expiration,
       presence: actionPlan.presence,
-      dndAction: actionPlan.dndAction,
+      dndAction: !this.meetingDnd &&
+        [STATUS_MESSAGES.MEETING_EMOJI, STATUS_MESSAGES.REMEET_EMOJI].includes(actionPlan.emoji)
+        ? 'ignore' : actionPlan.dndAction,
     });
 
     this.finalStatus = actionPlan.message;

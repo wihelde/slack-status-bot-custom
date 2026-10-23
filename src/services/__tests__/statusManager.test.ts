@@ -133,6 +133,20 @@ describe('StatusManager', () => {
   });
 
   describe('setCustomStatus()', () => {
+    it.each([STATUS_MESSAGES.MEETING_EMOJI, STATUS_MESSAGES.REMEET_EMOJI])('leaves DND untouched for manual meeting %s when opted out', async emoji => {
+      statusManager.setMeetingDnd(false);
+      expect(await statusManager.setCustomStatus(emoji, 'Meeting')).toBe(true);
+      expect(mockSlackService.setProfile).toHaveBeenCalled();
+      expect(mockSlackService.enableDND).not.toHaveBeenCalled();
+      expect(mockSlackService.disableDND).not.toHaveBeenCalled();
+    });
+
+    it('keeps focus DND enabled when meeting DND is disabled', async () => {
+      statusManager.setMeetingDnd(false);
+      await statusManager.setCustomStatus(STATUS_MESSAGES.FOCUS_EMOJI, 'Focus');
+      expect(mockSlackService.enableDND).toHaveBeenCalled();
+    });
+
     it('should set custom status for active emoji (Meeting)', async () => {
       const result = await statusManager.setCustomStatus(
         STATUS_MESSAGES.MEETING_EMOJI,

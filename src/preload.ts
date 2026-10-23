@@ -20,6 +20,8 @@ const electronAPI: ElectronAPI = {
   goAway: () => ipcRenderer.invoke(IPC_CHANNELS.goAway),
   toggleSource: (source, enabled) => ipcRenderer.invoke(IPC_CHANNELS.toggleSource, source, enabled),
   setSourceOrder: sourceOrder => ipcRenderer.invoke(IPC_CHANNELS.setSourceOrder, sourceOrder),
+  getMeetingDnd: () => ipcRenderer.invoke(IPC_CHANNELS.getMeetingDnd),
+  setMeetingDnd: enabled => ipcRenderer.invoke(IPC_CHANNELS.setMeetingDnd, enabled),
   getSourceOrder: () => ipcRenderer.invoke(IPC_CHANNELS.getSourceOrder),
   getTokenStatus: () => ipcRenderer.invoke(IPC_CHANNELS.getTokenStatus),
   getLogs: (lines = 200) => ipcRenderer.invoke(IPC_CHANNELS.getLogs, lines),

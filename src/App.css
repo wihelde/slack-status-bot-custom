@@ -108,6 +108,7 @@
 
 .navbar-menu::before {
   content: '';
+  box-sizing: border-box;
   position: absolute;
   inset: 0 auto 0 0;
   width: calc((100% - 4px) / 2);

@@ -545,6 +545,7 @@ if (!gotTheLock) {
         snapshotBridge.emitAppSnapshotChanged('setup');
       },
       refreshConfig,
+      updateMeetingDnd: enabled => configStore.updateDaemonSettings({ meetingDnd: enabled }),
       updateSourceOrder: sourceOrder => configStore.updateSourceOrder(sourceOrder),
       getSetupSnapshot,
       saveTokens,
