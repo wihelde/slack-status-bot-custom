@@ -47,6 +47,8 @@ app_checks:
 create_release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
+  tags:
+    - home-linux
   script:
     - export VERSION=${CI_COMMIT_TAG#v}
     # Create release with asset links in JSON format
