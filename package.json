@@ -10,7 +10,7 @@
   },
   "license": "MIT",
   "engines": {
-    "npm": "12.2.0"
+    "npm": "12.2.1"
   },
   "scripts": {
     "postinstall": "install-electron",
