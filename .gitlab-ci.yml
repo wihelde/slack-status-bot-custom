@@ -5,7 +5,7 @@ stages:
 
 app_checks:
   stage: test
-  image: node:22.22.2-bookworm-slim
+  image: node:26.13.0-bookworm-slim
   tags:
     - home-linux
   rules:
