@@ -45,11 +45,11 @@ export function sanitizeDiagnosticText(value: string, sensitive: readonly string
 export function sanitizedFrames(stack: string | undefined) {
   return (stack?.split('\n').slice(0, 31) ?? []).flatMap(line => {
     if (line.includes('/node_modules/') || line.includes('\\node_modules\\')) return [];
-    const match = line.match(/(?:^|[/\\\s])((?:src|dist)[/\\][a-zA-Z0-9_./\\-]+\.[cm]?[jt]sx?):(\d+):(\d+)\)?$/);
+    const match = line.match(/(?:^|[/\\\s])((?:src|dist|build)[/\\][a-zA-Z0-9_./\\-]+\.[cm]?[jt]sx?):(\d+):(\d+)\)?$/);
     if (!match) return [];
     const frame = { filename: match[1].replaceAll('\\', '/'), lineno: Number(match[2]), colno: Number(match[3]), in_app: true };
     if (frame.filename.split('/').includes('..') || !Number.isSafeInteger(frame.lineno) || !Number.isSafeInteger(frame.colno)) return [];
-    if (frame.filename.startsWith('dist/')) {
+    if (frame.filename.startsWith('dist/') || frame.filename.startsWith('build/')) {
       const origin = applicationSourceMap(frame.filename)?.findOrigin(frame.lineno, frame.colno);
       if (origin && 'fileName' in origin) {
         const source = origin.fileName.replaceAll('\\', '/').match(/(?:^|\/)(src\/[a-zA-Z0-9_./-]+\.[cm]?[jt]sx?)$/)?.[1];

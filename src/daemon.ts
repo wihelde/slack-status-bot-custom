@@ -238,9 +238,10 @@ export class SlackStatusBotDaemon {
 
   private runManualOperation(action: ActionCategory, entry_point: EntryPoint, work: () => Promise<boolean>) {
     if (!this.config.telemetry) return this.runStatusOperation(work);
+    const observation = { id: randomUUID(), epoch: this.config.telemetry.getCaptureEpoch(), startedAt: Date.now() };
     return this.runStatusOperation(() => this.slackService.runOperation({ trigger: 'manual', action, entry_point,
       meeting_dnd: this.meetingDnd, custom_status_count: this.statusManager.getCustomStatuses().length,
-      protected_status: this.statusManager.getStatusCheckState().value === 'not working' }, work));
+      protected_status: this.statusManager.getStatusCheckState().value === 'not working' }, work, observation));
   }
 
   private automationContext() {
@@ -251,7 +252,7 @@ export class SlackStatusBotDaemon {
       protected_status: state.value === 'not working', user_owned: state.userOwned === true };
   }
 
-  private async runAutomaticOperation(context: Operation, work: () => Promise<void>, observation?: { id: string; epoch: number | null }): Promise<void> {
+  private async runAutomaticOperation(context: Operation, work: () => Promise<void>, observation?: { id: string; epoch: number | null; startedAt?: number; readyAt?: number }): Promise<void> {
     if (!this.config.telemetry) return work();
     await this.slackService.runOperation({ ...this.automationContext(), ...context }, async () => { await work(); return true; }, observation);
   }
@@ -330,13 +331,16 @@ export class SlackStatusBotDaemon {
     
     // Re-evaluate current status based on new priority order
     try {
-      const observation = { id: randomUUID(), epoch: this.config.telemetry?.getCaptureEpoch() ?? null };
+      const observation = { id: randomUUID(), epoch: this.config.telemetry?.getCaptureEpoch() ?? null, startedAt: Date.now(), readyAt: Date.now() };
       const sourceStatuses = await this.getSourceStatuses(observation.id);
+      observation.readyAt = Date.now();
       const winner = this.sourceArbitrationEngine.pickWinner(this.sourceOrder, sourceStatuses);
       await this.runAutomaticOperation({ trigger: 'automatic', decision: 'reprioritized',
         source: winner?.sourceName, winner: winner?.sourceName,
         active_sources: this.sourceArbitrationEngine.listActiveSources(this.sourceOrder, sourceStatuses) },
         () => this.runtimeOrchestrator.handleReprioritization({ sourceOrder: this.sourceOrder, sourceStatuses }), observation);
+      this.config.telemetry?.observeSourceDecision({ active: this.sourceArbitrationEngine.listActiveSources(this.sourceOrder, sourceStatuses),
+        winner: winner?.sourceName, protected: this.statusManager.getObservedProtection() }, observation.epoch);
     } catch (error) {
       console.error('[Daemon] Error re-evaluating status after priority change:', error);
     }
@@ -366,8 +370,9 @@ export class SlackStatusBotDaemon {
       this.isPolling = true;
 
       try {
-        const observation = { id: randomUUID(), epoch: this.config.telemetry?.getCaptureEpoch() ?? null };
+        const observation = { id: randomUUID(), epoch: this.config.telemetry?.getCaptureEpoch() ?? null, startedAt: Date.now(), readyAt: Date.now() };
         const sourceStatuses = await this.getSourceStatuses(observation.id);
+        observation.readyAt = Date.now();
         await this.runStatusOperation(async () => {
           if (!this.running) return;
           const arbitrationSnapshot = this.sourceArbitrationEngine.evaluate(this.sourceOrder, sourceStatuses);
@@ -390,6 +395,8 @@ export class SlackStatusBotDaemon {
             await work();
           }, observation);
           else await work();
+          this.config.telemetry?.observeSourceDecision({ active: activeSourcesDebug, winner: winningSource?.sourceName,
+            protected: this.statusManager.getObservedProtection() }, observation.epoch);
 
           const anyActive = !!winningSource;
           const anyWasActive = Object.values(trackingState).some(s => s.wasActive);

@@ -183,6 +183,7 @@ export const StatusConfigEditor: React.FC = () => {
   };
 
   const handleReset = async () => {
+    void IPCService.observe({ kind: 'ui', action: 'reset_requested' });
     if (!window.confirm('Are you sure you want to reset to defaults? This will overwrite all your custom changes.')) {
       return;
     }

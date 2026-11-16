@@ -315,3 +315,21 @@ it('counts existing deliberate controls by fixed category while external command
   expect((await daemon.getSlackStatus()).text).toBe('Private shortcut');
   expect(JSON.stringify(events)).not.toMatch(/Private focus|Private break|Private shortcut|private_emoji|30\.12\.2026/);
 });
+
+it('resolves renderer build frames to original TSX locations without exposing filesystem paths', async () => {
+  const filename = `renderer-${path.basename(directory)}.js`;
+  const mapFile = path.resolve(__dirname, '../../../build/assets', `${filename}.map`);
+  fs.mkdirSync(path.dirname(mapFile), { recursive: true });
+  fs.writeFileSync(mapFile, JSON.stringify({ version: 3, file: filename, sourceRoot: '',
+    sources: ['../../src/pages/Dashboard.tsx'], names: [], mappings: 'AAAA' }));
+  try {
+    telemetry.reportDiagnostic({ message: 'Renderer failure', stack: `Error\n    at render (file://${mapFile.slice(0, -4)}:1:1)` },
+      { component: 'renderer', step: 'react.render' });
+    await telemetry.shutdown();
+    const exception = events.find(event => event.event === '$exception')!;
+    expect(exception.properties.$exception_list[0].stacktrace?.frames).toEqual([
+      { filename: 'src/pages/Dashboard.tsx', function: '?', lineno: 1, colno: 1, in_app: true, platform: 'node:javascript' },
+    ]);
+    expect(JSON.stringify(exception)).not.toContain(directory);
+  } finally { fs.rmSync(mapFile, { force: true }); }
+});

@@ -3,6 +3,7 @@ import type { AppSnapshotRefreshSignal } from './contracts/appSnapshot';
 import { IPC_CHANNELS, IPC_RENDERER_EVENTS, type ElectronAPI } from './contracts/ipc';
 
 const electronAPI: ElectronAPI = {
+  observeRenderer: observation => ipcRenderer.invoke(IPC_CHANNELS.observeRenderer, observation),
   getTelemetrySettings: () => ipcRenderer.invoke(IPC_CHANNELS.getTelemetrySettings),
   setTelemetryEnabled: enabled => ipcRenderer.invoke(IPC_CHANNELS.setTelemetryEnabled, enabled),
   saveTokens: tokens => ipcRenderer.invoke(IPC_CHANNELS.saveTokens, tokens),

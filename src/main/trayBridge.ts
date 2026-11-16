@@ -23,6 +23,7 @@ interface TrayMenuDaemon {
 }
 
 interface TrayBridgeDependencies {
+  onUpdateLinkOpened?: (version: string) => void;
   app: {
     getAppPath: () => string;
   };
@@ -175,6 +176,7 @@ export function createTrayBridge({
   getUpdateAvailable,
   onQuit,
   onOpenHolidayModal,
+  onUpdateLinkOpened,
 }: TrayBridgeDependencies): TrayBridge {
   let tray: TrayInstance | null = null;
 
@@ -256,6 +258,7 @@ export function createTrayBridge({
       onOpenUpdate: () => {
         const updateAvailable = getUpdateAvailable();
         if (updateAvailable) {
+          onUpdateLinkOpened?.(updateAvailable.version);
           shell.openExternal(
             `https://gitlab.com/wihel_de/slack-status-bot-custom/-/releases/v${updateAvailable.version}`
           );

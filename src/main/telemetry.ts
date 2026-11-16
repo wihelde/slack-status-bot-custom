@@ -7,6 +7,7 @@ import { PostHog, type PostHogOptions } from 'posthog-node';
 import { z } from 'zod';
 import type { AppConfigStore } from '../config/appConfigStore';
 import { TELEMETRY_ENVIRONMENTS, type TelemetrySettings } from '../contracts/telemetry';
+import { createTelemetryMetrics, type SourceCheck, type SourceDecision, type ResourceSample } from './telemetryMetrics';
 
 export const telemetryConfigurationSchema = z.object({
   environment: z.enum(TELEMETRY_ENVIRONMENTS),
@@ -16,6 +17,12 @@ export const telemetryConfigurationSchema = z.object({
   }),
   captureToken: z.string().regex(/^phc_[a-zA-Z0-9_]+$/),
 });
+const eventContext = z.object(automationContext).extend({
+  quick_action_count: z.number().int().nonnegative().optional(), day_rule_count: z.number().int().nonnegative().optional(),
+  offline_message_count: z.number().int().nonnegative().optional(), autostart_enabled: z.boolean().optional(),
+  daemon_ready: z.boolean().optional(), connected_workspaces: z.number().int().nonnegative().optional(),
+  configured_workspaces: z.number().int().nonnegative().optional(),
+});
 
 type Options = {
   configStore: AppConfigStore;
@@ -24,14 +31,18 @@ type Options = {
   autostartEnabled?: boolean;
   fetch?: PostHogOptions['fetch'];
   warn?: (message: string) => void;
+  runtimeContext?: () => { daemon_ready: boolean; connected_workspaces: number; configured_workspaces: number };
+  readResourceUsage?: () => ResourceSample;
+  systemVersion?: string;
 };
 
 /** Owns background activity and the only permitted outgoing analytics path in the host. */
 export function createHostTelemetry(options: Options) {
+  const warn = (message: string) => { try { options.warn?.(message); } catch { /* Logging is also best effort. */ } };
   const config = options.configStore.load();
   const parsed = telemetryConfigurationSchema.safeParse(options.configuration);
   const configuration = parsed.success ? parsed.data : null;
-  if (!configuration) options.warn?.('[Telemetry] Missing or invalid capture configuration; collection is unavailable.');
+  if (!configuration) warn('[Telemetry] Missing or invalid capture configuration; collection is unavailable.');
   let enabled = config.telemetryEnabled;
   let captureEpoch = 0;
   let autostartEnabled = options.autostartEnabled;
@@ -39,10 +50,20 @@ export function createHostTelemetry(options: Options) {
   let stopped = false;
   let activityTimer: ReturnType<typeof setInterval> | undefined;
   let session: ReturnType<typeof createSession> | undefined;
+  const appRunId = randomUUID();
+  const metrics = createTelemetryMetrics(capture);
+  let lastMetricsFlush = Date.now();
 
   const episodes = new Map<string, { properties: ReturnType<typeof episodeProperties>; summarized: number }>();
   // One minute summaries, at most 100 active causes, no durable diagnostic journal.
   const diagnosticTimer = setInterval(() => {
+    if (enabled && !stopped && configuration) {
+      try { if (options.readResourceUsage) metrics.sample(options.readResourceUsage()); } catch { /* Metrics cannot interrupt automation. */ }
+      if (Date.now() - lastMetricsFlush >= 3_600_000) {
+        metrics.flush();
+        lastMetricsFlush = Date.now();
+      }
+    }
     for (const episode of episodes.values()) {
       if (episode.properties.occurrence_count <= episode.summarized) continue;
       capture('diagnostic_summary', episode.properties);
@@ -60,31 +81,38 @@ export function createHostTelemetry(options: Options) {
 
   function reportDiagnostic(error: unknown, context: DiagnosticContext, sensitive: readonly string[] = []) {
     if (!enabled || stopped || !configuration) return;
-    const properties = episodeProperties(context, error, sensitive);
-    const cause = { environment: configuration.environment, component: properties.component, step: properties.step,
-      code: properties.code, message: properties.message,
-      failure_kind: properties.failure_kind, exit_code: properties.exit_code, signal: properties.signal,
-      network_code: properties.network_code, http_status: properties.http_status, location: sanitizedFrames(properties.stack)[0],
-      needed_scopes: properties.needed_scopes, provided_scopes: properties.provided_scopes, fatal: properties.fatal };
-    const key = diagnosticFingerprint({ ...cause, connection_ref: properties.connection_ref });
-    const previous = episodes.get(key);
-    if (previous) {
-      previous.properties.occurrence_count++;
-      previous.properties.last_seen = properties.last_seen;
-      previous.properties.last_operation_id = context.operation_id;
-      return;
+    try {
+      const settings = options.configStore.getDaemonSettings().statusConfiguration;
+      const privateValues = [...sensitive, ...options.configStore.load().slackTokens,
+        ...settings.offlineMessages, ...settings.customStatuses.flatMap(status => [status.message, status.emoji])];
+      const properties = episodeProperties(context, error, privateValues);
+      const cause = { environment: configuration.environment, component: properties.component, step: properties.step,
+        code: properties.code, message: properties.message,
+        failure_kind: properties.failure_kind, exit_code: properties.exit_code, signal: properties.signal,
+        network_code: properties.network_code, http_status: properties.http_status, location: sanitizedFrames(properties.stack)[0],
+        needed_scopes: properties.needed_scopes, provided_scopes: properties.provided_scopes, fatal: properties.fatal };
+      const key = diagnosticFingerprint({ ...cause, connection_ref: properties.connection_ref });
+      const previous = episodes.get(key);
+      if (previous) {
+        previous.properties.occurrence_count++;
+        previous.properties.last_seen = properties.last_seen;
+        previous.properties.last_operation_id = context.operation_id;
+        return;
+      }
+      if (episodes.size >= 100) episodes.delete(episodes.keys().next().value!);
+      episodes.set(key, { properties, summarized: 1 });
+      const frames = sanitizedFrames(properties.stack);
+      // Build the documented exception envelope explicitly; SDK enrichment must never see a raw Error.
+      capture('$exception', { ...properties,
+        $exception_fingerprint: diagnosticFingerprint(cause),
+        $exception_level: context.fatal ? 'fatal' : 'error',
+        $exception_list: [{ type: properties.code ?? 'Error', value: properties.message,
+          mechanism: { type: 'generic', handled: !context.fatal },
+          ...(frames.length ? { stacktrace: { type: 'raw', frames } } : {}) }],
+      });
+    } catch {
+      warn('[Telemetry] Diagnostic unavailable; event was dropped.');
     }
-    if (episodes.size >= 100) episodes.delete(episodes.keys().next().value!);
-    episodes.set(key, { properties, summarized: 1 });
-    const frames = sanitizedFrames(properties.stack);
-    // Build the documented exception envelope explicitly; SDK enrichment must never see a raw Error.
-    capture('$exception', { ...properties,
-      $exception_fingerprint: diagnosticFingerprint(cause),
-      $exception_level: context.fatal ? 'fatal' : 'error',
-      $exception_list: [{ type: properties.code ?? 'Error', value: properties.message,
-        mechanism: { type: 'generic', handled: !context.fatal },
-        ...(frames.length ? { stacktrace: { type: 'raw', frames } } : {}) }],
-    });
   }
 
   function recoverDiagnostic(context: Pick<DiagnosticContext, 'component' | 'step' | 'connection_ref' | 'operation_id'>) {
@@ -92,7 +120,8 @@ export function createHostTelemetry(options: Options) {
     for (const [key, episode] of episodes) {
       if (episode.properties.component !== context.component || episode.properties.step !== context.step ||
         episode.properties.connection_ref !== context.connection_ref) continue;
-      capture('diagnostic_recovered', { ...episode.properties, recovery_operation_id: context.operation_id });
+      capture('diagnostic_recovered', { ...episode.properties, recovery_operation_id: context.operation_id,
+        recovery_duration_ms: Math.max(0, Date.now() - Date.parse(episode.properties.first_seen)) });
       episodes.delete(key);
     }
   }
@@ -117,7 +146,7 @@ export function createHostTelemetry(options: Options) {
       fetchRetryDelay: 1000,
       before_send: event => {
         if (!active || !enabled || !Object.hasOwn(telemetryEvents, event.event)) return null;
-        const properties = allowedProperties(event.event as TelemetryEvent, event.properties);
+        const properties = allowedProperties(event.event as TelemetryEvent, event.properties, true);
         if (!properties) return null;
         // Rebuild after SDK context enrichment so ambient properties also obey the allowlist.
         return { event: event.event, distinctId: `${configuration.environment}:${config.installationId}`,
@@ -137,7 +166,7 @@ export function createHostTelemetry(options: Options) {
       },
     });
     // Transport errors stay local and never include request bodies, keys or recursive telemetry.
-    client.on('error', () => options.warn?.('[Telemetry] Delivery unavailable; events may be lost.'));
+    client.on('error', () => warn('[Telemetry] Delivery unavailable; events may be lost.'));
     return {
       client,
       retire: () => {
@@ -153,6 +182,8 @@ export function createHostTelemetry(options: Options) {
     try {
       const safe = allowedProperties(event, properties);
       if (!safe) return;
+      if (event === 'status_operation') metrics.operation(telemetryEvents.status_operation.parse(safe));
+      if (event === 'settings_changed') metrics.setting(telemetryEvents.settings_changed.parse(safe));
       session ??= createSession();
       session?.client.capture({
         event,
@@ -161,11 +192,11 @@ export function createHostTelemetry(options: Options) {
         disableGeoip: true,
       });
     } catch {
-      options.warn?.('[Telemetry] Capture unavailable; event was dropped.');
+      warn('[Telemetry] Capture unavailable; event was dropped.');
     }
   }
 
-  function allowedProperties(event: TelemetryEvent, properties: unknown) {
+  function allowedProperties(event: TelemetryEvent, properties: unknown, preserveContext = false) {
     if (!configuration || !Object.hasOwn(telemetryEvents, event)) return;
     const schema = telemetryEvents[event];
     const safe = schema?.safeParse(properties);
@@ -183,23 +214,35 @@ export function createHostTelemetry(options: Options) {
         exception.value = sanitizeDiagnosticText(exception.value);
       }
     }
-    const settings = options.configStore.getDaemonSettings();
-    const currentConfiguration = z.object(automationContext).parse({
-      enabled_sources: sourceName.options.filter(source => settings.sources[source] !== false),
-      source_priority: settings.sourceOrder, meeting_dnd: settings.meetingDnd,
-      custom_status_count: settings.statusConfiguration.customStatuses.length + settings.statusConfiguration.offlineMessages.length,
-    });
+    // The first pass constructs trusted context. Dispatch only revalidates that snapshot,
+    // so queued startup/activity events cannot acquire a later daemon or configuration state.
+    const currentConfiguration = preserveContext ? eventContext.parse(properties) : currentEventContext();
     return {
       ...currentConfiguration,
       ...data,
       environment: configuration.environment,
       app_version: options.appVersion,
-      ...(autostartEnabled === undefined ? {} : { autostart_enabled: autostartEnabled }),
+      app_run_id: appRunId,
+      ...(options.systemVersion ? { os_version: options.systemVersion } : {}),
       os_platform: process.platform,
       os_release: os.release(),
       os_arch: process.arch,
       $process_person_profile: false,
     };
+  }
+
+  function currentEventContext() {
+    const settings = options.configStore.getDaemonSettings();
+    return eventContext.parse({
+      ...options.runtimeContext?.(),
+      ...(autostartEnabled === undefined ? {} : { autostart_enabled: autostartEnabled }),
+      enabled_sources: sourceName.options.filter(source => settings.sources[source] !== false),
+      source_priority: settings.sourceOrder, meeting_dnd: settings.meetingDnd,
+      custom_status_count: settings.statusConfiguration.customStatuses.length + settings.statusConfiguration.offlineMessages.length,
+      quick_action_count: settings.statusConfiguration.customStatuses.filter(status => status.category === 'quick_action').length,
+      day_rule_count: settings.statusConfiguration.customStatuses.filter(status => status.category === 'day_based').length,
+      offline_message_count: settings.statusConfiguration.offlineMessages.length,
+    });
   }
 
   function getSettings(): TelemetrySettings {
@@ -214,6 +257,12 @@ export function createHostTelemetry(options: Options) {
     setAutostartContext: (enabled: boolean) => { autostartEnabled = enabled; },
     getCaptureEpoch: () => enabled && !stopped && configuration ? captureEpoch : null,
     getSettings,
+    observeSourceCheck(check: SourceCheck, epoch: number | null) {
+      if (enabled && !stopped && configuration && epoch === captureEpoch) metrics.sourceCheck(check);
+    },
+    observeSourceDecision(decision: SourceDecision, epoch: number | null) {
+      if (enabled && !stopped && configuration && epoch === captureEpoch) metrics.sourceDecision(decision);
+    },
     start() {
       if (running || stopped) return;
       running = true;
@@ -227,6 +276,8 @@ export function createHostTelemetry(options: Options) {
       if (!enabled) {
         captureEpoch++;
         episodes.clear();
+        metrics.reset();
+        lastMetricsFlush = Date.now();
       }
       if (!enabled && session) {
         const discarded = session;
@@ -238,6 +289,7 @@ export function createHostTelemetry(options: Options) {
     },
     async shutdown(): Promise<void> {
       if (stopped) return;
+      if (enabled) metrics.flush();
       stopped = true;
       clearInterval(activityTimer);
       clearInterval(diagnosticTimer);

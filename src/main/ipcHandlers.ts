@@ -1,3 +1,4 @@
+import { rendererObservation, rendererErrorMessage } from '../contracts/telemetry';
 import type { EntryPoint } from './telemetryEvents';
 import type { CustomStatusConfig } from '../config/statusConfig';
 import type { HostTelemetry } from './telemetry';
@@ -96,21 +97,28 @@ function toFailureResult(error: unknown): IpcFailureResult {
 }
 
 export function createHandlerResult<TResult, TArgs extends unknown[]>(
-  callback: (...args: TArgs) => Promise<IpcResult<TResult>>
+  callback: (...args: TArgs) => Promise<IpcResult<TResult>>,
+  onError?: (error: unknown) => void
 ): (_event: unknown, ...args: TArgs) => Promise<IpcResult<TResult>> {
   return async (_event, ...args) => {
     try {
       return await callback(...args);
     } catch (error) {
+      onError?.(error);
       return toFailureResult(error);
     }
   };
 }
 
-export function registerHandlerGroup(ipcMain: IpcMainLike, handlers: HandlerMap): void {
+export function registerHandlerGroup(ipcMain: IpcMainLike, handlers: HandlerMap, telemetry?: HostTelemetry): void {
   Object.entries(handlers).forEach(([channel, handler]) => {
     if (handler) {
-      ipcMain.handle(channel as IpcChannel, createHandlerResult(handler));
+      ipcMain.handle(channel as IpcChannel, async (event, ...args) => {
+        const epoch = telemetry?.getCaptureEpoch();
+        return createHandlerResult(handler, error => {
+          if (epoch != null && epoch === telemetry?.getCaptureEpoch()) telemetry.reportDiagnostic(error, { component: 'runtime', step: `ipc.${channel}` });
+        })(event, ...args);
+      });
     }
   });
 }
@@ -188,7 +196,7 @@ export function registerSetupIpcHandlers(
       await dependencies.removeWorkspace(teamId);
       return { success: true };
     },
-  });
+  }, dependencies.telemetry);
 }
 
 function getConfigSourceOrder(getConfig: MainIpcDependencies['getConfig']): SourceName[] {
@@ -206,9 +214,10 @@ export function registerStatusIpcHandlers(
     refreshTrayMenu,
   } = dependencies;
 
-  const requireDaemon = (): HostDaemon | null => {
+  const requireDaemon = (action: 'set_status' | 'online' | 'away' | 'holiday' | 'source' | 'configuration_read' | 'configuration_update' | 'configuration_reset'): HostDaemon | null => {
     const daemon = getDaemon();
     if (!daemon) {
+      dependencies.telemetry?.capture('action_rejected', { action, reason: 'daemon_unavailable', entry_point: 'dashboard' });
       return null;
     }
 
@@ -217,7 +226,7 @@ export function registerStatusIpcHandlers(
 
   registerHandlerGroup(ipcMain, {
     [IPC_CHANNELS.setStatus]: async (emoji, message) => {
-      const daemon = requireDaemon();
+      const daemon = requireDaemon('set_status');
       if (!daemon) {
         return { success: false, error: 'Daemon not initialized' };
       }
@@ -227,7 +236,7 @@ export function registerStatusIpcHandlers(
       return { success, data: success };
     },
     [IPC_CHANNELS.goOnline]: async () => {
-      const daemon = requireDaemon();
+      const daemon = requireDaemon('online');
       if (!daemon) {
         return { success: false, error: 'Daemon not initialized' };
       }
@@ -237,7 +246,7 @@ export function registerStatusIpcHandlers(
       return { success, data: success };
     },
     [IPC_CHANNELS.goAway]: async () => {
-      const daemon = requireDaemon();
+      const daemon = requireDaemon('away');
       if (!daemon) {
         return { success: false, error: 'Daemon not initialized' };
       }
@@ -247,7 +256,7 @@ export function registerStatusIpcHandlers(
       return { success, data: success };
     },
     [IPC_CHANNELS.toggleSource]: async (source, enabled) => {
-      const daemon = requireDaemon();
+      const daemon = requireDaemon('source');
       if (!daemon) {
         return { success: false, error: 'Daemon not initialized' };
       }
@@ -282,7 +291,7 @@ export function registerStatusIpcHandlers(
       data: getDaemon()?.getSourceOrder() || getConfigSourceOrder(dependencies.getConfig),
     }),
     [IPC_CHANNELS.setHoliday]: async returnDate => {
-      const daemon = requireDaemon();
+      const daemon = requireDaemon('holiday');
       if (!daemon) {
         return { success: false, error: 'Daemon not initialized' };
       }
@@ -292,7 +301,7 @@ export function registerStatusIpcHandlers(
       return { success, data: success };
     },
     [IPC_CHANNELS.getStatusConfiguration]: async () => {
-      const daemon = requireDaemon();
+      const daemon = requireDaemon('configuration_read');
       if (!daemon) {
         return { success: false, error: 'Daemon not initialized' };
       }
@@ -300,7 +309,7 @@ export function registerStatusIpcHandlers(
       return { success: true, data: daemon.getStatusConfiguration() };
     },
     [IPC_CHANNELS.updateStatusConfiguration]: async statusConfig => {
-      const daemon = requireDaemon();
+      const daemon = requireDaemon('configuration_update');
       if (!daemon) {
         return { success: false, error: 'Daemon not initialized' };
       }
@@ -310,7 +319,7 @@ export function registerStatusIpcHandlers(
       return { success };
     },
     [IPC_CHANNELS.resetStatusConfiguration]: async () => {
-      const daemon = requireDaemon();
+      const daemon = requireDaemon('configuration_reset');
       if (!daemon) {
         return { success: false, error: 'Daemon not initialized' };
       }
@@ -323,7 +332,7 @@ export function registerStatusIpcHandlers(
       dependencies.openHolidayModal();
       return { success: true };
     },
-  });
+  }, dependencies.telemetry);
 }
 
 export function registerSnapshotIpcHandlers(
@@ -340,7 +349,7 @@ export function registerSnapshotIpcHandlers(
       });
       return { success: true, data: snapshot };
     },
-  });
+  }, dependencies.telemetry);
 }
 
 export function registerLoggingIpcHandlers(
@@ -364,7 +373,7 @@ export function registerLoggingIpcHandlers(
       success: true,
       data: dependencies.getLogLevel(),
     }),
-  });
+  }, dependencies.telemetry);
 }
 
 export function registerPlatformIpcHandlers(
@@ -383,26 +392,49 @@ export function registerPlatformIpcHandlers(
       success: true,
       data: await dependencies.getAutoLaunch(),
     }),
-  });
+  }, dependencies.telemetry);
 }
 
 export function registerMainIpcHandlers(
   ipcMain: IpcMainLike,
   dependencies: MainIpcDependencies
 ): void {
-  registerSetupIpcHandlers(ipcMain, dependencies);
-  registerStatusIpcHandlers(ipcMain, dependencies);
-  registerSnapshotIpcHandlers(ipcMain, dependencies);
-  registerLoggingIpcHandlers(ipcMain, dependencies);
-  registerPlatformIpcHandlers(ipcMain, dependencies);
+  const observedIpc: IpcMainLike = { handle(channel, handler) {
+    ipcMain.handle(channel, async (event, ...args) => {
+      const epoch = dependencies.telemetry?.getCaptureEpoch();
+      const result = await handler(event, ...args);
+      // Handler wrappers return exceptions as failures. Only a fixed category is safe here;
+      // the underlying service owns the actionable diagnostic and its sensitive values.
+      if (!result.success && epoch != null && epoch === dependencies.telemetry?.getCaptureEpoch()) {
+        dependencies.telemetry.capture('ipc_failure', { channel });
+      }
+      return result;
+    });
+  } };
+  registerSetupIpcHandlers(observedIpc, dependencies);
+  registerStatusIpcHandlers(observedIpc, dependencies);
+  registerSnapshotIpcHandlers(observedIpc, dependencies);
+  registerLoggingIpcHandlers(observedIpc, dependencies);
+  registerPlatformIpcHandlers(observedIpc, dependencies);
 }
 
 export function registerTelemetryIpcHandlers(ipcMain: IpcMainLike, telemetry: HostTelemetry): void {
   registerHandlerGroup(ipcMain, {
+    [IPC_CHANNELS.observeRenderer]: async input => {
+      const parsed = rendererObservation.safeParse(input);
+      if (!parsed.success) return { success: false, error: 'Invalid observation' };
+      const observation = parsed.data;
+      if (observation.kind === 'ui') telemetry.capture('ui_interaction', observation);
+      else if (observation.kind === 'update') telemetry.capture('update_interaction', { ...observation, entry_point: 'dashboard' });
+      else if (observation.kind === 'setup') telemetry.capture('setup_input', { ...observation, entry_point: 'generator' });
+      else telemetry.reportDiagnostic({ name: observation.type, message: rendererErrorMessage(observation.message), stack: observation.stack },
+        { component: 'renderer', step: observation.step, code: observation.type });
+      return { success: true };
+    },
     [IPC_CHANNELS.getTelemetrySettings]: async () => ({ success: true, data: telemetry.getSettings() }),
     [IPC_CHANNELS.setTelemetryEnabled]: async enabled => {
       if (typeof enabled !== 'boolean') return { success: false, error: 'Invalid telemetry preference' };
       return { success: true, data: telemetry.setEnabled(enabled) };
     },
-  });
+  }, telemetry);
 }

@@ -180,6 +180,13 @@ export class StatusManager extends EventEmitter {
     return result;
   }
 
+  /** Explain only a fresh, already-read profile; telemetry must not cause another Slack request. */
+  getObservedProtection(): boolean | undefined {
+    if (!this.profileCache || Date.now() - this.profileCacheTime >= this.PROFILE_CACHE_TTL) return undefined;
+    return !this.statusDomain.canChangeStatus({ profile: this.profileCache, state: this.statusCheckState,
+      allowedEmojis: this.allowedEmojis, overridablePatterns: this.overridablePatterns });
+  }
+
   /**
    * Get status for a specific day from custom configuration
    * Returns null if no status is configured for that day

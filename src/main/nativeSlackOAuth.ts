@@ -172,6 +172,7 @@ export class NativeSlackOAuth {
     const removed = this.options.connections.remove(teamId);
     if (removed) {
       this.publishedTokens = this.options.connections.activeTokens(this.options.now?.() ?? Date.now());
+      this.options.telemetry?.capture('workspace_removed', { remaining_workspaces: this.options.connections.list().length });
       this.removedThrough.set(teamId, ++this.sequence);
       for (const [state, attempt] of this.pending) {
         if (attempt.expectedTeamId === teamId || (!attempt.expectedTeamId && attempt.clientId === clientId)) {
@@ -189,6 +190,8 @@ export class NativeSlackOAuth {
     if (url.protocol !== 'slack-status-bot:') return false;
     if (url.hostname === 'connect') {
       const registration = parseSetupLink(rawUrl);
+      this.options.telemetry?.capture('setup_input', { outcome: registration ? 'accepted' : 'rejected',
+        reason: registration ? 'valid_link' : 'invalid_link', entry_point: 'app' });
       if (!registration) this.options.onResult?.('Invalid Setup Link');
       else await this.start(registration);
       return true;

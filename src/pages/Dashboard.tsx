@@ -113,6 +113,20 @@ const Dashboard: React.FC = () => {
     await refreshDashboardState();
   };
 
+  React.useEffect(() => {
+    if (!updateAvailable) return;
+    let observed = false;
+    const observe = () => {
+      if (!observed && document.visibilityState === 'visible') {
+        observed = true;
+        void IPCService.observe({ kind: 'update', action: 'banner_shown', target_version: updateAvailable.version });
+      }
+    };
+    observe();
+    document.addEventListener('visibilitychange', observe);
+    return () => document.removeEventListener('visibilitychange', observe);
+  }, [updateAvailable?.version]);
+
   if (loading) {
     return <div className="dashboard"><p>Loading...</p></div>;
   }
@@ -132,12 +146,13 @@ const Dashboard: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
               className="update-link"
+              onClick={() => void IPCService.observe({ kind: 'update', action: 'link_opened', target_version: updateAvailable.version })}
             >
               Download
             </a>
             <button 
               className="update-close"
-              onClick={() => setUpdateAvailable(null)}
+              onClick={() => { void IPCService.observe({ kind: 'update', action: 'dismissed', target_version: updateAvailable.version }); setUpdateAvailable(null); }}
               title="Dismiss"
             >
               ✕

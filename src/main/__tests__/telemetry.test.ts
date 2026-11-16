@@ -186,3 +186,92 @@ it('finishes shutdown within its budget while a transport is unresponsive and st
   expect(delivered).toBe(countAtShutdown);
   expect(delivered).toBeGreaterThan(0);
 });
+
+it('summarizes source health once per window and discards old or disabled observations', async () => {
+  const telemetry = host();
+  const epoch = telemetry.getCaptureEpoch();
+  for (let index = 0; index < 40; index++) telemetry.observeSourceCheck({ source: 'zoom', enabled: true,
+    active: index < 30, failed: index === 39, duration_ms: 25 }, epoch);
+  telemetry.observeSourceCheck({ source: 'spotify', enabled: false, active: false, failed: false, duration_ms: 0 }, epoch);
+  telemetry.observeSourceDecision({ active: ['zoom', 'teams'], winner: 'zoom', protected: true }, epoch);
+  await vi.advanceTimersByTimeAsync(3_610_000);
+  const summaries = batches.flatMap(batch => batch.batch).filter(event => event.event === 'source_health_summary');
+  expect(summaries).toHaveLength(2);
+  expect(summaries.find(event => event.properties.source === 'zoom')?.properties).toMatchObject({
+    checks: 40, active_checks: 30, failed_checks: 1, duration_total_ms: 1000, duration_max_ms: 25,
+    selected_checks: 1, protected_checks: 1, transitions: 1,
+  });
+  expect(summaries.find(event => event.properties.source === 'teams')?.properties.priority_blocked_checks).toBe(1);
+  telemetry.observeSourceCheck({ source: 'zoom', enabled: true, active: true, failed: false, duration_ms: 10 }, epoch);
+  telemetry.setEnabled(false);
+  telemetry.setEnabled(true);
+  telemetry.observeSourceCheck({ source: 'zoom', enabled: true, active: true, failed: false, duration_ms: 10 }, epoch);
+  await telemetry.shutdown();
+  expect(batches.flatMap(batch => batch.batch).filter(event => event.event === 'source_health_summary')).toHaveLength(2);
+});
+
+it('counts successful automation followed by a manual action once and forgets quality context at opt-out', async () => {
+  const telemetry = host();
+  const operation = { operation_id: '11111111-1111-4111-8111-111111111111', trigger: 'automatic' as const, source: 'zoom' as const,
+    outcome: 'success' as const, reason: 'delivered' as const, targeted_workspaces: 1, successful_workspaces: 1, workspace_results: [], duration_ms: 200 };
+  telemetry.capture('status_operation', operation);
+  await vi.advanceTimersByTimeAsync(45_000);
+  telemetry.capture('status_operation', { ...operation, trigger: 'manual', operation_id: '22222222-2222-4222-8222-222222222222' });
+  telemetry.capture('status_operation', { ...operation, trigger: 'manual' });
+  telemetry.capture('settings_changed', { setting: 'source', source: 'zoom', enabled: false });
+  await vi.advanceTimersByTimeAsync(10_000);
+  const quality = batches.flatMap(batch => batch.batch).filter(event => event.event === 'automation_quality');
+  expect(quality.map(event => event.properties.kind)).toEqual(['manual_followed_automation', 'source_disabled_after_use']);
+  expect(quality[0].properties).toMatchObject({ elapsed_ms: 45_000, previous_operation_id: operation.operation_id });
+  telemetry.capture('status_operation', operation);
+  telemetry.setEnabled(false); telemetry.setEnabled(true);
+  telemetry.capture('status_operation', { ...operation, trigger: 'manual' });
+  await telemetry.shutdown();
+  expect(batches.flatMap(batch => batch.batch).filter(event => event.event === 'automation_quality')).toHaveLength(2);
+});
+
+it('samples app resources locally and emits weighted hourly totals with app version and run identity', async () => {
+  const telemetry = createHostTelemetry({ configStore: createAppConfigStore({ configDir: directory }),
+    configuration: { environment: 'test', host: 'https://posthog.invalid', captureToken: 'phc_fake' }, appVersion: '2.4.0',
+    runtimeContext: () => ({ daemon_ready: true, connected_workspaces: 2, configured_workspaces: 3 }),
+    readResourceUsage: () => ({ cpu_percent: 2, memory_mb: 120 }), systemVersion: '26.1', fetch: fetchOutput });
+  hosts.push(telemetry);
+  telemetry.start();
+  await vi.advanceTimersByTimeAsync(3_610_000);
+  const summary = batches.flatMap(batch => batch.batch).find(event => event.event === 'performance_summary');
+  expect(summary?.properties).toMatchObject({ samples: 60, cpu_percent_total: 120, cpu_percent_max: 2,
+    memory_mb_total: 7200, memory_mb_max: 120, app_version: '2.4.0', daemon_ready: true,
+    connected_workspaces: 2, configured_workspaces: 3, os_version: '26.1' });
+  expect(summary?.properties.app_run_id).toMatch(/^[0-9a-f-]{36}$/);
+  telemetry.setEnabled(false);
+  await vi.advanceTimersByTimeAsync(3_600_000);
+  expect(batches.flatMap(batch => batch.batch).filter(event => event.event === 'performance_summary')).toHaveLength(1);
+});
+
+it('keeps diagnostics best effort when configuration storage becomes unavailable', async () => {
+  const store = createAppConfigStore({ configDir: directory });
+  const telemetry = createHostTelemetry({ configStore: store,
+    configuration: { environment: 'test', host: 'https://posthog.invalid', captureToken: 'phc_fake' }, appVersion: '2.4.0', fetch: fetchOutput });
+  hosts.push(telemetry);
+  vi.spyOn(store, 'getDaemonSettings').mockImplementation(() => { throw new Error('EACCES writing config'); });
+  expect(() => telemetry.reportDiagnostic(new Error('Original application failure'), { component: 'runtime', step: 'ipc.test' })).not.toThrow();
+  await telemetry.shutdown();
+  expect(batches).toHaveLength(0);
+});
+
+it('keeps each event context at observation time while the queued app becomes ready', async () => {
+  let ready = false;
+  const telemetry = createHostTelemetry({ configStore: createAppConfigStore({ configDir: directory }),
+    configuration: { environment: 'test', host: 'https://posthog.invalid', captureToken: 'phc_fake' }, appVersion: '2.4.0',
+    runtimeContext: () => ({ daemon_ready: ready, connected_workspaces: ready ? 2 : 0, configured_workspaces: 2 }), fetch: fetchOutput });
+  hosts.push(telemetry);
+  telemetry.start();
+  ready = true;
+  telemetry.capture('runtime_state', { reason: 'startup', state: 'ready', duration_ms: 1000 });
+  telemetry.capture('connections_restored', { connected_workspaces: 1, unverified_workspaces: 1, authorization_required_workspaces: 0 });
+  await telemetry.shutdown();
+  const events = batches.flatMap(batch => batch.batch);
+  expect(events.find(event => event.event === 'app_activity')?.properties).toMatchObject({ daemon_ready: false, connected_workspaces: 0 });
+  expect(events.find(event => event.event === 'runtime_state')?.properties).toMatchObject({ daemon_ready: true, connected_workspaces: 2 });
+  expect(events.find(event => event.event === 'connections_restored')?.properties.connected_workspaces).toBe(1);
+});

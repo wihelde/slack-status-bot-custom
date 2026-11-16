@@ -7,15 +7,18 @@ import type { CommandRunner } from './commandProbe';
 
 const observation = new AsyncLocalStorage<{
   telemetry?: HostTelemetry; source: SourceName; operation_id?: string; epoch: number | null;
-  runner?: CommandRunner; succeeded: Set<string>;
+  runner?: CommandRunner; succeeded: Set<string>; failed: boolean;
 }>();
 
 /** Keep command diagnostics with the source observation, including across concurrent probes. */
 export function observeSource(telemetry: HostTelemetry | undefined, source: SourceName,
-  runner: CommandRunner | undefined, operation_id: string | undefined, work: () => Promise<SourceStatus>): Promise<SourceStatus> {
-  return observation.run({ telemetry, source, runner, operation_id, epoch: telemetry?.getCaptureEpoch() ?? null, succeeded: new Set() }, async () => {
+  runner: CommandRunner | undefined, operation_id: string | undefined, work: () => Promise<SourceStatus>, enabled = true): Promise<SourceStatus> {
+  const started = Date.now();
+  return observation.run({ telemetry, source, runner, operation_id, epoch: telemetry?.getCaptureEpoch() ?? null, succeeded: new Set(), failed: false }, async () => {
+    let active = false;
     try {
       const status = await work();
+      active = status.isActive;
       // An inactive/disabled source cannot establish recovery of a previously failed probe.
       if (status.isActive) for (const step of [...observation.getStore()!.succeeded, 'detector']) {
         const current = context(step);
@@ -25,6 +28,9 @@ export function observeSource(telemetry: HostTelemetry | undefined, source: Sour
     } catch (error) {
       reportDetectorFailure(error);
       return { name: source, isActive: false };
+    } finally {
+      const current = observation.getStore()!;
+      telemetry?.observeSourceCheck({ source, enabled, active, failed: current.failed, duration_ms: Math.max(0, Date.now() - started) }, current.epoch);
     }
   });
 }
@@ -47,6 +53,8 @@ export function reportCommandFailure(error: unknown, step: string, noMatchExitCo
   // pgrep/lsof use exit 1 with no diagnostic to indicate an expected no-match.
   if (noMatchExitCode !== undefined && fields.code === noMatchExitCode && !fields.stderr?.trim() && !fields.signal && !fields.killed) return;
   if (/application isn['’]t running.*\(-600\)/i.test(fields.stderr ?? '')) return;
+  const observationContext = observation.getStore();
+  if (observationContext) observationContext.failed = true;
   const current = context(step);
   if (!current) return;
   // Never use exec's message: it embeds the entire command and sometimes stdout.
@@ -61,11 +69,15 @@ export function reportCommandFailure(error: unknown, step: string, noMatchExitCo
 }
 
 export function reportParseFailure(step: string): void {
+  const observationContext = observation.getStore();
+  if (observationContext) observationContext.failed = true;
   const current = context(step);
   current?.telemetry.reportDiagnostic(new Error('Invalid source probe response'), { ...current.diagnostic, failure_kind: 'parse' });
 }
 
 export function reportDetectorFailure(error: unknown): void {
+  const observationContext = observation.getStore();
+  if (observationContext) observationContext.failed = true;
   const current = context('detector');
   current?.telemetry.reportDiagnostic(error, { ...current.diagnostic, failure_kind: 'detector' });
 }

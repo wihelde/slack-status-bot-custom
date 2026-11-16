@@ -39,7 +39,7 @@ export class SourceRegistry {
   async getStatuses(operationId?: string): Promise<Record<SourceName, RegisteredSourceStatus>> {
     const statuses = await Promise.all(
       this.getSourceNames().map(async sourceName => {
-        const status = await observeSource(this.telemetry, sourceName, this.commandRunner, operationId, () => this.adapters[sourceName].getStatus());
+        const status = await observeSource(this.telemetry, sourceName, this.commandRunner, operationId, () => this.adapters[sourceName].getStatus(), this.adapters[sourceName].isEnabled());
         return [
           sourceName,
           {

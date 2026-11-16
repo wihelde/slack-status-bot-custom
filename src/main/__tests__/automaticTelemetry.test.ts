@@ -298,3 +298,21 @@ it('treats unavailable macOS-only sources as inactivity without running commands
   await telemetry.shutdown();
   expect(events.filter(event => event.event === '$exception')).toEqual([]);
 });
+
+it('counts user-owned and unrecognized profile protection using existing reads without another Slack request', async () => {
+  const { daemon, post } = createDaemon();
+  active = false;
+  await daemon.start();
+  await vi.advanceTimersByTimeAsync(7000);
+  const custom = daemon.setExternalStatus(':coffee:', 'Private protected status');
+  await vi.advanceTimersByTimeAsync(2500);
+  await custom;
+  const writes = post.mock.calls.length;
+  active = true;
+  await vi.advanceTimersByTimeAsync(7000);
+  expect(post.mock.calls).toHaveLength(writes);
+  await daemon.stop();
+  await telemetry.shutdown();
+  expect(events.find(event => event.event === 'source_health_summary' && event.properties.source === 'zoom')?.properties.protected_checks).toBeGreaterThan(0);
+  expect(JSON.stringify(events)).not.toContain('Private protected status');
+});
