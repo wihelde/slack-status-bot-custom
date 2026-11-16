@@ -1,0 +1,1166 @@
+{
+  "dashboard": {
+    "name": "Development and test (wizard)",
+    "description": "Safe development and test activity, delivery, setup and diagnostics in the same project. Select environment to narrow the view; production is excluded.",
+    "tags": [
+      "wizard"
+    ],
+    "grid_spacing": "condensed"
+  },
+  "insights": [
+    {
+      "key": "activity",
+      "name": "Development/test: Active installations and successful use (wizard)",
+      "description": "Daily distinct environment-namespaced installation IDs. Background activity and fully successful logical status operations are separate signals; neither counts people.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "app_activity",
+              "name": "Active installations",
+              "math": "dau",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "status_operation",
+              "name": "Installations with complete delivery",
+              "math": "dau",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "outcome",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "success"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "activity-return",
+      "name": "Development/test: Returning active installations (wizard)",
+      "description": "Weekly recurring activity retention. Each cohort contains installations active that week; later columns require activity again. Incomplete future intervals are not churn.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "RetentionQuery",
+          "dateRange": {
+            "date_from": "-8w"
+          },
+          "filterTestAccounts": false,
+          "retentionFilter": {
+            "targetEntity": {
+              "id": "app_activity",
+              "type": "events",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            },
+            "returningEntity": {
+              "id": "app_activity",
+              "type": "events",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            },
+            "retentionType": "retention_recurring",
+            "period": "Week",
+            "totalIntervals": 8,
+            "cumulative": false,
+            "timeWindowMode": "strict_calendar_dates"
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "use-return",
+      "name": "Development/test: Returning successful use (wizard)",
+      "description": "Weekly recurring retention of fully successful status operations. Partial, failed and skipped operations do not count as delivered value.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "RetentionQuery",
+          "dateRange": {
+            "date_from": "-8w"
+          },
+          "filterTestAccounts": false,
+          "retentionFilter": {
+            "targetEntity": {
+              "id": "status_operation",
+              "type": "events",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "outcome",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "success"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            },
+            "returningEntity": {
+              "id": "status_operation",
+              "type": "events",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "outcome",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "success"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            },
+            "retentionType": "retention_recurring",
+            "period": "Week",
+            "totalIntervals": 8,
+            "cumulative": false,
+            "timeWindowMode": "strict_calendar_dates"
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "activation",
+      "name": "Development/test: New setup to successful use (wizard)",
+      "description": "Installation-level ordered funnel within 14 days: setup start, successful setup with replaced_existing=false, then a fully successful status operation. This is first subsequent observed use, not a first-ever-person claim; multiple attempts/workspaces can belong to one installation.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "FunnelsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "filterTestAccounts": false,
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "connection_started",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "flow",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "setup"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ],
+              "custom_name": "Setup started"
+            },
+            {
+              "kind": "EventsNode",
+              "event": "connection_completed",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "flow",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "setup"
+                  ]
+                },
+                {
+                  "key": "outcome",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "success"
+                  ]
+                },
+                {
+                  "key": "replaced_existing",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "false"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ],
+              "custom_name": "New connection saved"
+            },
+            {
+              "kind": "EventsNode",
+              "event": "status_operation",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "outcome",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "success"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ],
+              "custom_name": "First subsequent complete delivery"
+            }
+          ],
+          "funnelsFilter": {
+            "funnelVizType": "steps",
+            "funnelOrderType": "ordered",
+            "funnelWindowInterval": 14,
+            "funnelWindowIntervalUnit": "day"
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "connections",
+      "name": "Development/test: Setup, Reconnect and restoration (wizard)",
+      "description": "Logical lifecycle records, not people. Setup replacements are separate from new onboarding; restored snapshots and authorization renewal never count as onboarding.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "connection_started",
+              "name": "Setup starts",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "flow",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "setup"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "connection_completed",
+              "name": "New setup successes",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "flow",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "setup"
+                  ]
+                },
+                {
+                  "key": "outcome",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "success"
+                  ]
+                },
+                {
+                  "key": "replaced_existing",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "false"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "connection_completed",
+              "name": "Setup replacements",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "flow",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "setup"
+                  ]
+                },
+                {
+                  "key": "outcome",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "success"
+                  ]
+                },
+                {
+                  "key": "replaced_existing",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "true"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "connection_started",
+              "name": "Reconnect starts",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "flow",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "reconnect"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "connection_completed",
+              "name": "Reconnect successes",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "flow",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "reconnect"
+                  ]
+                },
+                {
+                  "key": "outcome",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "success"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "connections_restored",
+              "name": "Existing-store snapshots",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "setup-outcomes",
+      "name": "Development/test: Connection outcomes and failed steps (wizard)",
+      "description": "Completions by flow, outcome and step. Cancelled is not a technical exception. An uncompleted browser flow can remain a start without completion.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "connection_completed",
+              "name": "connection_completed",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "type": "event",
+                "property": "flow"
+              },
+              {
+                "type": "event",
+                "property": "outcome"
+              },
+              {
+                "type": "event",
+                "property": "step"
+              }
+            ],
+            "breakdown_limit": 50
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "renewal",
+      "name": "Development/test: Authorization maintenance (wizard)",
+      "description": "Renewal attempts by renewed, retrying or reconnect_required. A retry is maintenance, not a new setup or status use.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "connection_renewal",
+              "name": "connection_renewal",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "type": "event",
+                "property": "outcome"
+              },
+              {
+                "type": "event",
+                "property": "step"
+              }
+            ],
+            "breakdown_limit": 50
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "source-use",
+      "name": "Development/test: Actual source-driven actions (wizard)",
+      "description": "One automatic status_operation per logical action, by source/outcome. Enabled sources are configuration; skipped actions are decisions. Corrections appear separately in delivery outcomes.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "status_operation",
+              "name": "Automatic operations",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "trigger",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "automatic"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "type": "event",
+                "property": "source"
+              },
+              {
+                "type": "event",
+                "property": "outcome"
+              }
+            ],
+            "breakdown_limit": 50
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "manual-use",
+      "name": "Development/test: Manual actions and External Status Commands (wizard)",
+      "description": "One manual logical operation by fixed action and outcome. external is the External Status Command category; retries/slack_request are excluded.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "status_operation",
+              "name": "Manual operations",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "key": "trigger",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "manual"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "type": "event",
+                "property": "action"
+              },
+              {
+                "type": "event",
+                "property": "outcome"
+              }
+            ],
+            "breakdown_limit": 50
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "delivery",
+      "name": "Development/test: Complete, partial, failed and skipped delivery (wizard)",
+      "description": "Completion-time logical status operations by trigger and outcome. Retry success does not rewrite the original operation. Partial delivery never counts as complete success.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "status_operation",
+              "name": "status_operation",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "type": "event",
+                "property": "trigger"
+              },
+              {
+                "type": "event",
+                "property": "outcome"
+              }
+            ],
+            "breakdown_limit": 50
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "workspace-delivery",
+      "name": "Development/test: Targeted and fully delivered workspaces (wizard)",
+      "description": "Sums of completion-time targeted/successful workspace counts on status_operation, not request attempts. A successful workspace completed every requested profile/presence/DND part.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "status_operation",
+              "name": "Targeted workspaces",
+              "math": "sum",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ],
+              "math_property": "targeted_workspaces"
+            },
+            {
+              "kind": "EventsNode",
+              "event": "status_operation",
+              "name": "Fully delivered workspaces",
+              "math": "sum",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ],
+              "math_property": "successful_workspaces"
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "settings",
+      "name": "Development/test: Settings changes (wizard)",
+      "description": "Successfully persisted structural changes by setting and source. No text/emoji/dates. Source priority, meeting DND, autostart and custom statuses appear when changed.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "settings_changed",
+              "name": "settings_changed",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "type": "event",
+                "property": "setting"
+              },
+              {
+                "type": "event",
+                "property": "source"
+              }
+            ],
+            "breakdown_limit": 50
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    },
+    {
+      "key": "enabled-sources",
+      "name": "Development/test: Enabled source configuration (wizard)",
+      "description": "Latest observed configuration per installation within the selected window, not source use. Six fixed categories include zeros. Installations without a configuration-bearing event are absent.",
+      "tags": [
+        "wizard"
+      ],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "display": "ActionsTable",
+        "source": {
+          "kind": "HogQLQuery",
+          "query": "SELECT source, countIf(has(JSONExtract(enabled, 'Array(String)'), source)) AS enabled_installations, count() AS observed_installations FROM (SELECT distinct_id, argMax(properties.enabled_sources, timestamp) AS enabled FROM events WHERE properties.environment IN ('development', 'test') AND {filters} AND properties.enabled_sources IS NOT NULL GROUP BY distinct_id) ARRAY JOIN ['spotify', 'appleMusic', 'youtubeMusic', 'zoom', 'teams', 'huddle'] AS source GROUP BY source ORDER BY source",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": false
+          }
+        }
+      }
+    },
+    {
+      "key": "failure-frequency",
+      "name": "Development/test: Failure frequency by cause, component and version (wizard)",
+      "description": "Sum of MAX cumulative occurrence_count per installation/environment/episode in the selected records. Recovery is local to an episode, not global issue resolution. Counts can include occurrences before the selected window.",
+      "tags": [
+        "wizard"
+      ],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "display": "ActionsTable",
+        "source": {
+          "kind": "HogQLQuery",
+          "query": "SELECT environment, component, step, code, app_version, sum(observed_occurrences) AS observed_occurrences, count() AS episodes, countIf(recovered) AS recovered_episodes FROM (SELECT distinct_id AS diagnostic_installation, properties.environment AS environment, properties.episode_id AS episode_id,\nargMax(properties.component, timestamp) AS component, argMax(properties.step, timestamp) AS step,\nargMax(properties.code, timestamp) AS code, argMax(properties.message, timestamp) AS message,\nargMax(properties.app_version, timestamp) AS app_version, argMax(properties.os_platform, timestamp) AS os_platform,\nargMax(properties.connection_ref, timestamp) AS connection_ref, argMax(properties.source, timestamp) AS source,\nargMax(properties.http_status, timestamp) AS http_status, argMax(properties.network_code, timestamp) AS network_code,\nargMax(properties.exit_code, timestamp) AS exit_code, argMax(properties.signal, timestamp) AS signal,\nargMax(properties.first_seen, timestamp) AS first_seen, argMax(properties.last_seen, timestamp) AS last_seen,\nargMax(properties.first_operation_id, timestamp) AS first_operation_id, argMax(properties.last_operation_id, timestamp) AS last_operation_id,\nargMax(properties.recovery_operation_id, timestamp) AS recovery_operation_id,\nmax(toInt(properties.occurrence_count)) AS observed_occurrences,\ncountIf(event = 'diagnostic_recovered') > 0 AS recovered,\nargMax(properties.$exception_issue_id, timestamp) AS native_issue_id\nFROM events WHERE properties.environment IN ('development', 'test') AND {filters} AND event IN ('$exception', 'diagnostic_summary', 'diagnostic_recovered') AND properties.episode_id IS NOT NULL\nGROUP BY distinct_id, properties.environment, properties.episode_id) GROUP BY environment, component, step, code, app_version ORDER BY observed_occurrences DESC",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": false
+          }
+        }
+      }
+    },
+    {
+      "key": "failure-detail",
+      "name": "Development/test: Diagnostic episodes and actual recovery (wizard)",
+      "description": "Up to 500 most recently observed episodes. Use environment plus diagnostic installation ID, operation IDs and connection ref for investigation. MAX cumulative count, never sum of summaries. Native Error Tracking issue status is independent of this local recovery.",
+      "tags": [
+        "wizard"
+      ],
+      "query": {
+        "kind": "DataVisualizationNode",
+        "display": "ActionsTable",
+        "source": {
+          "kind": "HogQLQuery",
+          "query": "SELECT * FROM (SELECT distinct_id AS diagnostic_installation, properties.environment AS environment, properties.episode_id AS episode_id,\nargMax(properties.component, timestamp) AS component, argMax(properties.step, timestamp) AS step,\nargMax(properties.code, timestamp) AS code, argMax(properties.message, timestamp) AS message,\nargMax(properties.app_version, timestamp) AS app_version, argMax(properties.os_platform, timestamp) AS os_platform,\nargMax(properties.connection_ref, timestamp) AS connection_ref, argMax(properties.source, timestamp) AS source,\nargMax(properties.http_status, timestamp) AS http_status, argMax(properties.network_code, timestamp) AS network_code,\nargMax(properties.exit_code, timestamp) AS exit_code, argMax(properties.signal, timestamp) AS signal,\nargMax(properties.first_seen, timestamp) AS first_seen, argMax(properties.last_seen, timestamp) AS last_seen,\nargMax(properties.first_operation_id, timestamp) AS first_operation_id, argMax(properties.last_operation_id, timestamp) AS last_operation_id,\nargMax(properties.recovery_operation_id, timestamp) AS recovery_operation_id,\nmax(toInt(properties.occurrence_count)) AS observed_occurrences,\ncountIf(event = 'diagnostic_recovered') > 0 AS recovered,\nargMax(properties.$exception_issue_id, timestamp) AS native_issue_id\nFROM events WHERE properties.environment IN ('development', 'test') AND {filters} AND event IN ('$exception', 'diagnostic_summary', 'diagnostic_recovered') AND properties.episode_id IS NOT NULL\nGROUP BY distinct_id, properties.environment, properties.episode_id) ORDER BY last_seen DESC LIMIT 500",
+          "filters": {
+            "dateRange": {
+              "date_from": "-30d"
+            },
+            "filterTestAccounts": false
+          }
+        }
+      }
+    },
+    {
+      "key": "native-exceptions",
+      "name": "Development/test: Native first-exception records (wizard)",
+      "description": "First $exception records by code, step and app version. This counts captured exception records, not all repeated failures; use Failure frequency for recurrence and Diagnostic episodes for native issue IDs.",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "$exception",
+              "name": "$exception",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "development",
+                    "test"
+                  ]
+                },
+                {
+                  "type": "hogql",
+                  "key": "properties.environment IN ('development', 'test')"
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": false,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "type": "event",
+                "property": "code"
+              },
+              {
+                "type": "event",
+                "property": "step"
+              },
+              {
+                "type": "event",
+                "property": "app_version"
+              }
+            ],
+            "breakdown_limit": 50
+          }
+        }
+      },
+      "tags": [
+        "wizard"
+      ]
+    }
+  ],
+  "filters": {
+    "date_from": "-30d",
+    "filterTestAccounts": false,
+    "properties": [
+      {
+        "key": "environment",
+        "type": "event",
+        "operator": "exact",
+        "value": [
+          "development",
+          "test"
+        ]
+      }
+    ]
+  }
+}

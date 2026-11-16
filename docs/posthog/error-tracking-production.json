@@ -1,0 +1,18 @@
+{
+  "dateRange": {
+    "date_from": "-30d"
+  },
+  "status": "all",
+  "filterTestAccounts": false,
+  "filterGroup": [
+    {
+      "type": "event",
+      "key": "environment",
+      "operator": "exact",
+      "value": [
+        "production"
+      ]
+    }
+  ],
+  "limit": 10
+}
