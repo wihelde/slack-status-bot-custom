@@ -1,10 +1,13 @@
 import type { CustomStatusConfig } from '../config/statusConfig';
 import type { SourceName } from '../config/sourceCatalog';
 import type { AppSnapshot, AppSnapshotRefreshSignal, AppStatusSnapshot } from './appSnapshot';
+import type { TelemetrySettings } from './telemetry';
 
 export type RendererLogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 
 export const IPC_CHANNELS = {
+  getTelemetrySettings: 'get-telemetry-settings',
+  setTelemetryEnabled: 'set-telemetry-enabled',
   saveTokens: 'save-tokens',
   getTokens: 'get-tokens',
   deleteTokens: 'delete-tokens',
@@ -95,6 +98,8 @@ export interface AutoLaunchStatusPayload {
 }
 
 export interface ElectronAPI {
+  getTelemetrySettings: () => Promise<IpcResult<TelemetrySettings>>;
+  setTelemetryEnabled: (enabled: boolean) => Promise<IpcResult<TelemetrySettings>>;
   saveTokens: (tokens: string | string[]) => Promise<IpcResult>;
   getTokens: () => Promise<IpcResult<TokensPayload>>;
   deleteTokens: () => Promise<IpcResult>;

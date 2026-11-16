@@ -18,15 +18,15 @@
     "react-start": "vite --host 127.0.0.1 --port 3000",
     "react-build": "vite build",
     "tsc": "tsc",
-    "host:build": "tsc -p tsconfig.json",
-    "host:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "host:build": "tsc -p tsconfig.json && node scripts/build-telemetry-config.mjs development",
+    "host:watch": "node scripts/build-telemetry-config.mjs development && tsc -p tsconfig.json --watch --preserveWatchOutput",
     "host:smoke": "npm run host:build && node ./scripts/verify-electron-host-build.mjs",
     "smoke": "npm run electron:smoke",
     "electron:smoke": "npm run react-build && npm run host:build && node ./scripts/smoke-electron-renderer.mjs",
     "package:smoke": "npm run react-build && npm run host:smoke && node ./scripts/smoke-electron-package.mjs",
     "macos:smoke": "npm run package:smoke && node ./scripts/smoke-macos.mjs",
-    "electron-dev": "cross-env NODE_ENV=development ELECTRON_START_URL=http://localhost:3000 electron .",
-    "electron-build": "npm run react-build && npm run host:build && electron-builder && node ./scripts/verify-electron-package.mjs && npm run fix-dmg",
+    "electron-dev": "cross-env NODE_ENV=development SLACK_STATUS_BOT_TELEMETRY_ENVIRONMENT=development ELECTRON_START_URL=http://localhost:3000 electron .",
+    "electron-build": "npm run react-build && cross-env SLACK_STATUS_BOT_TELEMETRY_ENVIRONMENT=production npm run host:build && electron-builder && node ./scripts/verify-electron-package.mjs && npm run fix-dmg",
     "fix-dmg": "DMG=\"dist/Slack Status Bot-$(node -p \"require('./package.json').version\")-arm64.dmg\" && [ -f \"$DMG\" ] && ./scripts/fix-dmg-hidden-files.sh \"$DMG\" || true",
     "build": "npm run electron-build",
     "pack": "electron-builder --dir",
@@ -38,8 +38,10 @@
   "dependencies": {
     "axios": "^1.6.0",
     "electron-updater": "^6.7.3",
+    "posthog-node": "^5.74.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@electron/asar": "^4.0.0",
@@ -69,10 +71,14 @@
     "files": [
       "build/**/*",
       "dist/**/*.js",
+      "dist/telemetry-config.json",
       "assets/**/*",
       "package.json",
       "node_modules/axios/**/*",
-      "node_modules/electron-updater/**/*"
+      "node_modules/electron-updater/**/*",
+      "node_modules/posthog-node/**/*",
+      "node_modules/@posthog/core/**/*",
+      "node_modules/zod/**/*"
     ],
     "publish": {
       "provider": "generic",

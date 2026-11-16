@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { randomUUID } from 'node:crypto';
 import { DEFAULT_SOURCE_ORDER, SourceName } from './sourceCatalog';
 import {
   DEFAULT_OVERRIDABLE_PATTERNS,
@@ -20,10 +21,14 @@ const MANAGED_KEYS = new Set([
   'hasCompletedFirstRun',
   'logLevel',
   'lastUpdated',
+  'telemetryEnabled',
+  'installationId',
 ]);
 const VALID_LOG_LEVELS: LogLevel[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
 
 export interface PersistedAppConfig {
+  telemetryEnabled: boolean;
+  installationId: string;
   meetingDnd: boolean;
   slackTokens: string[];
   sources: Record<SourceName, boolean>;
@@ -117,6 +122,10 @@ export class AppConfigStore {
       ...config,
       logLevel: normalizeLogLevel(logLevel),
     }));
+  }
+
+  updateTelemetryEnabled(enabled: boolean): PersistedAppConfig {
+    return this.update(config => ({ ...config, telemetryEnabled: enabled }));
   }
 
   markFirstRunCompleted(): PersistedAppConfig {
@@ -219,6 +228,8 @@ export function createAppConfigStore(options: AppConfigStoreOptions): AppConfigS
 
 function createDefaultConfig(): PersistedAppConfig {
   return {
+    telemetryEnabled: true,
+    installationId: randomUUID(),
     meetingDnd: true,
     slackTokens: [],
     sources: normalizeSources({}),
@@ -233,6 +244,10 @@ function normalizeConfig(value: unknown): PersistedAppConfig {
   const record = asRecord(value);
 
   return {
+    telemetryEnabled: record.telemetryEnabled !== false,
+    installationId: typeof record.installationId === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(record.installationId)
+      ? record.installationId : randomUUID(),
     meetingDnd: record.meetingDnd !== false,
     slackTokens: normalizeSlackTokens(record.slackTokens),
     sources: normalizeSources(record.sources),
@@ -321,6 +336,8 @@ function buildPersistedPayload(
 ): Record<string, unknown> {
   return {
     ...extras,
+    telemetryEnabled: config.telemetryEnabled,
+    installationId: config.installationId,
     meetingDnd: config.meetingDnd,
     slackTokens: [...config.slackTokens],
     sources: { ...config.sources },

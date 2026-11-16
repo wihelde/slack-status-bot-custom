@@ -872,3 +872,23 @@
     transform: none;
   }
 }
+
+.telemetry-settings {
+  margin-block: 24px;
+}
+
+.telemetry-settings p {
+  max-width: 68ch;
+}
+
+.telemetry-settings .setup-link-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 8px;
+}
+
+.telemetry-settings .input-field {
+  flex: 1 1 280px;
+  min-width: 0;
+}

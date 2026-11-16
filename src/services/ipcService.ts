@@ -10,6 +10,7 @@ import {
 import { ElectronAPI, RendererLogLevel } from '../contracts/ipc';
 import { CustomStatusConfig } from '../config/statusConfig';
 import { SourceName } from '../config/sourceCatalog';
+import type { TelemetrySettings } from '../contracts/telemetry';
 
 declare global {
   interface Window {
@@ -26,6 +27,23 @@ function logRendererError(message: string, error: unknown): void {
 }
 
 export class IPCService {
+  static async getTelemetrySettings(): Promise<TelemetrySettings | null> {
+    try {
+      const result = await this.getElectronAPI()?.getTelemetrySettings();
+      return result?.success ? result.data ?? null : null;
+    } catch {
+      return null;
+    }
+  }
+
+  static async setTelemetryEnabled(enabled: boolean): Promise<TelemetrySettings | null> {
+    try {
+      const result = await this.getElectronAPI()?.setTelemetryEnabled(enabled);
+      return result?.success ? result.data ?? null : null;
+    } catch {
+      return null;
+    }
+  }
   private static getElectronAPI(): ElectronAPI | null {
     if (typeof window === 'undefined' || typeof window.electronAPI === 'undefined') {
       logRendererWarning('Not running in Electron');

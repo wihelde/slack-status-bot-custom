@@ -1,4 +1,5 @@
 import type { CustomStatusConfig } from '../config/statusConfig';
+import type { HostTelemetry } from './telemetry';
 import { DEFAULT_SOURCE_ORDER, type SourceName } from '../config/sourceCatalog';
 import type { AppSnapshot, AppSnapshotRefreshReason, AppSetupSnapshot } from '../contracts/appSnapshot';
 import type { WorkspaceConnectionSummary } from '../contracts/ipc';
@@ -389,4 +390,14 @@ export function registerMainIpcHandlers(
   registerSnapshotIpcHandlers(ipcMain, dependencies);
   registerLoggingIpcHandlers(ipcMain, dependencies);
   registerPlatformIpcHandlers(ipcMain, dependencies);
+}
+
+export function registerTelemetryIpcHandlers(ipcMain: IpcMainLike, telemetry: HostTelemetry): void {
+  registerHandlerGroup(ipcMain, {
+    [IPC_CHANNELS.getTelemetrySettings]: async () => ({ success: true, data: telemetry.getSettings() }),
+    [IPC_CHANNELS.setTelemetryEnabled]: async enabled => {
+      if (typeof enabled !== 'boolean') return { success: false, error: 'Invalid telemetry preference' };
+      return { success: true, data: telemetry.setEnabled(enabled) };
+    },
+  });
 }
