@@ -1,20 +1,14 @@
-import { CommandRunner, commandHasOutput, runCommand } from './commandProbe';
+import { CommandRunner, readCommandOutput, runCommand } from './commandProbe';
+import { recoverProbe } from './probeContext';
 
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
-}
 
 export async function hasMacUdpConnectionMatch(
   processName: string,
   pattern: string,
   runner: CommandRunner = runCommand
 ): Promise<boolean> {
-  const command = `${[
-    'lsof -i -P -n 2>&1',
-    `grep ${shellQuote(processName)}`,
-    'grep UDP',
-    `grep -E ${shellQuote(pattern)}`,
-  ].join(' | ')} || true`;
-
-  return commandHasOutput(command, runner);
+  const output = await readCommandOutput('lsof -i -P -n', runner, { step: 'network', noMatchExitCode: 1, recover: false });
+  if (!output) return false;
+  recoverProbe('network');
+  return output.split('\n').some(line => line.includes(processName) && line.includes('UDP') && new RegExp(pattern).test(line));
 }

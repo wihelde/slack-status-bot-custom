@@ -18,6 +18,7 @@ interface RuntimeOrchestratorConfig {
   slackExecutor: Pick<SlackStatusExecutor, 'getProfile' | 'setSourceStatus' | 'setMeetingDnd'>;
   sourceArbitrationEngine: Pick<SourceArbitrationEngine, 'listActiveSources' | 'pickWinner' | 'recordHandledStatus'>;
   isMeetingDndEnabled?: () => boolean;
+  recordDecision?: (reason: 'protected' | 'unchanged' | 'cooldown') => void;
   getNow?: () => number;
   profileSetCooldownMs?: number;
   resetBlockedCooldownMs?: number;
@@ -245,6 +246,7 @@ export class RuntimeOrchestrator {
     const timeSinceLastSet = now - this.lastProfileSetTime;
 
     if (timeSinceLastSet < this.profileSetCooldownMs) {
+      this.config.recordDecision?.('cooldown');
       const remainingCooldown = Math.ceil((this.profileSetCooldownMs - timeSinceLastSet) / 1000);
       logger.debug(`[polling] ${sourceName} status changed but rate limited (${remainingCooldown}s cooldown remaining)`, {
         emoji,
@@ -273,6 +275,7 @@ export class RuntimeOrchestrator {
     }
 
     if (timeSinceLastBlock < this.resetBlockedCooldownMs) {
+      this.config.recordDecision?.('cooldown');
       const remainingCooldown = Math.ceil((this.resetBlockedCooldownMs - timeSinceLastBlock) / 1000);
       logger.debug(`[polling] Reset is blocked, cooldown active (${remainingCooldown}s remaining)`);
       return;
@@ -295,6 +298,7 @@ export class RuntimeOrchestrator {
     const timeSinceLastBlock = now - this.lastResetBlockedTime;
 
     if (timeSinceLastBlock < this.resetBlockedCooldownMs) {
+      this.config.recordDecision?.('cooldown');
       const remainingCooldown = Math.ceil((this.resetBlockedCooldownMs - timeSinceLastBlock) / 1000);
       logger.debug(`[polling] Reset is blocked, cooldown active (${remainingCooldown}s remaining)`, { reason });
       return;

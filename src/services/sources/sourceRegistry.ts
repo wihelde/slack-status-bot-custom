@@ -1,3 +1,6 @@
+import type { HostTelemetry } from '../../main/telemetry';
+import type { CommandRunner } from './probes/commandProbe';
+import { observeSource } from './probes/probeContext';
 import { DEFAULT_SOURCE_ORDER, SourceName } from '../../config/sourceCatalog';
 import { AppleMusicAdapter } from './appleMusic';
 import { ZoomAdapter, TeamsAdapter, HuddleAdapter } from './meetings';
@@ -10,7 +13,7 @@ export type RegisteredSourceStatus = SourceStatus & { enabled: boolean };
 export class SourceRegistry {
   private readonly adapters: Record<SourceName, ISourceAdapter>;
 
-  constructor() {
+  constructor(private readonly telemetry?: HostTelemetry, private readonly commandRunner?: CommandRunner) {
     this.adapters = {
       spotify: new SpotifyAdapter(),
       appleMusic: new AppleMusicAdapter(),
@@ -33,10 +36,10 @@ export class SourceRegistry {
     this.adapters[sourceName].setEnabled(enabled);
   }
 
-  async getStatuses(): Promise<Record<SourceName, RegisteredSourceStatus>> {
+  async getStatuses(operationId?: string): Promise<Record<SourceName, RegisteredSourceStatus>> {
     const statuses = await Promise.all(
       this.getSourceNames().map(async sourceName => {
-        const status = await this.adapters[sourceName].getStatus();
+        const status = await observeSource(this.telemetry, sourceName, this.commandRunner, operationId, () => this.adapters[sourceName].getStatus());
         return [
           sourceName,
           {

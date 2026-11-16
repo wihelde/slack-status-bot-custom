@@ -10,7 +10,8 @@ export function buildAppleScriptCommand(lines: string[]): string {
 
 export async function readAppleScriptOutput(
   lines: string[],
-  runner: CommandRunner = runCommand
+  runner: CommandRunner = runCommand,
+  step = 'applescript'
 ): Promise<string | null> {
-  return readCommandOutput(buildAppleScriptCommand(lines), runner);
+  return readCommandOutput(buildAppleScriptCommand(lines), runner, { step });
 }

@@ -72,14 +72,11 @@ describe('SpotifyAdapter', () => {
 
     expect(isMacProcessRunning).toHaveBeenCalledWith('Spotify');
     expect(readAppleScriptOutput).toHaveBeenNthCalledWith(1, [
-      'try',
       'if application "Spotify" is running then',
       'tell application "Spotify" to player state',
       'end if',
-      'end try',
-    ]);
+    ], undefined, 'player_state');
     expect(readAppleScriptOutput).toHaveBeenNthCalledWith(2, [
-      'try',
       'if application "Spotify" is running then',
       'tell application "Spotify"',
       'set track_artist to artist of current track',
@@ -92,8 +89,7 @@ describe('SpotifyAdapter', () => {
       'end if',
       'end tell',
       'end if',
-      'end try',
-    ]);
+    ], undefined, 'track');
   });
 
   it('falls back to inactive status when probes do not find an active track', async () => {
