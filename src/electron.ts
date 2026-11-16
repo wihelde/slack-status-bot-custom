@@ -16,7 +16,8 @@ import {
   EXTERNAL_STATUS_PROTOCOL,
   createExternalStatusCommandHandler,
 } from './main/externalStatusCommand';
-import { registerMainIpcHandlers } from './main/ipcHandlers';
+import { registerMainIpcHandlers, registerTelemetryIpcHandlers } from './main/ipcHandlers';
+import { createHostTelemetry, resolveTelemetryConfiguration, type HostTelemetry } from './main/telemetry';
 import { createMainLogger } from './main/logging';
 import { showMacosNotification } from './main/macosNotification';
 import { exchangeSlackCode, NativeSlackOAuth } from './main/nativeSlackOAuth';
@@ -72,6 +73,9 @@ const configStore = createAppConfigStore({
 const electronApp = app as typeof app & { isQuitting?: boolean };
 
 let daemon: SlackStatusBotDaemon | null = null;
+let telemetry: HostTelemetry | null = null;
+let shutdownStarted = false;
+let shutdownComplete = false;
 let config: RuntimeConfig = {};
 let currentLogLevel: RendererLogLevel = 'ERROR';
 let updateAvailable: AppUpdateSnapshot | null = null;
@@ -474,6 +478,21 @@ if (!gotTheLock) {
 
     refreshConfig();
     try {
+      const bundledPath = path.join(__dirname, 'telemetry-config.json');
+      const bundled: unknown = fs.existsSync(bundledPath)
+        ? JSON.parse(fs.readFileSync(bundledPath, 'utf8')) : {};
+      telemetry = createHostTelemetry({
+        configStore,
+        configuration: resolveTelemetryConfiguration(bundled, process.env),
+        appVersion: app.getVersion(),
+        warn: message => log(message),
+      });
+      telemetry.start();
+      registerTelemetryIpcHandlers(ipcMain, telemetry);
+    } catch {
+      log('[Telemetry] Collection unavailable; app startup continues.');
+    }
+    try {
       const connections = new WorkspaceConnections({
         directory: app.getPath('userData'),
         config: configStore,
@@ -605,7 +624,11 @@ if (!gotTheLock) {
     void windowLifecycle.showWindow();
   });
 
-  app.on('before-quit', async () => {
+  app.on('before-quit', async event => {
+    if (shutdownComplete) return;
+    event.preventDefault();
+    if (shutdownStarted) return;
+    shutdownStarted = true;
     if (migrationRetryTimer) clearTimeout(migrationRetryTimer);
     if (renewalTimer) clearInterval(renewalTimer);
     powerMonitor.removeListener('resume', renewWorkspaceConnections);
@@ -616,10 +639,12 @@ if (!gotTheLock) {
       updateIntervalId = null;
     }
 
-    try {
-      await stopDaemon();
-    } catch (error) {
+    // Stop new automation immediately while telemetry gets its bounded best-effort flush.
+    void stopDaemon().catch(error => {
       console.error('Error stopping daemon:', error);
-    }
+    });
+    await telemetry?.shutdown();
+    shutdownComplete = true;
+    app.quit();
   });
 }

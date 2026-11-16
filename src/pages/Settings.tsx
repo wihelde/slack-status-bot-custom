@@ -5,6 +5,7 @@ import LogViewer from '../components/LogViewer';
 import { StatusConfigEditor } from '../components/StatusConfigEditor';
 import { DEFAULT_SOURCE_ORDER, SOURCE_CATALOG, SourceName } from '../config/sourceCatalog';
 import type { WorkspaceConnectionSummary } from '../contracts/ipc';
+import type { TelemetrySettings } from '../contracts/telemetry';
 import { buildSetupLink } from '../contracts/setupLink';
 import { applyThemePreference, readThemePreference, ThemePreference } from '../theme';
 
@@ -32,6 +33,9 @@ const Settings: React.FC = () => {
   const [autoLaunch, setAutoLaunch] = useState(false);
   const [autoLaunchLoading, setAutoLaunchLoading] = useState(false);
   const [appVersion, setAppVersion] = useState('');
+  const [telemetry, setTelemetry] = useState<TelemetrySettings | null>(null);
+  const [telemetrySaving, setTelemetrySaving] = useState(false);
+  const [telemetryMessage, setTelemetryMessage] = useState('');
   const [themePreference, setThemePreference] = useState<ThemePreference>(readThemePreference);
 
   useEffect(() => {
@@ -52,6 +56,7 @@ const Settings: React.FC = () => {
       }
 
       setMeetingDnd((await IPCService.getMeetingDnd()) ?? true);
+      setTelemetry(await IPCService.getTelemetrySettings());
 
       // Load source order
       const order = await IPCService.getSourceOrder();
@@ -448,6 +453,41 @@ const Settings: React.FC = () => {
             </label>
           </div>
         </div>
+        <section className="telemetry-settings" aria-labelledby="telemetry-heading">
+          <h2 id="telemetry-heading">Usage and diagnostics</h2>
+          <p>Help improve the app with background usage statistics and error diagnostics via PostHog.
+            No Slack identities, status text or song details are sent.</p>
+          <label>
+            <input type="checkbox" checked={telemetry?.enabled ?? false}
+              disabled={!telemetry || telemetrySaving} onChange={async event => {
+                const enabled = event.target.checked;
+                setTelemetrySaving(true);
+                setTelemetryMessage('');
+                const result = await IPCService.setTelemetryEnabled(enabled);
+                if (result) setTelemetry(result);
+                else setTelemetryMessage('Could not save collection preference. Please try again.');
+                setTelemetrySaving(false);
+              }} />
+            {' '}Share usage statistics and error diagnostics
+          </label>
+          <p className="help-text">Turning this off discards pending records. Previously sent data follows project retention.</p>
+          {telemetry ? <>
+            <label htmlFor="diagnostic-id">Diagnostic ID</label>
+            <div className="setup-link-controls">
+              <input id="diagnostic-id" className="input-field" readOnly value={telemetry.diagnosticId} />
+              <button className="secondary-action" onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(telemetry.diagnosticId);
+                  setTelemetryMessage('Diagnostic ID copied');
+                } catch {
+                  setTelemetryMessage('Copy failed; select the diagnostic ID instead.');
+                }
+              }}>Copy diagnostic ID</button>
+            </div>
+            <small className="help-text">Environment: {telemetry.environment ?? 'collection unavailable'}</small>
+          </> : <p>Collection settings unavailable. Please reopen Settings.</p>}
+          {telemetryMessage && <p role="status">{telemetryMessage}</p>}
+        </section>
         <p className="settings-about">Slack Status Bot{appVersion ? ` v${appVersion}` : ''} · <a href="mailto:slackbot@wihel.de">Support</a></p>
         </>
       )}

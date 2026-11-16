@@ -18,6 +18,8 @@ const stdout = [];
 const stderr = [];
 const childEnv = { ...process.env };
 delete childEnv.ELECTRON_RUN_AS_NODE;
+const realIngestion = process.env.SLACK_STATUS_BOT_POSTHOG_INGESTION_TEST === '1';
+const startedAt = new Date().toISOString();
 
 let electronProcess;
 let electronClosed;
@@ -32,6 +34,7 @@ try {
         slackTokens: [],
         hasCompletedFirstRun: true,
         logLevel: 'ERROR',
+        telemetryEnabled: realIngestion,
       },
       null,
       2
@@ -51,6 +54,7 @@ try {
       env: {
         ...childEnv,
         NODE_ENV: 'production',
+        SLACK_STATUS_BOT_TELEMETRY_ENVIRONMENT: 'test',
         ELECTRON_DISABLE_SECURITY_WARNINGS: 'true',
         SLACK_STATUS_BOT_REMOTE_DEBUGGING_PORT: String(debuggingPort),
         SLACK_STATUS_BOT_USER_DATA_DIR: userDataDir,
@@ -85,9 +89,10 @@ try {
           return { hasElectronAPI: false };
         }
 
-        const [snapshot, tokens] = await Promise.all([
+        const [snapshot, tokens, telemetry] = await Promise.all([
           api.getAppSnapshot(),
           api.getTokens(),
+          api.getTelemetrySettings(),
         ]);
         const deadline = Date.now() + 5000;
         while (!document.querySelector('h1') && Date.now() < deadline) {
@@ -106,6 +111,8 @@ try {
           isFirstRun: snapshot?.data?.setup?.isFirstRun ?? null,
           renderedTitle: document.querySelector('h1')?.textContent,
           settingsRoundTrip: savedLevel?.success === true && level?.data === 'WARN',
+          appVersion: snapshot?.data?.app?.version,
+          telemetry: telemetry?.success ? telemetry.data : null,
         };
       }
     )()`,
@@ -126,6 +133,34 @@ try {
   assertEqual(smokeResult?.settingsRoundTrip, true, 'settings should round-trip through preload and host IPC');
   assertEqual(JSON.parse(fs.readFileSync(path.join(userDataDir, 'config.json'), 'utf8')).logLevel, 'WARN',
     'host IPC should persist settings in the isolated profile');
+
+  const persisted = JSON.parse(fs.readFileSync(path.join(userDataDir, 'config.json'), 'utf8'));
+  assertEqual(smokeResult.telemetry?.enabled, realIngestion, 'collection should follow the isolated test preference');
+  assertEqual(smokeResult.telemetry?.diagnosticId, persisted.installationId, 'host IPC should expose the persisted diagnostic ID');
+  if (realIngestion) {
+    assertEqual(smokeResult.telemetry?.environment, 'test', 'packaged ingestion must use the explicit test environment');
+    // Reuse this package/startup check. No Slack credentials or synthetic status changes are needed.
+    await delay(6500);
+    const result = {
+      diagnostic_id: persisted.installationId,
+      distinct_id: `test:${persisted.installationId}`,
+      environment: 'test',
+      app_version: smokeResult.appVersion,
+      event: 'app_activity', reason: 'startup', started_at: startedAt,
+      finished_at: new Date().toISOString(),
+      ingestion: 'pending parent verification in PostHog',
+    };
+    if (process.env.SLACK_STATUS_BOT_POSTHOG_TEST_RESULT) {
+      fs.writeFileSync(process.env.SLACK_STATUS_BOT_POSTHOG_TEST_RESULT, JSON.stringify(result, null, 2));
+    }
+    console.log('[posthog test] ' + JSON.stringify(result));
+  }
+  const disabled = await client.send('Runtime.evaluate', {
+    expression: 'window.electronAPI.setTelemetryEnabled(false)', awaitPromise: true, returnByValue: true,
+  });
+  assertEqual(disabled.result?.value?.data?.enabled, false, 'host opt-out should take effect');
+  assertEqual(JSON.parse(fs.readFileSync(path.join(userDataDir, 'config.json'), 'utf8')).telemetryEnabled, false,
+    'host IPC should persist the shared opt-out');
 
 } catch (error) {
   console.error('[smoke] Electron renderer IPC smoke test failed.');

@@ -31,6 +31,9 @@ if (packagedPackageJson.main !== expectedMain) {
 for (const requiredFile of [
   expectedMain, 'dist/preload.js', 'dist/main/ipcHandlers.js', 'build/index.html',
   'node_modules/axios/package.json', 'node_modules/electron-updater/package.json',
+  'dist/main/telemetry.js', 'dist/telemetry-config.json',
+  'node_modules/posthog-node/package.json', 'node_modules/@posthog/core/package.json',
+  'node_modules/zod/package.json',
 ]) {
   if (!packagedFiles.has(`/${requiredFile}`)) {
     throw new Error(`Missing required packaged file: ${requiredFile}`);
