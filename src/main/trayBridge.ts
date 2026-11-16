@@ -1,3 +1,4 @@
+import type { EntryPoint } from './telemetryEvents';
 import type { CustomStatusConfig } from '../config/statusConfig';
 import type { AppUpdateSnapshot } from '../contracts/appSnapshot';
 
@@ -16,9 +17,9 @@ interface TrayMenuStatus extends Pick<CustomStatusConfig, 'id' | 'emoji' | 'mess
 
 interface TrayMenuDaemon {
   getStatusConfiguration: () => TrayMenuStatus[];
-  goOnline: () => Promise<boolean>;
-  goAway: () => Promise<boolean>;
-  setStatus: (emoji: string, message: string) => Promise<boolean>;
+  goOnline: (entryPoint?: EntryPoint) => Promise<boolean>;
+  goAway: (entryPoint?: EntryPoint) => Promise<boolean>;
+  setStatus: (emoji: string, message: string, entryPoint?: EntryPoint) => Promise<boolean>;
 }
 
 interface TrayBridgeDependencies {
@@ -233,13 +234,13 @@ export function createTrayBridge({
       onGoOnline: async () => {
         const daemon = getDaemon();
         if (daemon) {
-          await daemon.goOnline();
+          await daemon.goOnline('tray');
         }
       },
       onGoAway: async () => {
         const daemon = getDaemon();
         if (daemon) {
-          await daemon.goAway();
+          await daemon.goAway('tray');
         }
       },
       onOpenHolidayModal: async () => {
@@ -249,7 +250,7 @@ export function createTrayBridge({
       onSetQuickActionStatus: async status => {
         const daemon = getDaemon();
         if (daemon) {
-          await daemon.setStatus(status.emoji, status.message);
+          await daemon.setStatus(status.emoji, status.message, 'tray');
         }
       },
       onOpenUpdate: () => {

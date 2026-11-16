@@ -1,4 +1,8 @@
 import os from 'node:os';
+import { randomUUID } from 'node:crypto';
+import { telemetryEvents, type TelemetryEvent, type DiagnosticContext } from './telemetryEvents';
+import { diagnosticError, diagnosticFingerprint, sanitizeDiagnosticText, sanitizedFrames } from './diagnostics';
+export { telemetryEvents, type TelemetryEvent } from './telemetryEvents';
 import { PostHog, type PostHogOptions } from 'posthog-node';
 import { z } from 'zod';
 import type { AppConfigStore } from '../config/appConfigStore';
@@ -13,16 +17,11 @@ export const telemetryConfigurationSchema = z.object({
   captureToken: z.string().regex(/^phc_[a-zA-Z0-9_]+$/),
 });
 
-// Extend this allowlist for agreed events. Unknown fields are stripped, including SDK control properties.
-export const telemetryEvents = {
-  app_activity: z.object({ reason: z.enum(['startup', 'daily']) }),
-};
-export type TelemetryEvent = keyof typeof telemetryEvents;
-
 type Options = {
   configStore: AppConfigStore;
   configuration: unknown;
   appVersion: string;
+  autostartEnabled?: boolean;
   fetch?: PostHogOptions['fetch'];
   warn?: (message: string) => void;
 };
@@ -34,10 +33,68 @@ export function createHostTelemetry(options: Options) {
   const configuration = parsed.success ? parsed.data : null;
   if (!configuration) options.warn?.('[Telemetry] Missing or invalid capture configuration; collection is unavailable.');
   let enabled = config.telemetryEnabled;
+  let captureEpoch = 0;
+  let autostartEnabled = options.autostartEnabled;
   let running = false;
   let stopped = false;
   let activityTimer: ReturnType<typeof setInterval> | undefined;
   let session: ReturnType<typeof createSession> | undefined;
+
+  const episodes = new Map<string, { properties: ReturnType<typeof episodeProperties>; summarized: number }>();
+  // One minute summaries, at most 100 active causes, no durable diagnostic journal.
+  const diagnosticTimer = setInterval(() => {
+    for (const episode of episodes.values()) {
+      if (episode.properties.occurrence_count <= episode.summarized) continue;
+      capture('diagnostic_summary', episode.properties);
+      episode.summarized = episode.properties.occurrence_count;
+    }
+  }, 60_000);
+  diagnosticTimer.unref?.();
+
+  function episodeProperties(context: DiagnosticContext, error: unknown, sensitive: readonly string[]) {
+    const { frames: _frames, ...technical } = diagnosticError(error, sensitive);
+    return { ...technical, ...context, episode_id: randomUUID(), occurrence_count: 1,
+      first_seen: new Date().toISOString(), last_seen: new Date().toISOString(),
+      first_operation_id: context.operation_id, last_operation_id: context.operation_id };
+  }
+
+  function reportDiagnostic(error: unknown, context: DiagnosticContext, sensitive: readonly string[] = []) {
+    if (!enabled || stopped || !configuration) return;
+    const properties = episodeProperties(context, error, sensitive);
+    const cause = { environment: configuration.environment, component: properties.component, step: properties.step,
+      code: properties.code, message: properties.message,
+      network_code: properties.network_code, http_status: properties.http_status, location: sanitizedFrames(properties.stack)[0],
+      needed_scopes: properties.needed_scopes, provided_scopes: properties.provided_scopes, fatal: properties.fatal };
+    const key = diagnosticFingerprint({ ...cause, connection_ref: properties.connection_ref });
+    const previous = episodes.get(key);
+    if (previous) {
+      previous.properties.occurrence_count++;
+      previous.properties.last_seen = properties.last_seen;
+      previous.properties.last_operation_id = context.operation_id;
+      return;
+    }
+    if (episodes.size >= 100) episodes.delete(episodes.keys().next().value!);
+    episodes.set(key, { properties, summarized: 1 });
+    const frames = sanitizedFrames(properties.stack);
+    // Build the documented exception envelope explicitly; SDK enrichment must never see a raw Error.
+    capture('$exception', { ...properties,
+      $exception_fingerprint: diagnosticFingerprint(cause),
+      $exception_level: context.fatal ? 'fatal' : 'error',
+      $exception_list: [{ type: properties.code ?? 'Error', value: properties.message,
+        mechanism: { type: 'generic', handled: !context.fatal },
+        ...(frames.length ? { stacktrace: { type: 'raw', frames } } : {}) }],
+    });
+  }
+
+  function recoverDiagnostic(context: Pick<DiagnosticContext, 'component' | 'step' | 'connection_ref' | 'operation_id'>) {
+    if (!enabled || stopped) return;
+    for (const [key, episode] of episodes) {
+      if (episode.properties.component !== context.component || episode.properties.step !== context.step ||
+        episode.properties.connection_ref !== context.connection_ref) continue;
+      capture('diagnostic_recovered', { ...episode.properties, recovery_operation_id: context.operation_id });
+      episodes.delete(key);
+    }
+  }
 
   function createSession() {
     if (!configuration) return;
@@ -112,10 +169,24 @@ export function createHostTelemetry(options: Options) {
     const schema = telemetryEvents[event];
     const safe = schema?.safeParse(properties);
     if (!safe?.success) return;
+    const data = safe.data;
+    // Reapply redaction after schema validation and again at SDK output enrichment.
+    if ('message' in data) data.message = sanitizeDiagnosticText(data.message);
+    if ('stack' in data && data.stack) {
+      data.stack = sanitizedFrames(data.stack).map(frame => `    at ${frame.filename}:${frame.lineno}:${frame.colno}`).join('\n');
+    }
+    const exceptionEvent = event === '$exception' ? telemetryEvents.$exception.safeParse(data) : null;
+    if (exceptionEvent?.success) {
+      Object.assign(data, { $exception_list: exceptionEvent.data.$exception_list });
+      for (const exception of exceptionEvent.data.$exception_list) {
+        exception.value = sanitizeDiagnosticText(exception.value);
+      }
+    }
     return {
-      ...safe.data,
+      ...data,
       environment: configuration.environment,
       app_version: options.appVersion,
+      ...(autostartEnabled === undefined ? {} : { autostart_enabled: autostartEnabled }),
       os_platform: process.platform,
       os_release: os.release(),
       os_arch: process.arch,
@@ -129,6 +200,11 @@ export function createHostTelemetry(options: Options) {
 
   return {
     capture,
+    reportDiagnostic,
+    recoverDiagnostic,
+    // Operation links from before an opt-out must not reappear after re-enable.
+    setAutostartContext: (enabled: boolean) => { autostartEnabled = enabled; },
+    getCaptureEpoch: () => enabled && !stopped && configuration ? captureEpoch : null,
     getSettings,
     start() {
       if (running || stopped) return;
@@ -140,6 +216,10 @@ export function createHostTelemetry(options: Options) {
     setEnabled(value: boolean): TelemetrySettings {
       options.configStore.updateTelemetryEnabled(value);
       enabled = value;
+      if (!enabled) {
+        captureEpoch++;
+        episodes.clear();
+      }
       if (!enabled && session) {
         const discarded = session;
         session = undefined;
@@ -152,6 +232,8 @@ export function createHostTelemetry(options: Options) {
       if (stopped) return;
       stopped = true;
       clearInterval(activityTimer);
+      clearInterval(diagnosticTimer);
+      episodes.clear();
       const pending = session;
       session = undefined;
       if (!pending) return;

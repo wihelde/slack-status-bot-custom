@@ -1,3 +1,4 @@
+import { runDiagnosticScenario } from './main/diagnosticScenario';
 import { app, BrowserWindow, Notification, dialog, ipcMain, Menu, Tray, nativeImage, powerMonitor, safeStorage, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { execSync } from 'child_process';
@@ -74,6 +75,7 @@ const electronApp = app as typeof app & { isQuitting?: boolean };
 
 let daemon: SlackStatusBotDaemon | null = null;
 let telemetry: HostTelemetry | null = null;
+process.setSourceMapsEnabled(true);
 let shutdownStarted = false;
 let shutdownComplete = false;
 let config: RuntimeConfig = {};
@@ -312,6 +314,7 @@ const createDaemonInstance = (slackTokens: string[]): SlackStatusBotDaemon => {
   const activeConnections = workspaceConnections?.activeWorkspaceConnections() || [];
   return createDaemon({
     slackTokens,
+    telemetry: telemetry ?? undefined,
     workspaceConnections: slackTokens.map(token => {
       const connection = activeConnections.find(active => active.token === token);
       return {
@@ -481,13 +484,25 @@ if (!gotTheLock) {
       const bundledPath = path.join(__dirname, 'telemetry-config.json');
       const bundled: unknown = fs.existsSync(bundledPath)
         ? JSON.parse(fs.readFileSync(bundledPath, 'utf8')) : {};
+      let autostartEnabled: boolean | undefined;
+      try { autostartEnabled = (await autoLaunchAdapter.getStatus()).enabled; } catch { /* Context is optional if OS settings are unavailable. */ }
       telemetry = createHostTelemetry({
         configStore,
         configuration: resolveTelemetryConfiguration(bundled, process.env),
         appVersion: app.getVersion(),
+        autostartEnabled,
         warn: message => log(message),
       });
       telemetry.start();
+      if (process.env.SLACK_STATUS_BOT_POSTHOG_DIAGNOSTIC_TEST === '1') {
+        const resultPath = process.env.SLACK_STATUS_BOT_DIAGNOSTIC_RESULT;
+        if (!resultPath) throw new Error('Synthetic diagnostic result path missing');
+        void runDiagnosticScenario(telemetry, configStore).then(result => {
+          fs.writeFileSync(resultPath, JSON.stringify(result));
+        }).catch(() => {
+          fs.writeFileSync(resultPath, JSON.stringify({ error: 'Synthetic diagnostics failed' }));
+        });
+      }
       registerTelemetryIpcHandlers(ipcMain, telemetry);
     } catch {
       log('[Telemetry] Collection unavailable; app startup continues.');
@@ -580,6 +595,7 @@ if (!gotTheLock) {
       clearLogs,
       setLogLevel,
       getLogLevel: () => currentLogLevel,
+      telemetry: telemetry ?? undefined,
       setAutoLaunch: enabled => autoLaunchAdapter.setEnabled(enabled),
       getAutoLaunch: () => autoLaunchAdapter.getStatus(),
       logStatusBridgeInfo,

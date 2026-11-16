@@ -31,9 +31,8 @@ environment values and non-public tokens before writing configuration.
 ## Event and extension contract
 
 `createHostTelemetry` in `src/main/telemetry.ts` exposes `start`, typed `capture`,
-`getSettings`, `setEnabled` and bounded `shutdown`. Call `start` once during host
-startup, independently of window visibility and the Slack daemon. The current
-allowlist contains one event:
+`getSettings`, `setEnabled`, shared diagnostics and bounded `shutdown`. Call `start` once during host
+startup, independently of window visibility and the Slack daemon. The activity event is:
 
 | Event | Allowed caller properties | Meaning |
 | --- | --- | --- |
@@ -47,15 +46,12 @@ The UUID and opt-out preference persist in the existing config store; unrelated
 configuration is preserved. There is no identify/alias call, named-person profile,
 Slack identity, hardware identity, host name or renderer analytics SDK.
 
-Later slices must extend the typed Zod event allowlist at this same host boundary.
-Unknown events and invalid payloads are dropped; unknown properties are stripped.
-Caller fields cannot override identity, environment, version, or SDK controls.
-Current events admit no free text at all, so status/song text, credentials, paths,
-raw errors, headers, configuration and logs cannot leave through them. Diagnostic
-text schemas added in the diagnostic slice must perform targeted sanitization and
-receive representative public-output redaction tests before admitting text. Do not
-use passthrough schemas or send whole error/request/response objects. Diagnostic
-aggregation added later must clear its state on this same host opt-out boundary.
+Later slices extend the typed Zod allowlist in `src/main/telemetryEvents.ts` at
+this same host boundary. Unknown events and invalid payloads are dropped; unknown
+properties are stripped. Caller fields cannot override identity, environment,
+version, or SDK controls. Activity/outcome/settings fields admit no free text.
+Explicit diagnostic text passes targeted sanitization and public-output redaction
+checks described below; no whole errors, headers, logs or configurations are sent.
 
 ## Transport and counting limits
 
@@ -91,8 +87,8 @@ host/token and set `SLACK_STATUS_BOT_POSTHOG_INGESTION_TEST=1` when running the 
 package smoke. Set the build environment to production to verify that the test
 launcher explicitly overrides a packaged production configuration to test. Set
 `SLACK_STATUS_BOT_POSTHOG_TEST_RESULT` to a temporary JSON output path. The test
-profile is temporary, has no Slack tokens and performs no status changes. Only a
-startup activity event is sent; the test waits for the asynchronous batch and then
+profile is temporary, has no Slack tokens and performs no live status changes.
+By default only startup activity is sent; the test waits for the asynchronous batch and then
 disables collection through real IPC. The report contains the diagnostic ID,
 `distinct_id`, environment, actual app version and time window, with ingestion
 explicitly marked pending remote verification.
@@ -102,8 +98,115 @@ without printing its token, invokes that command, and queries the existing proje
 via the prescribed PostHog CLI workflow for the reported `distinct_id`. Confirm
 `app_activity`, `reason=startup`, `environment=test`, version and production-view
 exclusion remotely. Packaging or a successful HTTP request alone does not establish
-ingestion. Actual event retention must be read from the account metadata; session
-recording retention is a different setting. No retention value is claimed here.
+ingestion. Parent verified actual event retention on 2026-11-16: no project/organization
+override, default and current plan maximum 24 months, no active query-retention
+restriction. Session recording retention is a different setting. The earlier
+packaged #3 startup was remotely observed as test traffic; #4 diagnostic ingestion
+and final dashboard exclusion still require parent verification.
 
 Official references: [Node SDK](https://posthog.com/docs/libraries/node),
 [SDK reference](https://posthog.com/docs/libraries/node/reference).
+
+## Manual delivery and shared diagnostics
+
+`src/main/telemetryEvents.ts` is the typed event allowlist. `status_operation`
+records one completed logical manual action, with fixed `action` (online, away,
+focus, meeting, break, holiday, travel, sick, remeet, dog, custom, external), `entry_point` (dashboard, tray,
+external, unknown), `operation_id`, `trigger`, safe meeting-DND/protection flags,
+custom-status count, host-observed `autostart_enabled` when available, `targeted_workspaces`, `successful_workspaces`, and
+`workspace_results`. Each workspace has a random process-local `connection_ref`
+and separate profile/presence/DND results. Arbitrary configured IDs map to custom;
+no arbitrary label, emoji, text, or holiday date is sent. References survive
+connection reordering in the same service instance; replacement credentials or
+restarting the service may create new references. They identify neither Slack
+accounts nor people.
+
+A successful workspace completed every requested sub-operation. `success` means
+all targets completed; `partial` means at least one sub-operation succeeded but
+full delivery did not; `failed` means none succeeded or an unexpected exception
+escaped; `skipped` means no request was planned. `skipped` in a workspace result
+means that sub-operation was not requested or was deferred by retry-after. The
+associated `slack_request.reason=rate_limit_backoff` distinguishes deferral.
+An invalid action targets zero workspaces. A UI state-change event is never used
+as delivery evidence. These outcomes describe API acknowledgements and the
+existing verification/retry behavior, not a guarantee against later Slack edits.
+
+`slack_request` records each mutating Slack attempt (or explicit backoff), using
+`step`, `result`, `reason`, duration, attempt and the same operation/connection
+references. Verification and catch-up retries keep the original operation ID;
+they do not emit another usage event. Counts on the original operation remain its
+completion-time snapshot. A later successful request/recovery describes catch-up.
+Count `status_operation`, never `slack_request`, for user action usage.
+
+`settings_changed` records successful autostart changes as a boolean and custom
+status save/reset as a count and reset flag. Manual operations include current
+meeting-DND, protected-status and custom-status-count context even when defaults
+have never been changed. The host reads autostart once and refreshes that bounded
+context after successful settings changes; an unavailable OS setting stays absent. Source-specific settings and automatic operations belong
+to the automatic-source integration.
+
+`HostTelemetry.reportDiagnostic(error, context, sensitiveValues?)` extracts only
+allowlisted technical cause fields. `context` identifies a fixed component and
+step, optional random connection/operation references, timing/attempt and fatal
+classification. The Slack boundary supplies token and current status values for
+redaction across all sub-operations. Future connection/source callers must supply
+known credentials and private text explicitly; never pass raw stdout or whole
+HTTP payloads as context. Structured code, HTTP status, network code, timeout,
+retry-after, rate-limit and provided/needed scope names remain when available.
+Messages remove recognizable secrets, authorization/cookie fields, OAuth values,
+URLs, emails, Slack IDs, dates, status/music fields, known sensitive values and
+personal paths. Stack frames retain only relative application code locations.
+This is targeted sanitization, not a claim that arbitrary free text is safe.
+
+The first failure enqueues a PostHog `$exception` with a sanitized exception list,
+Node frame platform, severity and a fixed SHA-256 fingerprint. Local episodes are
+separate by environment, component, step, technical cause/location and connection
+reference. Server grouping uses cause/environment without installation-specific
+connection references. At most 100 episodes remain in memory. Repetitions emit
+`diagnostic_summary` every 60 seconds only when more failures occurred; the SDK
+may add its normal five-second batch delay. `occurrence_count` is cumulative for
+the episode, not an interval delta. `first_seen`/`last_seen` and
+`first_operation_id`/`last_operation_id` retain its endpoints. To count frequency,
+use the greatest observed count per episode, not the sum of cumulative summaries.
+Eviction, restart, opt-out and abrupt shutdown can lose unsent counts.
+
+Call `recoverDiagnostic({component, step, connection_ref?, operation_id?})` only
+following actual success of the affected operation/component. It closes matching
+cause episodes with final count and `recovery_operation_id`. Inactivity, source
+disablement and app shutdown never imply recovery. This is the shared path for
+source and connection diagnostics. Opt-out clears episodes and retires the
+capture epoch, so in-flight/retained operation links and disabled-period attempts
+cannot reappear after re-enable. SDK buffer clearing remains unchanged. No raw
+global exception handler is installed; explicit observation preserves existing
+return values and thrown errors. Callers still own their fatal/nonfatal policy.
+
+## Original source stacks and diagnostic ingestion
+
+Host builds produce source maps with embedded original sources; packaged apps
+include the maps and enable Node source-map resolution before diagnostics.
+Sanitization retains `src/...ts:line:column` when Node resolves a stack locally,
+or safe `dist/...js` locations when mapping is unavailable. It drops dependency
+frames and machine paths. The offline compiled diagnostic scenario verifies an
+original TypeScript frame. Release artifacts must preserve matching JS/maps from
+the same build. No source-map upload, administrative token or remote source-code
+context is added by this slice. Remote Error Tracking rendering of these resolved
+frames still needs explicit verification; if remote unminification/code context
+is desired for unmapped frames, the release pipeline needs matching source-map
+artifact upload per the official Node source-map instructions.
+
+The existing packaged test accepts the additional flag
+`SLACK_STATUS_BOT_POSTHOG_DIAGNOSTIC_TEST=1` together with the explicit ingestion
+flag. It requires `environment=test`, an empty temporary profile, and replaces
+**every** synthetic Slack request with an in-process Axios adapter. It never
+starts source polling or writes live Slack state. The compiled scenario performs
+two partial meeting actions, waits for the real 60-second summary interval, then
+performs a successful action that recovers the affected API step. The report adds
+expected event names, cause, occurrence count, original-source frame and time
+window. The same capture ID identifies activity and diagnostics. Normal package
+smoke leaves this optional ingestion path off.
+
+Parent verification must observe actual `status_operation` success/partial,
+`$exception` with useful original-source frames, `diagnostic_summary` count 2,
+`diagnostic_recovered`, operation linkage and environment=test in project 352472.
+Production view exclusion and remote Error Tracking rendering remain external
+acceptance. No live Slack mutation is required.

@@ -19,6 +19,9 @@ const stderr = [];
 const childEnv = { ...process.env };
 delete childEnv.ELECTRON_RUN_AS_NODE;
 const realIngestion = process.env.SLACK_STATUS_BOT_POSTHOG_INGESTION_TEST === '1';
+const diagnosticScenario = process.env.SLACK_STATUS_BOT_POSTHOG_DIAGNOSTIC_TEST === '1';
+if (diagnosticScenario && !realIngestion) throw new Error('Diagnostic ingestion requires explicit test ingestion');
+const diagnosticResultPath = path.join(tmpRoot, 'diagnostics.json');
 const startedAt = new Date().toISOString();
 
 let electronProcess;
@@ -58,6 +61,7 @@ try {
         ELECTRON_DISABLE_SECURITY_WARNINGS: 'true',
         SLACK_STATUS_BOT_REMOTE_DEBUGGING_PORT: String(debuggingPort),
         SLACK_STATUS_BOT_USER_DATA_DIR: userDataDir,
+        SLACK_STATUS_BOT_DIAGNOSTIC_RESULT: diagnosticResultPath,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     }
@@ -139,7 +143,15 @@ try {
   assertEqual(smokeResult.telemetry?.diagnosticId, persisted.installationId, 'host IPC should expose the persisted diagnostic ID');
   if (realIngestion) {
     assertEqual(smokeResult.telemetry?.environment, 'test', 'packaged ingestion must use the explicit test environment');
-    // Reuse this package/startup check. No Slack credentials or synthetic status changes are needed.
+    // Optional diagnostics use fake Slack responses in the same isolated packaged host.
+    let diagnostics;
+    if (diagnosticScenario) {
+      const deadline = Date.now() + 90_000;
+      while (!fs.existsSync(diagnosticResultPath) && Date.now() < deadline) await delay(250);
+      diagnostics = JSON.parse(fs.readFileSync(diagnosticResultPath, 'utf8'));
+      if (diagnostics.error) throw new Error(diagnostics.error);
+      assertEqual(diagnostics.live_slack_mutations, 0, 'diagnostics must not change live Slack state');
+    }
     await delay(6500);
     const result = {
       diagnostic_id: persisted.installationId,
@@ -147,6 +159,7 @@ try {
       environment: 'test',
       app_version: smokeResult.appVersion,
       event: 'app_activity', reason: 'startup', started_at: startedAt,
+      ...(diagnostics ? { diagnostics } : {}),
       finished_at: new Date().toISOString(),
       ingestion: 'pending parent verification in PostHog',
     };

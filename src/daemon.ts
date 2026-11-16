@@ -1,3 +1,7 @@
+import type { AxiosAdapter } from 'axios';
+import type { HostTelemetry } from './main/telemetry';
+import type { EntryPoint, ActionCategory } from './main/telemetryEvents';
+import { actionCategory } from './main/telemetryEvents';
 import { SlackService } from './services/slack';
 import { SlackStatusExecutor } from './services/slackStatusExecutor';
 import { StatusManager } from './services/statusManager';
@@ -14,6 +18,8 @@ import path from 'path';
 
 export interface DaemonConfig {
   slackTokens: string | string[];
+  telemetry?: HostTelemetry;
+  slackAdapter?: AxiosAdapter;
   configDir?: string;
   configStore?: AppConfigStore;
   onAppStateChanged?: (statusData: AppStatusChangedEvent) => void;
@@ -41,8 +47,8 @@ export class SlackStatusBotDaemon {
   private pollTimeoutId: NodeJS.Timeout | null = null; // Track polling timeout for cleanup
   private statusOperations: Promise<void> = Promise.resolve();
 
-  constructor(config: DaemonConfig) {
-    this.slackService = new SlackService(config.slackTokens);
+  constructor(private readonly config: DaemonConfig) {
+    this.slackService = new SlackService(config.slackTokens, config.telemetry, config.slackAdapter);
     this.workspaceConnections = config.workspaceConnections || [];
     this.slackExecutor = new SlackStatusExecutor(this.slackService);
     this.statusManager = new StatusManager(this.slackService);
@@ -187,33 +193,36 @@ export class SlackStatusBotDaemon {
   /**
    * Manually set status
    */
-  async setStatus(emoji: string, message: string): Promise<boolean> {
-    return this.runStatusOperation(() => this.statusManager.setCustomStatus(emoji, message));
+  async setStatus(emoji: string, message: string, entryPoint: EntryPoint = 'unknown'): Promise<boolean> {
+    const status = this.statusManager.getCustomStatuses().find(status => status.emoji === emoji);
+    const category = actionCategory.safeParse(status?.id);
+    return this.runManualOperation(category.success ? category.data : 'custom', entryPoint,
+      () => this.statusManager.setCustomStatus(emoji, message));
   }
 
   async setExternalStatus(emoji: string, message: string, presence: 'auto' | 'away' = 'auto'): Promise<boolean> {
-    return this.runStatusOperation(() => this.statusManager.setExternalStatus(emoji, message, presence));
+    return this.runManualOperation('external', 'external', () => this.statusManager.setExternalStatus(emoji, message, presence));
   }
 
   /**
    * Go online
    */
-  async goOnline(): Promise<boolean> {
-    return this.runStatusOperation(() => this.statusManager.goOnline());
+  async goOnline(entryPoint: EntryPoint = 'unknown'): Promise<boolean> {
+    return this.runManualOperation('online', entryPoint, () => this.statusManager.goOnline());
   }
 
   /**
    * Go away
    */
-  async goAway(): Promise<boolean> {
-    return this.runStatusOperation(() => this.statusManager.goAway());
+  async goAway(entryPoint: EntryPoint = 'unknown'): Promise<boolean> {
+    return this.runManualOperation('away', entryPoint, () => this.statusManager.goAway());
   }
 
   /**
    * Set holiday status with return date
    */
-  async setHoliday(returnDate: string): Promise<boolean> {
-    return this.runStatusOperation(() => this.statusManager.setHoliday(returnDate));
+  async setHoliday(returnDate: string, entryPoint: EntryPoint = 'unknown'): Promise<boolean> {
+    return this.runManualOperation('holiday', entryPoint, () => this.statusManager.setHoliday(returnDate));
   }
 
   /**
@@ -221,6 +230,13 @@ export class SlackStatusBotDaemon {
    */
   getStatusConfiguration(): CustomStatusConfig[] {
     return this.statusManager.getCustomStatuses();
+  }
+
+  private runManualOperation(action: ActionCategory, entry_point: EntryPoint, work: () => Promise<boolean>) {
+    if (!this.config.telemetry) return this.runStatusOperation(work);
+    return this.runStatusOperation(() => this.slackService.runOperation({ trigger: 'manual', action, entry_point,
+      meeting_dnd: this.meetingDnd, custom_status_count: this.statusManager.getCustomStatuses().length,
+      protected_status: this.statusManager.getStatusCheckState().value === 'not working' }, work));
   }
 
   /**
@@ -231,6 +247,7 @@ export class SlackStatusBotDaemon {
       this.statusManager.setCustomStatuses(config);
       this.saveConfig();
       
+      this.config.telemetry?.capture('settings_changed', { setting: 'custom_statuses', custom_status_count: config.length, reset: false });
       logger.info('[daemon] Status configuration updated', { count: config.length });
       return true;
     } catch (error) {
@@ -247,6 +264,7 @@ export class SlackStatusBotDaemon {
       this.statusManager.setCustomStatuses(getDefaultStatusConfiguration());
       this.saveConfig();
       
+      this.config.telemetry?.capture('settings_changed', { setting: 'custom_statuses', custom_status_count: this.statusManager.getCustomStatuses().length, reset: true });
       logger.info('[daemon] Status configuration reset to defaults');
       return true;
     } catch (error) {
