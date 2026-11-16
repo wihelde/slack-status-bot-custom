@@ -61,6 +61,14 @@ const episode = {
   first_operation_id: id.optional(), last_operation_id: id.optional(),
 };
 export const telemetryEvents = {
+  connections_restored: z.object({ connected_workspaces: count, unverified_workspaces: count, authorization_required_workspaces: count }),
+  connection_renewal: z.object({ operation_id: id, connection_ref: id,
+    outcome: z.enum(['renewed', 'retrying', 'reconnect_required']), step: z.enum(['oauth.renew', 'oauth.renew.persist']), duration_ms: count }),
+  connection_started: z.object({ operation_id: id, connection_ref: id, flow: z.enum(['setup', 'reconnect']) }),
+  connection_completed: z.object({ operation_id: id, connection_ref: id, flow: z.enum(['setup', 'reconnect']),
+    outcome: z.enum(['success', 'failed', 'cancelled']), step: z.enum(['oauth.browser', 'oauth.authorize', 'oauth.exchange', 'oauth.verify', 'oauth.persist']),
+    reason: z.enum(['connected', 'technical_failure', 'access_denied', 'expired', 'superseded', 'removed', 'invalid_callback']),
+    duration_ms: count, replaced_existing: z.boolean().optional(), first_connection: z.boolean().optional() }),
   app_activity: z.object({ reason: z.enum(['startup', 'daily']) }),
   status_operation: z.object({ ...operationContext, ...automationContext,
     outcome: z.enum(['success', 'partial', 'failed', 'skipped']),
@@ -86,6 +94,8 @@ export const telemetryEvents = {
   diagnostic_summary: z.object(episode),
   diagnostic_recovered: z.object({ ...episode, recovery_operation_id: id.optional() }),
 };
+export type ConnectionStep = z.input<typeof telemetryEvents.connection_completed>['step'];
+export type RenewalStep = z.input<typeof telemetryEvents.connection_renewal>['step'];
 export type TelemetryEvent = keyof typeof telemetryEvents;
 export type DiagnosticContext = Omit<z.input<typeof telemetryEvents.diagnostic_summary>,
   'episode_id' | 'occurrence_count' | 'first_seen' | 'last_seen' | 'first_operation_id' | 'last_operation_id' | 'message' | 'stack'>;

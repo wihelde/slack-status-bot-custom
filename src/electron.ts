@@ -1,3 +1,4 @@
+import { runConnectionScenario } from './main/connectionScenario';
 import { runDiagnosticScenario } from './main/diagnosticScenario';
 import { app, BrowserWindow, Notification, dialog, ipcMain, Menu, Tray, nativeImage, powerMonitor, safeStorage, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
@@ -503,6 +504,15 @@ if (!gotTheLock) {
           fs.writeFileSync(resultPath, JSON.stringify({ error: 'Synthetic diagnostics failed' }));
         });
       }
+      if (process.env.SLACK_STATUS_BOT_POSTHOG_CONNECTION_TEST === '1') {
+        const resultPath = process.env.SLACK_STATUS_BOT_CONNECTION_RESULT;
+        if (!resultPath) throw new Error('Synthetic connection result path missing');
+        void runConnectionScenario(telemetry, configStore).then(result => {
+          fs.writeFileSync(resultPath, JSON.stringify(result));
+        }).catch(() => {
+          fs.writeFileSync(resultPath, JSON.stringify({ error: 'Synthetic connections failed' }));
+        });
+      }
       registerTelemetryIpcHandlers(ipcMain, telemetry);
     } catch {
       log('[Telemetry] Collection unavailable; app startup continues.');
@@ -513,11 +523,13 @@ if (!gotTheLock) {
         config: configStore,
         encryption: safeStorage,
         verify: verifySlackToken,
+        telemetry: telemetry ?? undefined,
       });
       await connections.migrate();
       workspaceConnections = connections;
       slackOAuth = new NativeSlackOAuth({
         connections,
+        telemetry: telemetry ?? undefined,
         openExternal: url => shell.openExternal(url).then(() => undefined),
         exchange: exchangeSlackCode,
         verify: verifySlackToken,

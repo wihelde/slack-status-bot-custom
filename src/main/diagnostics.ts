@@ -62,7 +62,9 @@ export function sanitizedFrames(stack: string | undefined) {
   });
 }
 
-const errorFields = z.object({ message: z.string().optional(), stack: z.string().optional(),
+const errorFields = z.object({ name: z.string().optional(),
+  cause: z.object({ code: z.string().optional(), message: z.string().optional() }).catch({}).optional(),
+  message: z.string().optional(), stack: z.string().optional(),
   code: z.string().optional(), response: z.object({ status: z.number().optional(),
     headers: z.object({ 'retry-after': z.union([z.string(), z.number()]).optional() }).optional(),
     data: z.object({ error: z.string().optional(), needed: z.string().optional(), provided: z.string().optional() }).optional(),
@@ -74,8 +76,9 @@ export function diagnosticError(error: unknown, sensitive: readonly string[] = [
   const fields = parsed.success ? parsed.data : {};
   const serviceCode = fields.response?.data?.error;
   const safeCode = serviceCode && /^[a-zA-Z0-9_.:-]{1,80}$/.test(serviceCode) && sanitizeDiagnosticText(serviceCode, sensitive) === serviceCode ? serviceCode : undefined;
-  const networkCode = fields.code && /^[A-Z0-9_]{1,50}$/.test(fields.code) && sanitizeDiagnosticText(fields.code, sensitive) === fields.code ? fields.code : undefined;
-  const message = sanitizeDiagnosticText(fields.message ?? serviceCode ?? 'Unknown technical failure', sensitive);
+  const code = fields.code ?? fields.cause?.code ?? (fields.name === 'TimeoutError' ? 'ETIMEDOUT' : fields.name === 'AbortError' ? 'ABORT_ERR' : undefined);
+  const networkCode = code && /^[A-Z0-9_]{1,50}$/.test(code) && sanitizeDiagnosticText(code, sensitive) === code ? code : undefined;
+  const message = sanitizeDiagnosticText([fields.message ?? serviceCode ?? 'Unknown technical failure', fields.cause?.message].filter(Boolean).join(': '), sensitive);
   const frames = sanitizedFrames(fields.stack);
   const scopeNames = (value?: string) => value?.split(/[ ,]+/).filter(scope => /^[a-z_.]+:[a-z_.]+$/.test(scope)).slice(0, 30);
   const retry = Number(fields.response?.headers?.['retry-after']);
