@@ -101,8 +101,8 @@ exclusion remotely. Packaging or a successful HTTP request alone does not establ
 ingestion. Parent verified actual event retention on 2026-11-16: no project/organization
 override, default and current plan maximum 24 months, no active query-retention
 restriction. Session recording retention is a different setting. The earlier
-packaged #3 startup was remotely observed as test traffic; #4 diagnostic ingestion
-and final dashboard exclusion still require parent verification.
+packaged startup and manual diagnostic scenarios were remotely observed as test
+traffic. Final dashboard-level exclusion remains part of the dashboard setup.
 
 Official references: [Node SDK](https://posthog.com/docs/libraries/node),
 [SDK reference](https://posthog.com/docs/libraries/node/reference).
@@ -158,6 +158,13 @@ URLs, emails, Slack IDs, dates, status/music fields, known sensitive values and
 personal paths. Stack frames retain only relative application code locations.
 This is targeted sanitization, not a claim that arbitrary free text is safe.
 
+Each exception frame includes the SDK's unknown-function marker `?`, which the
+ingestion service requires even when no safe function name is retained. Matching
+packaged source maps are read through Electron's archive-aware filesystem before
+retaining only the original relative filename and position. Native Node stack
+mapping alone does not reliably resolve maps inside an app archive. Missing maps
+keep the safe generated location; source text and code context are not sent.
+
 The first failure enqueues a PostHog `$exception` with a sanitized exception list,
 Node frame platform, severity and a fixed SHA-256 fingerprint. Local episodes are
 separate by environment, component, step, technical cause/location and connection
@@ -183,14 +190,16 @@ return values and thrown errors. Callers still own their fatal/nonfatal policy.
 ## Original source stacks and diagnostic ingestion
 
 Host builds produce source maps with embedded original sources; packaged apps
-include the maps and enable Node source-map resolution before diagnostics.
-Sanitization retains `src/...ts:line:column` when Node resolves a stack locally,
-or safe `dist/...js` locations when mapping is unavailable. It drops dependency
-frames and machine paths. The offline compiled diagnostic scenario verifies an
-original TypeScript frame. Release artifacts must preserve matching JS/maps from
+include the maps and enable Node source-map resolution before diagnostics, with
+archive-aware lookup for frames that native resolution misses. Sanitization
+retains `src/...ts:line:column` when a matching map is available, or safe
+`dist/...js` locations otherwise. It drops dependency frames and machine paths.
+The packaged diagnostic scenario reports and checks the actual mapped frame.
+Release artifacts must preserve matching JS/maps from
 the same build. No source-map upload, administrative token or remote source-code
-context is added by this slice. Remote Error Tracking rendering of these resolved
-frames still needs explicit verification; if remote unminification/code context
+context is added by this slice. A packaged test on 2026-11-16 was observed in
+native Error Tracking with resolved TypeScript frames and no ingestion errors.
+If remote unminification/code context
 is desired for unmapped frames, the release pipeline needs matching source-map
 artifact upload per the official Node source-map instructions.
 
@@ -208,5 +217,6 @@ smoke leaves this optional ingestion path off.
 Parent verification must observe actual `status_operation` success/partial,
 `$exception` with useful original-source frames, `diagnostic_summary` count 2,
 `diagnostic_recovered`, operation linkage and environment=test in project 352472.
-Production view exclusion and remote Error Tracking rendering remain external
-acceptance. No live Slack mutation is required.
+The 2026-11-16 packaged test confirmed these records and native Error Tracking
+rendering. Final production-dashboard exclusion remains external acceptance.
+No live Slack mutation is required.

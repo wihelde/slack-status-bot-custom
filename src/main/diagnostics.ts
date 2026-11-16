@@ -1,5 +1,27 @@
 import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { SourceMap } from 'node:module';
 import { z } from 'zod';
+
+const sourceMapPayload = z.object({ version: z.literal(3), file: z.string().default(''),
+  sourceRoot: z.string().default(''), sources: z.array(z.string()),
+  sourcesContent: z.array(z.string()).default([]), names: z.array(z.string()).default([]), mappings: z.string() });
+const applicationMaps = new Map<string, SourceMap>();
+
+/** Electron's archive-aware fs can read maps that native Node stack resolution misses. */
+function applicationSourceMap(filename: string) {
+  if (applicationMaps.has(filename)) return applicationMaps.get(filename);
+  try {
+    const payload = sourceMapPayload.parse(JSON.parse(fs.readFileSync(path.resolve(__dirname, '../..', `${filename}.map`), 'utf8')));
+    const map = new SourceMap(payload);
+    applicationMaps.set(filename, map);
+    return map;
+  } catch {
+    // A missing map keeps the safe generated location; diagnostics must still work.
+    return undefined;
+  }
+}
 
 /** Redact known operation contents first, then recognizable secrets and personal data. */
 export function sanitizeDiagnosticText(value: string, sensitive: readonly string[] = []): string {
@@ -25,7 +47,18 @@ export function sanitizedFrames(stack: string | undefined) {
     if (line.includes('/node_modules/') || line.includes('\\node_modules\\')) return [];
     const match = line.match(/(?:^|[/\\\s])((?:src|dist)[/\\][a-zA-Z0-9_./\\-]+\.[cm]?[jt]sx?):(\d+):(\d+)\)?$/);
     if (!match) return [];
-    return [{ filename: match[1].replaceAll('\\', '/'), lineno: Number(match[2]), colno: Number(match[3]), in_app: true }];
+    const frame = { filename: match[1].replaceAll('\\', '/'), lineno: Number(match[2]), colno: Number(match[3]), in_app: true };
+    if (frame.filename.split('/').includes('..') || !Number.isSafeInteger(frame.lineno) || !Number.isSafeInteger(frame.colno)) return [];
+    if (frame.filename.startsWith('dist/')) {
+      const origin = applicationSourceMap(frame.filename)?.findOrigin(frame.lineno, frame.colno);
+      if (origin && 'fileName' in origin) {
+        const source = origin.fileName.replaceAll('\\', '/').match(/(?:^|\/)(src\/[a-zA-Z0-9_./-]+\.[cm]?[jt]sx?)$/)?.[1];
+        if (source && !source.split('/').includes('..')) {
+          Object.assign(frame, { filename: source, lineno: origin.lineNumber, colno: origin.columnNumber });
+        }
+      }
+    }
+    return [frame];
   });
 }
 

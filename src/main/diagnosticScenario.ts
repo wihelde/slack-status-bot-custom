@@ -7,6 +7,7 @@ import { SlackStatusBotDaemon } from '../daemon';
 import type { AppConfigStore } from '../config/appConfigStore';
 import { STATUS_MESSAGES } from '../config/statusConfig';
 import type { HostTelemetry } from './telemetry';
+import { sanitizedFrames } from './diagnostics';
 
 /** Explicit test-only ingestion scenario. Every Slack request terminates at this in-process adapter. */
 export async function runDiagnosticScenario(telemetry: HostTelemetry, configStore: AppConfigStore) {
@@ -17,11 +18,14 @@ export async function runDiagnosticScenario(telemetry: HostTelemetry, configStor
   const temporaryRoot = fs.realpathSync(os.tmpdir());
   assert.ok(directory.startsWith(`${temporaryRoot}${path.sep}`), 'Synthetic diagnostics require a temporary profile');
   let broken = true;
+  let originalSourceFrame: string | undefined;
   const profiles = new Map<string, unknown>();
   const slackAdapter: AxiosAdapter = async config => {
     const authorization = String(config.headers.Authorization);
     if (broken && authorization === 'Bearer synthetic-a' && config.url === '/users.profile.set') {
-      throw Object.assign(new Error('Synthetic ECONNRESET status_text="Synthetic private content" token=synthetic-secret'), { code: 'ECONNRESET' });
+      const failure = Object.assign(new Error('Synthetic ECONNRESET status_text="Synthetic private content" token=synthetic-secret'), { code: 'ECONNRESET' });
+      originalSourceFrame ??= sanitizedFrames(failure.stack)[0]?.filename;
+      throw failure;
     }
     if (config.url === '/users.profile.set') profiles.set(authorization, JSON.parse(config.data).profile);
     return { status: 200, statusText: 'OK', headers: {}, config,
@@ -42,6 +46,6 @@ export async function runDiagnosticScenario(telemetry: HostTelemetry, configStor
   return { scenario: 'manual_diagnostics', outcomes: ['partial', 'partial', 'success'],
     expected_events: ['status_operation', 'slack_request', '$exception', 'diagnostic_summary', 'diagnostic_recovered'],
     expected_cause: 'ECONNRESET', expected_occurrence_count: 2,
-    original_source_frame: 'src/main/diagnosticScenario.ts',
+    original_source_frame: originalSourceFrame,
     started_at, finished_at: new Date().toISOString(), live_slack_mutations: 0 };
 }

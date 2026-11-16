@@ -17,6 +17,7 @@ const operationContext = {
   entry_point: entryPoint.optional(),
 };
 const frame = z.object({ filename: z.string().max(180).regex(/^(?:src|dist)\/(?!.*\.\.)[a-zA-Z0-9_./-]+\.[cm]?[jt]sx?$/),
+  function: z.literal('?').default('?'),
   platform: z.literal('node:javascript').default('node:javascript'),
   lineno: count, colno: count, in_app: z.boolean() });
 const diagnostic = {

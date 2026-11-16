@@ -151,6 +151,8 @@ try {
       diagnostics = JSON.parse(fs.readFileSync(diagnosticResultPath, 'utf8'));
       if (diagnostics.error) throw new Error(diagnostics.error);
       assertEqual(diagnostics.live_slack_mutations, 0, 'diagnostics must not change live Slack state');
+      assertEqual(diagnostics.original_source_frame, 'src/main/diagnosticScenario.ts',
+        'packaged diagnostics should resolve original TypeScript locations');
     }
     await delay(6500);
     const result = {

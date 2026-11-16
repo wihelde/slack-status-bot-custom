@@ -133,7 +133,7 @@ it('summarizes repeated causes with safe original-source stacks and recovers onl
   const exception = events.find(event => event.event === '$exception')!;
   expect(exception.properties.$exception_fingerprint).toEqual(expect.any(String));
   expect(exception.properties.$exception_list[0].stacktrace?.frames).toEqual([
-    { filename: 'src/services/slack.ts', lineno: 213, colno: 17, in_app: true, platform: 'node:javascript' },
+    { filename: 'src/services/slack.ts', function: '?', lineno: 213, colno: 17, in_app: true, platform: 'node:javascript' },
   ]);
   expect(JSON.stringify(events)).not.toMatch(/Private song|topsecret|oauth-secret|alice|token-a|private\/file|Bearer|Unquoted|private artist/);
 });
@@ -148,6 +148,27 @@ it('drops diagnostic episode state and pending summaries on opt-out, including a
   telemetry.recoverDiagnostic(context);
   await telemetry.shutdown();
   expect(events).toEqual([]);
+});
+
+it('reports original application source locations when native source maps cannot resolve a compiled frame', async () => {
+  const filename = `diagnostic-${path.basename(directory)}.js`;
+  const mapFile = path.resolve(__dirname, '../../../dist/main', `${filename}.map`);
+  fs.mkdirSync(path.dirname(mapFile), { recursive: true });
+  fs.writeFileSync(mapFile, JSON.stringify({ version: 3, file: filename, sourceRoot: '',
+    sources: ['../../src/services/slack.ts'], names: [], mappings: 'AAAA' }));
+  try {
+    const error = new Error('Connection failed');
+    error.stack = `Error: Connection failed\n    at send (${mapFile.slice(0, -4)}:1:1)`;
+    telemetry.reportDiagnostic(error, { component: 'runtime', step: 'compiled.location' });
+    await telemetry.shutdown();
+    const exception = events.find(event => event.event === '$exception')!;
+    expect(exception.properties.$exception_list[0].stacktrace?.frames).toEqual([
+      { filename: 'src/services/slack.ts', function: '?', lineno: 1, colno: 1,
+        in_app: true, platform: 'node:javascript' },
+    ]);
+  } finally {
+    fs.rmSync(mapFile, { force: true });
+  }
 });
 
 it('retains separate HTTP causes and connection episodes without treating another component success as recovery', async () => {
