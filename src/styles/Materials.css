@@ -9,6 +9,10 @@
   --control-edge: light-dark(rgb(255 255 255 / 98%), rgb(225 249 252 / 25%));
   --control-shadow: 0 2px 5px light-dark(rgb(34 66 76 / 12%), rgb(0 0 0 / 26%)),
     inset 0 1px var(--control-edge);
+  --editor-focus-shadow: 0 0 0 3px rgba(29, 93, 139, 0.12);
+  --item-hover-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --secondary-hover-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --danger-hover-shadow: 0 2px 8px rgba(217, 83, 79, 0.3);
 }
 
 :is(.dashboard-card, .settings-card) {
@@ -60,7 +64,7 @@
   border: 1px solid light-dark(#126b71, #59aeb4);
   border-radius: 10px;
   background: linear-gradient(145deg, #237a7f, #126a70);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 3px 7px light-dark(rgb(19 94 101 / 23%), rgb(0 0 0 / 30%)),
     inset 0 1px rgb(255 255 255 / 30%);
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import '../styles/HolidayModal.css';
 import { CustomStatusConfig } from '../config/statusConfig';
 import { IPCService } from '../services/ipcService';
@@ -9,11 +9,61 @@ interface HolidayModalProps {
   onSetHoliday: (returnDate: string) => Promise<void>;
 }
 
+/** Read the current controls so loading/disabled states stay out of the tab loop. */
+function getDialogControls(dialog: HTMLElement) {
+  return Array.from(dialog.querySelectorAll<HTMLElement>(
+    'button, input, select, textarea, a[href], [tabindex]'
+  )).filter(control => control.tabIndex >= 0 && !control.matches(':disabled') &&
+    !control.closest('[hidden], [inert]') &&
+    getComputedStyle(control).display !== 'none' &&
+    getComputedStyle(control).visibility !== 'hidden');
+}
+
 const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHoliday }) => {
   const [returnDate, setReturnDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [holidayConfig, setHolidayConfig] = useState<CustomStatusConfig | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Keep background controls out of keyboard navigation and return to the opener.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!isOpen || !dialog) return;
+    const previousFocus = document.activeElement;
+    const focusInside = () => {
+      (dialog.querySelector<HTMLInputElement>('input:not(:disabled)') ??
+        getDialogControls(dialog)[0] ?? dialog).focus();
+    };
+    const containFocus = (event: FocusEvent) => {
+      if (event.target instanceof Node && !dialog.contains(event.target)) focusInside();
+    };
+    focusInside();
+    document.addEventListener('focusin', containFocus);
+    return () => {
+      document.removeEventListener('focusin', containFocus);
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+    };
+  }, [isOpen]);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+    } else if (event.key === 'Tab' && dialogRef.current) {
+      const controls = getDialogControls(dialogRef.current);
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (!first || (event.shiftKey ? document.activeElement === first : document.activeElement === last) ||
+        !controls.some(control => control === document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last ?? dialogRef.current : first ?? dialogRef.current).focus();
+      }
+    }
+  };
 
   // Load the holiday configuration on component mount
   useEffect(() => {
@@ -82,6 +132,8 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
 
     try {
       setError('');
+      // Move focus before disabling controls; Chromium otherwise blurs to the body.
+      closeButtonRef.current?.focus();
       setLoading(true);
       const [year, month, day] = returnDate.split('-');
       await onSetHoliday(`${day}.${month}.${year}`);
@@ -97,16 +149,17 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" role="dialog" aria-modal="true" aria-labelledby="holiday-dialog-title"
+    <div className="holiday-dialog modal-overlay" onClick={onClose}>
+      <div ref={dialogRef} tabIndex={-1} onKeyDown={handleKeyDown}
+        className="modal-content" role="dialog" aria-modal="true" aria-labelledby="holiday-dialog-title"
         onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2 id="holiday-dialog-title">🏖️ Set Holiday Status</h2>
-          <button className="modal-close" aria-label="Close holiday dialog" onClick={onClose}>×</button>
+          <button ref={closeButtonRef} className="modal-close" aria-label="Close holiday dialog" onClick={onClose}>×</button>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
+          <div className="holiday-form-group">
             <label htmlFor="returnDate">Last holiday date</label>
             <input
               id="returnDate"
@@ -131,7 +184,7 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ isOpen, onClose, onSetHolid
             </div>
           )}
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <div className="holiday-error-message" role="alert">{error}</div>}
 
           <div className="modal-actions">
             <button
