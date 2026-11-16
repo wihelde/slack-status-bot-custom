@@ -1,3 +1,4 @@
+import type { EntryPoint } from './telemetryEvents';
 import type { CustomStatusConfig } from '../config/statusConfig';
 import type { HostTelemetry } from './telemetry';
 import { DEFAULT_SOURCE_ORDER, type SourceName } from '../config/sourceCatalog';
@@ -20,14 +21,14 @@ interface IpcMainLike {
 }
 
 interface HostDaemon {
-  goOnline: () => Promise<boolean>;
-  goAway: () => Promise<boolean>;
-  setStatus: (emoji: string, message: string) => Promise<boolean>;
+  goOnline: (entryPoint?: EntryPoint) => Promise<boolean>;
+  goAway: (entryPoint?: EntryPoint) => Promise<boolean>;
+  setStatus: (emoji: string, message: string, entryPoint?: EntryPoint) => Promise<boolean>;
   toggleSource: (source: SourceName, enabled: boolean) => void;
   setSourceOrder: (sourceOrder: SourceName[]) => Promise<void>;
   setMeetingDnd?: (enabled: boolean) => void;
   getSourceOrder: () => SourceName[];
-  setHoliday: (returnDate: string) => Promise<boolean>;
+  setHoliday: (returnDate: string, entryPoint?: EntryPoint) => Promise<boolean>;
   getStatusConfiguration: () => CustomStatusConfig[];
   updateStatusConfiguration: (statusConfig: CustomStatusConfig[]) => Promise<boolean>;
   resetStatusConfiguration: () => Promise<boolean>;
@@ -42,6 +43,7 @@ interface HostConfig {
 }
 
 export interface MainIpcDependencies {
+  telemetry?: HostTelemetry;
   getConfig: () => HostConfig;
   getWorkspaceConnections?: () => WorkspaceConnectionSummary[];
   getWorkspaceConnectionError?: () => string | null;
@@ -221,7 +223,7 @@ export function registerStatusIpcHandlers(
       }
 
       logStatusBridgeInfo('Manual status update requested', { emoji, message });
-      const success = await daemon.setStatus(emoji as string, message as string);
+      const success = await daemon.setStatus(emoji as string, message as string, 'dashboard');
       return { success, data: success };
     },
     [IPC_CHANNELS.goOnline]: async () => {
@@ -231,7 +233,7 @@ export function registerStatusIpcHandlers(
       }
 
       logStatusBridgeInfo('Go-online requested');
-      const success = await daemon.goOnline();
+      const success = await daemon.goOnline('dashboard');
       return { success, data: success };
     },
     [IPC_CHANNELS.goAway]: async () => {
@@ -241,7 +243,7 @@ export function registerStatusIpcHandlers(
       }
 
       logStatusBridgeInfo('Go-away requested');
-      const success = await daemon.goAway();
+      const success = await daemon.goAway('dashboard');
       return { success, data: success };
     },
     [IPC_CHANNELS.toggleSource]: async (source, enabled) => {
@@ -286,7 +288,7 @@ export function registerStatusIpcHandlers(
       }
 
       logStatusBridgeInfo('Holiday status requested', { returnDate });
-      const success = await daemon.setHoliday(returnDate as string);
+      const success = await daemon.setHoliday(returnDate as string, 'dashboard');
       return { success, data: success };
     },
     [IPC_CHANNELS.getStatusConfiguration]: async () => {
@@ -367,13 +369,16 @@ export function registerLoggingIpcHandlers(
 
 export function registerPlatformIpcHandlers(
   ipcMain: IpcMainLike,
-  dependencies: MainIpcDependencies
+  dependencies: Pick<MainIpcDependencies, 'telemetry' | 'setAutoLaunch' | 'getAutoLaunch'>
 ): void {
   registerHandlerGroup(ipcMain, {
-    [IPC_CHANNELS.setAutoLaunch]: async enabled => ({
-      success: true,
-      data: await dependencies.setAutoLaunch(enabled as boolean),
-    }),
+    [IPC_CHANNELS.setAutoLaunch]: async enabled => {
+      if (typeof enabled !== 'boolean') return { success: false, error: 'Invalid autostart preference' };
+      const data = await dependencies.setAutoLaunch(enabled);
+      dependencies.telemetry?.setAutostartContext(data.enabled);
+      dependencies.telemetry?.capture('settings_changed', { setting: 'autostart', enabled: data.enabled });
+      return { success: true, data };
+    },
     [IPC_CHANNELS.getAutoLaunch]: async () => ({
       success: true,
       data: await dependencies.getAutoLaunch(),

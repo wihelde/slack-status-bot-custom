@@ -71,6 +71,7 @@
     "files": [
       "build/**/*",
       "dist/**/*.js",
+      "dist/**/*.js.map",
       "dist/telemetry-config.json",
       "assets/**/*",
       "package.json",

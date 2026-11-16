@@ -1,0 +1,71 @@
+import { z } from 'zod';
+import { sanitizeDiagnosticText } from './diagnostics';
+const technicalName = z.string().max(80).refine(value => sanitizeDiagnosticText(value) === value);
+
+const count = z.number().int().min(0).max(1_000_000_000);
+const id = z.uuid();
+const result = z.enum(['success', 'failed', 'skipped']);
+export const entryPoint = z.enum(['dashboard', 'tray', 'external', 'unknown']);
+export type EntryPoint = z.infer<typeof entryPoint>;
+export const actionCategory = z.enum(['online', 'away', 'focus', 'meeting', 'break', 'holiday', 'travel', 'sick', 'remeet', 'dog', 'custom', 'external']);
+export type ActionCategory = z.infer<typeof actionCategory>;
+const operationContext = {
+  operation_id: id,
+  trigger: z.enum(['manual', 'automatic', 'correction']),
+  action: actionCategory.optional(),
+  source: z.enum(['spotify', 'appleMusic', 'youtubeMusic', 'zoom', 'teams', 'huddle']).optional(),
+  entry_point: entryPoint.optional(),
+};
+const frame = z.object({ filename: z.string().max(180).regex(/^(?:src|dist)\/(?!.*\.\.)[a-zA-Z0-9_./-]+\.[cm]?[jt]sx?$/),
+  platform: z.literal('node:javascript').default('node:javascript'),
+  lineno: count, colno: count, in_app: z.boolean() });
+const diagnostic = {
+  operation_id: id.optional(),
+  component: z.enum(['slack', 'runtime', 'source', 'connection', 'settings']),
+  step: technicalName.regex(/^[a-zA-Z0-9_.:-]{1,80}$/),
+  connection_ref: id.optional(),
+  code: technicalName.regex(/^[a-zA-Z0-9_.:-]{1,80}$/).optional(),
+  message: z.string().max(1000),
+  stack: z.string().max(6000).optional(),
+  http_status: z.number().int().min(100).max(599).optional(),
+  network_code: z.string().regex(/^[A-Z0-9_]{1,50}$/).optional(),
+  timeout: z.boolean().optional(), duration_ms: count.optional(), attempt: count.optional(),
+  retry_after_seconds: count.optional(), rate_limited: z.boolean().optional(),
+  needed_scopes: z.array(z.string().regex(/^[a-z_.]+:[a-z_.]+$/)).max(30).optional(),
+  provided_scopes: z.array(z.string().regex(/^[a-z_.]+:[a-z_.]+$/)).max(30).optional(),
+  fatal: z.boolean().optional(),
+};
+const episode = {
+  ...diagnostic, episode_id: id, occurrence_count: count,
+  first_seen: z.iso.datetime(), last_seen: z.iso.datetime(),
+  first_operation_id: id.optional(), last_operation_id: id.optional(),
+};
+export const telemetryEvents = {
+  app_activity: z.object({ reason: z.enum(['startup', 'daily']) }),
+  status_operation: z.object({ ...operationContext,
+    outcome: z.enum(['success', 'partial', 'failed', 'skipped']),
+    reason: z.enum(['delivered', 'delivery_failed', 'no_workspaces', 'invalid_action', 'protected', 'unchanged', 'cooldown', 'unexpected_error']),
+    targeted_workspaces: count, successful_workspaces: count, duration_ms: count,
+    meeting_dnd: z.boolean().optional(), custom_status_count: count.optional(), protected_status: z.boolean().optional(),
+    workspace_results: z.array(z.object({ connection_ref: id,
+      profile: result.optional(), presence: result.optional(), dnd: result.optional() })).max(100),
+  }),
+  slack_request: z.object({ operation_id: id.optional(), connection_ref: id,
+    step: z.enum(['users.profile.set', 'users.setPresence', 'dnd.setSnooze', 'dnd.endDnd']),
+    result, attempt: count, duration_ms: count, reason: z.enum(['delivered', 'api_error', 'rate_limit_backoff']) }),
+  settings_changed: z.object({ setting: z.enum(['autostart', 'custom_statuses']),
+    enabled: z.boolean().optional(), custom_status_count: count.optional(), reset: z.boolean().optional() }),
+  $exception: z.object({ ...episode,
+    $exception_level: z.enum(['error', 'fatal']).default('error'),
+    $exception_list: z.array(z.object({ type: technicalName, value: z.string().max(1000),
+      mechanism: z.object({ type: z.literal('generic'), handled: z.boolean() }),
+      stacktrace: z.object({ type: z.literal('raw'), frames: z.array(frame).max(30) }).optional(),
+    })).max(1),
+    $exception_fingerprint: z.string().regex(/^[0-9a-f]{64}$/),
+  }),
+  diagnostic_summary: z.object(episode),
+  diagnostic_recovered: z.object({ ...episode, recovery_operation_id: id.optional() }),
+};
+export type TelemetryEvent = keyof typeof telemetryEvents;
+export type DiagnosticContext = Omit<z.input<typeof telemetryEvents.diagnostic_summary>,
+  'episode_id' | 'occurrence_count' | 'first_seen' | 'last_seen' | 'first_operation_id' | 'last_operation_id' | 'message' | 'stack'>;
