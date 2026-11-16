@@ -1,13 +1,15 @@
 import { createHash, randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import type { HostTelemetry } from './telemetry';
+import { slackAuthorizationError, readSlackAuthorizationResponse } from './slackAuthorizationError';
 import type { AppConfigStore } from '../config/appConfigStore';
 import type { WorkspaceConnectionSummary } from '../contracts/ipc';
 
 export type TokenVerification =
   | { kind: 'valid'; teamId: string; teamName: string; userId: string; userName: string }
-  | { kind: 'invalid' }
-  | { kind: 'retry' };
+  | { kind: 'invalid'; cause?: unknown }
+  | { kind: 'retry'; cause?: unknown };
 
 interface Encryption {
   isEncryptionAvailable: () => boolean;
@@ -42,6 +44,7 @@ interface RenewableConnection {
 }
 
 interface Options {
+  telemetry?: HostTelemetry;
   directory: string;
   config: AppConfigStore;
   encryption: Encryption;
@@ -53,40 +56,76 @@ const FILE_NAME = 'workspace-connections.json';
 /** Owns encrypted legacy credentials and their workspace identity during migration. */
 export class WorkspaceConnections {
   private entries: StoredConnection[];
+  private restorationReported = false;
+  private readonly diagnosticReferences = new Map<string, string>();
   private readonly filePath: string;
 
   constructor(private readonly options: Options) {
     this.filePath = path.join(options.directory, FILE_NAME);
-    this.entries = this.read();
+    try { this.entries = this.read(); }
+    catch (error) {
+      this.options.telemetry?.reportDiagnostic(error, { component: 'connection', step: 'connection.restore', operation_id: randomUUID() });
+      throw error;
+    }
+  }
+
+  /** Process-local random identity; the private lookup key never leaves this store. */
+  diagnosticReference(key: string): string {
+    let reference = this.diagnosticReferences.get(key);
+    if (!reference) { reference = randomUUID(); this.diagnosticReferences.set(key, reference); }
+    return reference;
   }
 
   async migrate(): Promise<void> {
-    // Verify the existing encrypted copy before removing any legacy plaintext.
-    this.activeTokens();
-    const legacy = this.options.config.load().slackTokens;
-    if (legacy.length > 0) {
-      this.assertSecureStorage();
-      const known = new Set(this.entries.map(entry => entry.fingerprint));
-      for (const token of legacy) {
-        const fingerprint = fingerprintToken(token);
-        if (known.has(fingerprint)) continue;
-        this.entries.push({
-          fingerprint,
-          encryptedToken: this.options.encryption.encryptString(token).toString('base64'),
-          teamId: null,
-          teamName: null,
-          userId: null,
-          userName: null,
-          state: 'unverified',
-        });
-        known.add(fingerprint);
+    const epoch = this.options.telemetry?.getCaptureEpoch() ?? null;
+    const operation_id = randomUUID();
+    const sensitive: string[] = [];
+    try {
+      // Verify the existing encrypted copy before removing any legacy plaintext.
+      this.activeTokens();
+      const legacy = this.options.config.load().slackTokens;
+      sensitive.push(...legacy);
+      if (legacy.length > 0) {
+        this.assertSecureStorage();
+        const known = new Set(this.entries.map(entry => entry.fingerprint));
+        for (const token of legacy) {
+          const fingerprint = fingerprintToken(token);
+          if (known.has(fingerprint)) continue;
+          this.entries.push({
+            fingerprint,
+            encryptedToken: this.options.encryption.encryptString(token).toString('base64'),
+            teamId: null,
+            teamName: null,
+            userId: null,
+            userName: null,
+            state: 'unverified',
+          });
+          known.add(fingerprint);
+        }
+        this.persist();
+        // The encrypted copy is durable before the old plaintext list is removed.
+        this.options.config.clearSlackTokens();
       }
-      this.persist();
-      // The encrypted copy is durable before the old plaintext list is removed.
-      this.options.config.clearSlackTokens();
-    }
 
-    await this.verifyPending();
+      await this.verifyPending();
+      if (!this.restorationReported) {
+        this.restorationReported = true;
+        const entries = this.list();
+        if (entries.length && epoch !== null && epoch === this.options.telemetry?.getCaptureEpoch()) this.options.telemetry?.capture('connections_restored', {
+          connected_workspaces: entries.filter(entry => entry.state === 'connected').length,
+          unverified_workspaces: entries.filter(entry => entry.state === 'unverified').length,
+          authorization_required_workspaces: entries.filter(entry => entry.state === 'auth-required' || entry.state === 'invalid').length,
+        });
+      }
+      if (epoch !== null && epoch === this.options.telemetry?.getCaptureEpoch()) {
+        this.options.telemetry?.recoverDiagnostic({ component: 'connection', step: 'connection.restore', operation_id });
+      }
+    } catch (error) {
+      if (epoch !== null && epoch === this.options.telemetry?.getCaptureEpoch()) {
+        this.options.telemetry?.reportDiagnostic(error, { component: 'connection', step: 'connection.restore', operation_id }, sensitive);
+      }
+      throw error;
+    }
   }
 
   async addTokens(tokens: string[]): Promise<void> {
@@ -253,14 +292,31 @@ export class WorkspaceConnections {
   private async verifyPending(): Promise<void> {
     this.assertSecureStorage();
     const pending = this.entries.filter(entry => entry.state === 'unverified');
+    const epoch = this.options.telemetry?.getCaptureEpoch() ?? null;
     const results = await Promise.all(pending.map(async entry => {
+      const started = Date.now();
+      const context = { component: 'connection' as const, step: 'connection.verify', operation_id: randomUUID(),
+        connection_ref: this.diagnosticReference(entry.fingerprint) };
+      const sensitive = [entry.teamId || '', entry.teamName || '', entry.userId || '', entry.userName || ''];
+      let result: TokenVerification;
       try {
-        return await this.options.verify(
-          this.options.encryption.decryptString(Buffer.from(entry.encryptedToken, 'base64'))
-        );
-      } catch {
-        return { kind: 'retry' } as const;
+        context.step = 'connection.decrypt';
+        const token = this.options.encryption.decryptString(Buffer.from(entry.encryptedToken, 'base64'));
+        sensitive.push(token);
+        if (epoch !== null && epoch === this.options.telemetry?.getCaptureEpoch()) this.options.telemetry?.recoverDiagnostic(context);
+        context.step = 'connection.verify';
+        result = await this.options.verify(token);
+      } catch (cause) {
+        result = { kind: 'retry', cause };
       }
+      if (epoch !== null && epoch === this.options.telemetry?.getCaptureEpoch()) {
+        if (result.kind === 'valid') {
+          this.options.telemetry?.recoverDiagnostic(context);
+        } else {
+          this.options.telemetry?.reportDiagnostic(result.cause ?? new Error(`Slack verification ${result.kind}`), { ...context, attempt: 1, duration_ms: Math.max(0, Date.now() - started) }, sensitive);
+        }
+      }
+      return result;
     }));
     let changed = false;
     for (const [index, entry] of pending.entries()) {
@@ -314,7 +370,13 @@ export class WorkspaceConnections {
 
   private read(): StoredConnection[] {
     if (!fs.existsSync(this.filePath)) return [];
-    const value: unknown = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
+    const contents = fs.readFileSync(this.filePath, 'utf8');
+    let value: unknown;
+    try { value = JSON.parse(contents); }
+    catch {
+      // Parser excerpts can contain identities or encrypted credentials from the local store.
+      throw new SyntaxError('Invalid JSON in workspace connection store');
+    }
     if (!Array.isArray(value) || !value.every(isStoredConnection)) {
       throw new Error('Workspace connection data is unreadable');
     }
@@ -342,23 +404,23 @@ export class WorkspaceConnections {
   }
 }
 
-export async function verifySlackToken(token: string): Promise<TokenVerification> {
+export async function verifySlackToken(token: string, request: typeof fetch = fetch): Promise<TokenVerification> {
   try {
-    const response = await fetch('https://slack.com/api/auth.test', {
+    const response = await request('https://slack.com/api/auth.test', {
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) return { kind: 'retry' };
-    const data: unknown = await response.json();
-    if (!data || typeof data !== 'object') return { kind: 'retry' };
+    const data: unknown = await readSlackAuthorizationResponse(response);
+    if (!response.ok) return { kind: 'retry', cause: slackAuthorizationError(response, data, 'Slack verification failed') };
+    if (!data || typeof data !== 'object') return { kind: 'retry', cause: slackAuthorizationError(response, {}, 'Invalid Slack identity response') };
     const result = data as Record<string, unknown>;
     if (result.ok === false) {
+      const cause = slackAuthorizationError(response, result, 'Slack verification failed');
       return ['invalid_auth', 'token_revoked', 'account_inactive', 'not_authed'].includes(String(result.error))
-        ? { kind: 'invalid' }
-        : { kind: 'retry' };
+        ? { kind: 'invalid', cause } : { kind: 'retry', cause };
     }
     if (result.ok !== true || typeof result.team_id !== 'string' ||
-      typeof result.user_id !== 'string') return { kind: 'retry' };
+      typeof result.user_id !== 'string') return { kind: 'retry', cause: slackAuthorizationError(response, {}, 'Invalid Slack identity response') };
     return {
       kind: 'valid',
       teamId: result.team_id,
@@ -366,8 +428,8 @@ export async function verifySlackToken(token: string): Promise<TokenVerification
       userId: result.user_id,
       userName: typeof result.user === 'string' ? result.user : result.user_id,
     };
-  } catch {
-    return { kind: 'retry' };
+  } catch (cause) {
+    return { kind: 'retry', cause };
   }
 }
 
