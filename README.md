@@ -36,7 +36,7 @@ Open your terminal and execute the following command:
 ## Development
 
 ### Prerequisites
-- Node.js 22.22.2 (the CI version) and npm 12.2.1
+- Node.js 26.13.1 (the CI version) and npm 12.2.2
 - macOS 10.13+ (for development)
 
 ### Setup
@@ -45,11 +45,6 @@ project_npm_version=$(node -p 'require("./package.json").engines.npm')
 npx --yes "npm@$project_npm_version" install --global "npm@$project_npm_version"
 npm ci
 ```
-
-Public capture configuration, Settings opt-out, isolated ingestion checks and counting limits
-are documented in [Usage collection and diagnostics](docs/telemetry.md).
-The delivered production and development/test views and maintenance commands are in
-[PostHog overview maintenance](docs/posthog/README.md).
 
 ### Development Mode
 ```bash

@@ -1,6 +1,6 @@
 {
   "name": "slack-status-bot",
-  "version": "2.3.4",
+  "version": "2.4.0",
   "description": "Cross-platform Slack Status Bot with Tray UI",
   "main": "dist/electron.js",
   "homepage": "./",
@@ -10,7 +10,7 @@
   },
   "license": "MIT",
   "engines": {
-    "npm": "12.2.1"
+    "npm": "12.2.2"
   },
   "scripts": {
     "postinstall": "install-electron",
