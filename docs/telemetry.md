@@ -220,3 +220,88 @@ Parent verification must observe actual `status_operation` success/partial,
 The 2026-11-16 packaged test confirmed these records and native Error Tracking
 rendering. Final production-dashboard exclusion remains external acceptance.
 No live Slack mutation is required.
+
+## Automatic sources and correction
+
+The same `status_operation` now records source polling transitions and priority
+re-evaluation (`trigger=automatic`), and actual day/default/stale-source correction
+resets (`trigger=correction`). The operation's `source` names Spotify, Apple Music,
+YouTube Music, Zoom, Teams or Huddle. A deactivation reset retains the departed
+source; a switch identifies the new winner. `source` on a skipped operation is
+context, not successful use. Count successful/partial outcomes and workspace
+results separately; an enabled source is never evidence of use.
+
+Safe bounded operation/diagnostic context is additive to the existing contracts:
+
+| Field | Meaning |
+| --- | --- |
+| `enabled_sources`, `source_priority`, `meeting_dnd`, `custom_status_count` | Current structural configuration, also added by the host to activity and other events, including unchanged defaults |
+| `active_sources`, `winner` | Categories considered by source arbitration, without observations or contents |
+| `source_changes` | Up to six source/change pairs for the relevant polling transition |
+| `decision` | `activated`, `message_changed`, `deactivated`, `reprioritized` or `correction` |
+| `correction_reason` | Existing fixed correction-policy reason, such as `stale-source-status` or `holiday-expired` |
+| `rule_reason` | Last fixed rule decision, retained even when another requested sub-operation succeeds |
+| `protected_status`, `user_owned` | Local protection and explicit user-ownership decisions |
+
+`settings_changed.setting` additionally admits `source` (fixed `source` plus
+`enabled`), `source_priority` (ordered categories), and `meeting_dnd` (`enabled`).
+Only actual configuration changes emit these events. Current configuration is
+available even when there has been no settings change or successful source use.
+No new transport, SDK, raw configuration export or diagnostic aggregator exists.
+
+One observation UUID links source failures, the winner decision, the actual
+Slack operation and existing request/retry events. `SlackService.runOperation`
+accepts an optional third argument `{ id, epoch }` for this observation;
+`recordDecision(reason, context?)` annotates only its current operation. No-request
+reasons distinguish `protected`, `unchanged`, `cooldown`, `priority` and
+`missing_profile`. Unchanged polling has no semantic usage event. Repeated
+identical automatic no-request decisions retain only the latest safe signature,
+including capture epoch; they emit again after a different decision or real
+request. Ordinary correction skips are quiet; actual correction resets are
+recorded. Holiday protection, user-owned External Status Commands, the existing
+cooldowns and source matching rules retain their authority.
+
+`DaemonConfig.sourceCommandRunner` is an optional external-command seam, like the
+existing injected Slack Axios adapter. Production uses native commands. The
+registry scopes concurrent probes by source/observation/epoch and reports through
+`HostTelemetry.reportDiagnostic` and `recoverDiagnostic`. Diagnostics add fixed
+`source`, `failure_kind=command|parse|detector`, numeric `exit_code`, `signal`, and
+available duration/timeout/network cause. The shared fingerprint also separates
+command exit/signal/failure classes. All summaries and recovery use the existing
+episode lifecycle and preserve the standard exception frame `function='?'` and
+archive-aware map handling. Opt-out retires in-flight source observations.
+
+Probe steps are source-prefixed: `process`, `application`, `network`,
+`player_state`, `track`, `now_playing`, `player_state.parse`,
+`now_playing.parse`, and unexpected `detector` failures. Missing processes,
+expected exit-one/no-stderr no-match, an unavailable application, paused/stopped
+playback, and empty/null Now Playing metadata are normal inactivity. An
+AppleScript application-not-running race (`-600`) is also inactivity. Malformed
+nonempty player/Now Playing responses are parse failures with fixed messages;
+parser errors and response contents are never sent. A previously failed probe
+recovers only after that step succeeds and the source is actually active;
+disablement, inactivity, successful unrelated probes and shutdown do not recover
+it. Recurrence counts count failed probe attempts, not polling cycles.
+
+Native command errors never forward exec's message, command, stdout, process
+lists or raw stderr. Recognized technical stderr phrases (for example permission
+denied or Apple Events authorization), with an available native numeric error,
+become the sanitized diagnostic message. Unknown stderr is withheld while exit,
+signal, named step and safe original application frames remain. This deliberately
+limits arbitrary output rather than claiming free-form native output is safe.
+AppleScript's outer catch-all no longer hides errors, and shell filtering no
+longer masks lsof/tasklist command failures. The same source-specific matching
+runs locally on command output; YouTube Music still uses only its installed
+macOS PWA and system Now Playing, with its existing transition grace period.
+
+`runAutomaticScenario` in `src/main/automaticScenario.ts` supplies the parent a
+compiled macOS application path for real-ingestion checking. It requires explicit
+test collection, an empty temporary profile, and injects **all** Slack responses
+and source commands. It exercises automatic partial/success/protected skip,
+shared command recurrence (two attempts and the real 60-second summary tick), and
+actual probe recovery, without starting the real daemon or mutating a real source.
+It accepts the same host telemetry/config-store objects as the earlier diagnostic
+scenario. An offline outgoing-envelope run verifies privacy, operation outcomes,
+original TypeScript exception frames and the required `?` function field. Real
+PostHog observation and production-view exclusion remain parent acceptance work;
+a local compiled pass alone is not an ingestion claim.

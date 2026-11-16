@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { reportParseFailure, recoverProbe } from './probeContext';
 import { CommandRunner, readCommandOutput, runCommand } from './commandProbe';
 
 export interface MacNowPlayingInfo {
@@ -42,26 +44,23 @@ export function buildNowPlayingCommand(): string {
 export async function getMacNowPlayingInfo(
   runner: CommandRunner = runCommand
 ): Promise<MacNowPlayingInfo | null> {
-  const output = await readCommandOutput(buildNowPlayingCommand(), runner);
+  const output = await readCommandOutput(buildNowPlayingCommand(), runner, { step: 'now_playing', recover: false });
   if (!output) {
     return null;
   }
 
   try {
     const value: unknown = JSON.parse(output);
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return null;
-    }
-
-    const record = value as Record<string, unknown>;
-    return {
-      app: typeof record.app === 'string' ? record.app : null,
-      title: typeof record.title === 'string' ? record.title : null,
-      artist: typeof record.artist === 'string' ? record.artist : null,
-      album: typeof record.album === 'string' ? record.album : null,
-      playbackRate: typeof record.playbackRate === 'number' ? record.playbackRate : null,
-    };
+    if (value === null) return null;
+    const info = z.object({ app: z.string().nullish(), title: z.string().nullish(), artist: z.string().nullish(),
+      album: z.string().nullish(), playbackRate: z.number().nullish() }).parse(value);
+    recoverProbe('now_playing');
+    recoverProbe('now_playing.parse');
+    return { app: info.app ?? null, title: info.title ?? null, artist: info.artist ?? null,
+      album: info.album ?? null, playbackRate: info.playbackRate ?? null };
   } catch {
+    // JSON/parser errors can echo music metadata; retain the fixed failed step only.
+    reportParseFailure('now_playing.parse');
     return null;
   }
 }

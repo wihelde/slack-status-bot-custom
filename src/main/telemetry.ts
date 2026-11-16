@@ -1,6 +1,6 @@
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { telemetryEvents, type TelemetryEvent, type DiagnosticContext } from './telemetryEvents';
+import { telemetryEvents, sourceName, automationContext, type TelemetryEvent, type DiagnosticContext } from './telemetryEvents';
 import { diagnosticError, diagnosticFingerprint, sanitizeDiagnosticText, sanitizedFrames } from './diagnostics';
 export { telemetryEvents, type TelemetryEvent } from './telemetryEvents';
 import { PostHog, type PostHogOptions } from 'posthog-node';
@@ -63,6 +63,7 @@ export function createHostTelemetry(options: Options) {
     const properties = episodeProperties(context, error, sensitive);
     const cause = { environment: configuration.environment, component: properties.component, step: properties.step,
       code: properties.code, message: properties.message,
+      failure_kind: properties.failure_kind, exit_code: properties.exit_code, signal: properties.signal,
       network_code: properties.network_code, http_status: properties.http_status, location: sanitizedFrames(properties.stack)[0],
       needed_scopes: properties.needed_scopes, provided_scopes: properties.provided_scopes, fatal: properties.fatal };
     const key = diagnosticFingerprint({ ...cause, connection_ref: properties.connection_ref });
@@ -149,9 +150,9 @@ export function createHostTelemetry(options: Options) {
 
   function capture<E extends TelemetryEvent>(event: E, properties: z.input<(typeof telemetryEvents)[E]>): void {
     if (!enabled || stopped || !configuration) return;
-    const safe = allowedProperties(event, properties);
-    if (!safe) return;
     try {
+      const safe = allowedProperties(event, properties);
+      if (!safe) return;
       session ??= createSession();
       session?.client.capture({
         event,
@@ -182,7 +183,14 @@ export function createHostTelemetry(options: Options) {
         exception.value = sanitizeDiagnosticText(exception.value);
       }
     }
+    const settings = options.configStore.getDaemonSettings();
+    const currentConfiguration = z.object(automationContext).parse({
+      enabled_sources: sourceName.options.filter(source => settings.sources[source] !== false),
+      source_priority: settings.sourceOrder, meeting_dnd: settings.meetingDnd,
+      custom_status_count: settings.statusConfiguration.customStatuses.length + settings.statusConfiguration.offlineMessages.length,
+    });
     return {
+      ...currentConfiguration,
       ...data,
       environment: configuration.environment,
       app_version: options.appVersion,

@@ -1,8 +1,10 @@
+import type { CommandRunner } from './services/sources/probes/commandProbe';
+import { randomUUID } from 'node:crypto';
 import type { AxiosAdapter } from 'axios';
 import type { HostTelemetry } from './main/telemetry';
 import type { EntryPoint, ActionCategory } from './main/telemetryEvents';
 import { actionCategory } from './main/telemetryEvents';
-import { SlackService } from './services/slack';
+import { SlackService, type Operation } from './services/slack';
 import { SlackStatusExecutor } from './services/slackStatusExecutor';
 import { StatusManager } from './services/statusManager';
 import { POLL_INTERVALS, CustomStatusConfig, getDefaultStatusConfiguration, getOfflineStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS } from './config/statusConfig';
@@ -20,6 +22,7 @@ export interface DaemonConfig {
   slackTokens: string | string[];
   telemetry?: HostTelemetry;
   slackAdapter?: AxiosAdapter;
+  sourceCommandRunner?: CommandRunner;
   configDir?: string;
   configStore?: AppConfigStore;
   onAppStateChanged?: (statusData: AppStatusChangedEvent) => void;
@@ -51,11 +54,12 @@ export class SlackStatusBotDaemon {
     this.slackService = new SlackService(config.slackTokens, config.telemetry, config.slackAdapter);
     this.workspaceConnections = config.workspaceConnections || [];
     this.slackExecutor = new SlackStatusExecutor(this.slackService);
-    this.statusManager = new StatusManager(this.slackService);
-    this.sourceRegistry = new SourceRegistry();
+    this.statusManager = new StatusManager(this.slackService, undefined, config.telemetry ? () => this.automationContext() : undefined);
+    this.sourceRegistry = new SourceRegistry(config.telemetry, config.sourceCommandRunner);
     this.sourceArbitrationEngine = new SourceArbitrationEngine();
     this.runtimeOrchestrator = new RuntimeOrchestrator({
       isMeetingDndEnabled: () => this.meetingDnd,
+      recordDecision: reason => this.slackService.recordDecision(reason),
       statusManager: this.statusManager,
       slackExecutor: this.slackExecutor,
       sourceArbitrationEngine: this.sourceArbitrationEngine,
@@ -134,8 +138,8 @@ export class SlackStatusBotDaemon {
   /**
    * Get current source statuses
    */
-  async getSourceStatuses() {
-    return this.sourceRegistry.getStatuses();
+  async getSourceStatuses(operationId?: string) {
+    return this.sourceRegistry.getStatuses(operationId);
   }
 
   /**
@@ -239,6 +243,19 @@ export class SlackStatusBotDaemon {
       protected_status: this.statusManager.getStatusCheckState().value === 'not working' }, work));
   }
 
+  private automationContext() {
+    const state = this.statusManager.getStatusCheckState();
+    return { enabled_sources: this.sourceRegistry.getSourceNames().filter(source => this.sourceRegistry.getAdapter(source).isEnabled()),
+      source_priority: this.getSourceOrder(), meeting_dnd: this.meetingDnd,
+      custom_status_count: this.statusManager.getCustomStatuses().length,
+      protected_status: state.value === 'not working', user_owned: state.userOwned === true };
+  }
+
+  private async runAutomaticOperation(context: Operation, work: () => Promise<void>, observation?: { id: string; epoch: number | null }): Promise<void> {
+    if (!this.config.telemetry) return work();
+    await this.slackService.runOperation({ ...this.automationContext(), ...context }, async () => { await work(); return true; }, observation);
+  }
+
   /**
    * Update status configuration and persist to file
    */
@@ -277,15 +294,19 @@ export class SlackStatusBotDaemon {
    * Toggle source enable/disable
    */
   toggleSource(source: SourceName, enabled: boolean): void {
+    const changed = this.sourceRegistry.getAdapter(source).isEnabled() !== enabled;
     this.sourceRegistry.setEnabled(source, enabled);
     this.saveConfig();
+    if (changed) this.config.telemetry?.capture('settings_changed', { setting: 'source', source, enabled });
   }
 
   /** Persist and apply the meeting DND preference. */
   setMeetingDnd(enabled: boolean): void {
+    const changed = this.meetingDnd !== enabled;
     this.configStore.updateDaemonSettings({ meetingDnd: enabled });
     this.meetingDnd = enabled;
     this.statusManager.setMeetingDnd(enabled);
+    if (changed) this.config.telemetry?.capture('settings_changed', { setting: 'meeting_dnd', enabled });
     logger.info('[daemon] Meeting DND preference updated', { enabled });
   }
 
@@ -301,17 +322,21 @@ export class SlackStatusBotDaemon {
   }
 
   private async performSourceOrderUpdate(newOrder: SourceName[]): Promise<void> {
+    const changed = newOrder.join(',') !== this.sourceOrder.join(',');
     this.sourceOrder = [...newOrder];
     this.saveConfig();
+    if (changed) this.config.telemetry?.capture('settings_changed', { setting: 'source_priority', source_priority: this.getSourceOrder() });
     console.log('[Daemon] Source order updated at runtime:', this.sourceOrder);
     
     // Re-evaluate current status based on new priority order
     try {
-      const sourceStatuses = await this.getSourceStatuses();
-      await this.runtimeOrchestrator.handleReprioritization({
-        sourceOrder: this.sourceOrder,
-        sourceStatuses,
-      });
+      const observation = { id: randomUUID(), epoch: this.config.telemetry?.getCaptureEpoch() ?? null };
+      const sourceStatuses = await this.getSourceStatuses(observation.id);
+      const winner = this.sourceArbitrationEngine.pickWinner(this.sourceOrder, sourceStatuses);
+      await this.runAutomaticOperation({ trigger: 'automatic', decision: 'reprioritized',
+        source: winner?.sourceName, winner: winner?.sourceName,
+        active_sources: this.sourceArbitrationEngine.listActiveSources(this.sourceOrder, sourceStatuses) },
+        () => this.runtimeOrchestrator.handleReprioritization({ sourceOrder: this.sourceOrder, sourceStatuses }), observation);
     } catch (error) {
       console.error('[Daemon] Error re-evaluating status after priority change:', error);
     }
@@ -341,7 +366,8 @@ export class SlackStatusBotDaemon {
       this.isPolling = true;
 
       try {
-        const sourceStatuses = await this.getSourceStatuses();
+        const observation = { id: randomUUID(), epoch: this.config.telemetry?.getCaptureEpoch() ?? null };
+        const sourceStatuses = await this.getSourceStatuses(observation.id);
         await this.runStatusOperation(async () => {
           if (!this.running) return;
           const arbitrationSnapshot = this.sourceArbitrationEngine.evaluate(this.sourceOrder, sourceStatuses);
@@ -349,11 +375,21 @@ export class SlackStatusBotDaemon {
           if (activeSourcesDebug.length > 0) {
             logger.debug(`[polling] Active sources: ${activeSourcesDebug.join(', ')}`);
           }
-          await this.runtimeOrchestrator.handlePollingSnapshot({
-            sourceOrder: this.sourceOrder,
-            sourceStatuses,
-            snapshot: arbitrationSnapshot,
+          const change = changes.find(change => change.sourceName === winningSource?.sourceName) ?? changes[0];
+          const work = () => this.runtimeOrchestrator.handlePollingSnapshot({
+            sourceOrder: this.sourceOrder, sourceStatuses, snapshot: arbitrationSnapshot,
           });
+          if (change) await this.runAutomaticOperation({ trigger: 'automatic',
+            source: winningSource?.sourceName ?? change.sourceName, winner: winningSource?.sourceName,
+            active_sources: activeSourcesDebug,
+            source_changes: changes.map(change => ({ source: change.sourceName,
+              change: change.type === 'message-changed' ? 'message_changed' : change.type === 'deactivated' ? 'deactivated' : 'activated' })),
+            decision: change.type === 'message-changed' ? 'message_changed' : change.type === 'deactivated' ? 'deactivated' : 'activated',
+          }, async () => {
+            if (winningSource && !changes.some(change => change.sourceName === winningSource.sourceName)) this.slackService.recordDecision('priority');
+            await work();
+          }, observation);
+          else await work();
 
           const anyActive = !!winningSource;
           const anyWasActive = Object.values(trackingState).some(s => s.wasActive);

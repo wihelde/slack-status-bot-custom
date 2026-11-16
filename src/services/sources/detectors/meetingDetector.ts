@@ -1,3 +1,4 @@
+import { reportDetectorFailure } from '../probes/probeContext';
 import { SourceStatus } from '../sourceAdapter';
 
 export interface MeetingDetectorDefinition {
@@ -29,6 +30,7 @@ export class MeetingDetector {
         message: this.definition.activeMessage,
       };
     } catch (error) {
+      reportDetectorFailure(error);
       console.error(`Error getting ${this.definition.name} status:`, error);
       return this.createInactiveStatus();
     }

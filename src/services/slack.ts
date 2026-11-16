@@ -5,7 +5,7 @@ import type { HostTelemetry } from '../main/telemetry';
 import { telemetryEvents } from '../main/telemetryEvents';
 import { z } from 'zod';
 
-type Operation = Omit<z.input<typeof telemetryEvents.status_operation>, 'outcome' | 'reason' | 'targeted_workspaces' | 'successful_workspaces' | 'duration_ms' | 'workspace_results' | 'operation_id'>;
+export type Operation = Omit<z.input<typeof telemetryEvents.status_operation>, 'outcome' | 'reason' | 'targeted_workspaces' | 'successful_workspaces' | 'duration_ms' | 'workspace_results' | 'operation_id'>;
 type Step = 'users.profile.set' | 'users.setPresence' | 'dnd.setSnooze' | 'dnd.endDnd';
 type Delivery = 'profile' | 'presence' | 'dnd';
 type WorkspaceResult = z.output<typeof telemetryEvents.status_operation>['workspace_results'][number];
@@ -15,6 +15,8 @@ type OperationState = {
   results: Map<string, WorkspaceResult>;
   attempts: Map<string, number>;
   sensitive: Set<string>;
+  context: Operation;
+  skipReason?: 'protected' | 'unchanged' | 'cooldown' | 'priority' | 'missing_profile';
 };
 const operationStorage = new AsyncLocalStorage<OperationState>();
 import { logger } from '../utils/logger';
@@ -32,6 +34,7 @@ export interface SlackProfile {
  * Handles all communication with Slack API
  */
 export class SlackService {
+  private lastAutomaticSkip: string | undefined;
   private axiosInstance: AxiosInstance;
   private tokens: string[];
   private delivery: WorkspaceStatusSnapshot['delivery'][];
@@ -144,12 +147,12 @@ export class SlackService {
       if (this.blockedReference[tokenIndex] || this.delivery[tokenIndex].profile === 'failed') continue;
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          const response = await this.axiosInstance.get('/users.profile.get', {
+          const response = await this.verifyProfile(tokenIndex, {
             headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
-          });
+          }, attempt);
 
           if (response.data.ok === true && response.data.profile) return response.data.profile;
           logger[attempt === 1 ? 'warn' : 'error']('[slack] getProfile API error', { tokenIndex, attempt });
@@ -326,8 +329,8 @@ export class SlackService {
   }
 
   /** Run one logical action; Slack requests and later catch-up share its ID without recounting usage. */
-  async runOperation(context: Operation, work: () => Promise<boolean>): Promise<boolean> {
-    const state: OperationState = { id: randomUUID(), epoch: this.telemetry?.getCaptureEpoch() ?? null, results: new Map(), attempts: new Map(), sensitive: new Set() };
+  async runOperation(context: Operation, work: () => Promise<boolean>, observation?: { id: string; epoch: number | null }): Promise<boolean> {
+    const state: OperationState = { id: observation?.id ?? randomUUID(), epoch: observation ? observation.epoch : this.telemetry?.getCaptureEpoch() ?? null, results: new Map(), attempts: new Map(), sensitive: new Set(), context };
     const started = Date.now();
     let success = false;
     let unexpected = false;
@@ -337,23 +340,35 @@ export class SlackService {
         return success;
       } catch (error) {
         unexpected = true;
-        this.telemetry?.reportDiagnostic(error, { component: 'runtime', step: 'status_operation', operation_id: state.id }, [...this.tokens, ...state.sensitive]);
+        if (state.epoch !== null && state.epoch === this.telemetry?.getCaptureEpoch()) this.telemetry?.reportDiagnostic(error, { ...context, component: 'runtime', step: 'status_operation', operation_id: state.id }, [...this.tokens, ...state.sensitive]);
         throw error; // Observing an exception does not change its existing fatal/nonfatal behavior.
       } finally {
         const workspaceResults = this.connectionRefs.map(connection_ref => state.results.get(connection_ref) ?? { connection_ref });
         const completed = workspaceResults.filter(result => Object.values(result).includes('success') &&
           !Object.values(result).includes('failed') && !Object.values(result).includes('skipped')).length;
         const attempted = state.results.size > 0;
-        if (state.epoch !== null && state.epoch === this.telemetry?.getCaptureEpoch()) this.telemetry.capture('status_operation', { ...context, operation_id: state.id,
+        const { decision: _observation, source_changes: _changes, ...decisionContext } = context;
+        const skipKey = !attempted && context.trigger !== 'manual' ? JSON.stringify({ epoch: state.epoch, ...decisionContext, reason: state.skipReason }) : undefined;
+        const repeatedSkip = skipKey !== undefined && skipKey === this.lastAutomaticSkip;
+        if (state.epoch !== null && state.epoch === this.telemetry?.getCaptureEpoch() && !repeatedSkip) this.telemetry.capture('status_operation', { ...context, operation_id: state.id,
           outcome: unexpected ? 'failed' : !attempted ? 'skipped' : completed === this.tokens.length && success ? 'success' :
             workspaceResults.some(result => Object.values(result).includes('success')) ? 'partial' : 'failed',
-          reason: unexpected ? 'unexpected_error' : !this.tokens.length ? 'no_workspaces' : !attempted ? 'invalid_action' :
-            success ? 'delivered' : 'delivery_failed',
+          reason: unexpected ? 'unexpected_error' : !this.tokens.length ? 'no_workspaces' : !attempted ? state.skipReason ?? (context.trigger === 'manual' ? 'invalid_action' : 'unchanged') :
+            completed === this.tokens.length && success ? 'delivered' : 'delivery_failed',
           targeted_workspaces: attempted ? this.tokens.length : 0, successful_workspaces: completed,
           workspace_results: workspaceResults.map(result => ({ profile: 'skipped', presence: 'skipped', dnd: 'skipped', ...result })), duration_ms: Math.max(0, Date.now() - started),
         });
+        if (context.trigger !== 'manual') this.lastAutomaticSkip = skipKey;
       }
     });
+  }
+
+  /** Attach a safe rule decision to the current logical operation. */
+  recordDecision(reason: NonNullable<OperationState['skipReason']>, context: Partial<Operation> = {}): void {
+    const operation = this.currentOperation();
+    if (!operation) return;
+    operation.skipReason = reason;
+    Object.assign(operation.context, context, { rule_reason: reason });
   }
 
   private currentOperation(delivery?: Delivery) {
@@ -369,6 +384,8 @@ export class SlackService {
   }
 
   private recordBackoff(index: number, delivery: Delivery, step: Step) {
+    const scope = operationStorage.getStore();
+    if (scope && (scope.epoch === null || scope.epoch !== this.telemetry?.getCaptureEpoch())) return;
     const operation = this.currentOperation(delivery);
     const connection_ref = this.connectionRefs[index];
     if (operation) operation.results.set(connection_ref, { ...operation.results.get(connection_ref), connection_ref, [delivery]: 'skipped' });
@@ -377,18 +394,21 @@ export class SlackService {
       duration_ms: 0, reason: 'rate_limit_backoff' });
   }
 
-  private async verifyProfile(index: number, options: AxiosRequestConfig) {
+  private async verifyProfile(index: number, options: AxiosRequestConfig, attempt = 1) {
     const operation = this.currentOperation();
-    const context = { component: 'slack' as const, step: 'users.profile.get',
-      connection_ref: this.connectionRefs[index], operation_id: operation?.id, attempt: 1 };
+    const context = { ...operation?.context, component: 'slack' as const, step: 'users.profile.get',
+      connection_ref: this.connectionRefs[index], operation_id: operation?.id, attempt };
     const started = Date.now();
+    const scope = operationStorage.getStore();
+    const epoch = scope ? scope.epoch : this.telemetry?.getCaptureEpoch();
+    const canCapture = () => epoch != null && epoch === this.telemetry?.getCaptureEpoch();
     try {
       const response = await this.axiosInstance.get('/users.profile.get', options);
-      if (response.data.ok === true) this.telemetry?.recoverDiagnostic(context);
-      else this.telemetry?.reportDiagnostic({ response }, { ...context, duration_ms: Date.now() - started }, [...this.tokens, ...(operation?.sensitive ?? [])]);
+      if (canCapture() && response.data.ok === true) this.telemetry?.recoverDiagnostic(context);
+      else if (canCapture()) this.telemetry?.reportDiagnostic({ response }, { ...context, duration_ms: Date.now() - started }, [...this.tokens, ...(operation?.sensitive ?? [])]);
       return response;
     } catch (error) {
-      this.telemetry?.reportDiagnostic(error, { ...context, duration_ms: Date.now() - started }, [...this.tokens, ...(operation?.sensitive ?? [])]);
+      if (canCapture()) this.telemetry?.reportDiagnostic(error, { ...context, duration_ms: Date.now() - started }, [...this.tokens, ...(operation?.sensitive ?? [])]);
       throw error;
     }
   }
@@ -402,7 +422,7 @@ export class SlackService {
     const attempt = (operation?.attempts.get(attemptKey) ?? 0) + 1;
     operation?.attempts.set(attemptKey, attempt);
     const started = Date.now();
-    const context = { component: 'slack' as const, step, connection_ref, operation_id: operation?.id, attempt };
+    const context = { ...operation?.context, component: 'slack' as const, step, connection_ref, operation_id: operation?.id, attempt };
     const profile = z.object({ profile: z.object({ status_text: z.string(), status_emoji: z.string() }) }).safeParse(body);
     if (profile.success && operation) {
       operation.sensitive.add(profile.data.profile.status_text);
@@ -410,15 +430,18 @@ export class SlackService {
     }
     const sensitive = [...this.tokens, ...(operation?.sensitive ?? []),
       ...(profile.success ? [profile.data.profile.status_text, profile.data.profile.status_emoji] : [])];
+    const scope = operationStorage.getStore();
+    const epoch = scope ? scope.epoch : this.telemetry?.getCaptureEpoch();
+    const canCapture = () => epoch != null && epoch === this.telemetry?.getCaptureEpoch();
     let ok = false;
     try {
       const response = await this.axiosInstance.post(url, body, options);
       ok = response.data.ok === true;
-      if (ok) this.telemetry?.recoverDiagnostic(context);
-      else this.telemetry?.reportDiagnostic({ response }, { ...context, duration_ms: Date.now() - started }, sensitive);
+      if (canCapture() && ok) this.telemetry?.recoverDiagnostic(context);
+      else if (canCapture()) this.telemetry?.reportDiagnostic({ response }, { ...context, duration_ms: Date.now() - started }, sensitive);
       return response;
     } catch (error) {
-      this.telemetry?.reportDiagnostic(error, { ...context, duration_ms: Date.now() - started }, sensitive);
+      if (canCapture()) this.telemetry?.reportDiagnostic(error, { ...context, duration_ms: Date.now() - started }, sensitive);
       throw error;
     } finally {
       const result = ok ? 'success' : 'failed';
@@ -426,7 +449,7 @@ export class SlackService {
         const previous = operation.results.get(connection_ref) ?? { connection_ref };
         operation.results.set(connection_ref, { ...previous, [delivery]: result });
       }
-      this.telemetry?.capture('slack_request', { operation_id: operation?.id, connection_ref, step,
+      if (canCapture()) this.telemetry?.capture('slack_request', { operation_id: operation?.id, connection_ref, step,
         result, attempt, duration_ms: Math.max(0, Date.now() - started), reason: ok ? 'delivered' : 'api_error' });
     }
   }

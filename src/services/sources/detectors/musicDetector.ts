@@ -1,3 +1,4 @@
+import { reportDetectorFailure, reportParseFailure, recoverProbe } from '../probes/probeContext';
 import { SourceStatus } from '../sourceAdapter';
 
 export interface MusicDetectorDefinition {
@@ -26,6 +27,7 @@ export class MusicDetector {
       }
 
       const playerState = await this.definition.getPlayerState();
+      if (playerState && !['playing', 'paused', 'stopped', 'fast forwarding', 'rewinding'].includes(playerState)) reportParseFailure('player_state.parse');
       if (playerState !== 'playing') {
         return this.createInactiveStatus();
       }
@@ -35,6 +37,7 @@ export class MusicDetector {
         return this.createInactiveStatus();
       }
 
+      recoverProbe('player_state.parse');
       return {
         name: this.definition.name,
         isActive: true,
@@ -43,6 +46,7 @@ export class MusicDetector {
         message: track,
       };
     } catch (error) {
+      reportDetectorFailure(error);
       console.error(`Error getting ${this.definition.name} status:`, error);
       return this.createInactiveStatus();
     }

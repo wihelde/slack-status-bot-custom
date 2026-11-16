@@ -9,11 +9,24 @@ export const entryPoint = z.enum(['dashboard', 'tray', 'external', 'unknown']);
 export type EntryPoint = z.infer<typeof entryPoint>;
 export const actionCategory = z.enum(['online', 'away', 'focus', 'meeting', 'break', 'holiday', 'travel', 'sick', 'remeet', 'dog', 'custom', 'external']);
 export type ActionCategory = z.infer<typeof actionCategory>;
+export const sourceName = z.enum(['spotify', 'appleMusic', 'youtubeMusic', 'zoom', 'teams', 'huddle']);
+export const automationContext = {
+  enabled_sources: z.array(sourceName).max(6).optional(),
+  source_priority: z.array(sourceName).max(6).optional(),
+  active_sources: z.array(sourceName).max(6).optional(),
+  source_changes: z.array(z.object({ source: sourceName, change: z.enum(['activated', 'deactivated', 'message_changed']) })).max(6).optional(),
+  winner: sourceName.optional(),
+  rule_reason: z.enum(['protected', 'unchanged', 'cooldown', 'priority', 'missing_profile']).optional(),
+  correction_reason: z.enum(['source-active', 'missing-profile', 'empty-status', 'empty-status-grace', 'empty-status-no-default', 'holiday-protected', 'holiday-expired', 'protected-status', 'overridable-third-party', 'custom-user-status', 'stale-source-status', 'invalid-day-status', 'valid-day-status']).optional(),
+  decision: z.enum(['activated', 'message_changed', 'deactivated', 'reprioritized', 'correction']).optional(),
+  meeting_dnd: z.boolean().optional(), custom_status_count: count.optional(), protected_status: z.boolean().optional(),
+  user_owned: z.boolean().optional(),
+};
 const operationContext = {
   operation_id: id,
   trigger: z.enum(['manual', 'automatic', 'correction']),
   action: actionCategory.optional(),
-  source: z.enum(['spotify', 'appleMusic', 'youtubeMusic', 'zoom', 'teams', 'huddle']).optional(),
+  source: sourceName.optional(),
   entry_point: entryPoint.optional(),
 };
 const frame = z.object({ filename: z.string().max(180).regex(/^(?:src|dist)\/(?!.*\.\.)[a-zA-Z0-9_./-]+\.[cm]?[jt]sx?$/),
@@ -21,7 +34,13 @@ const frame = z.object({ filename: z.string().max(180).regex(/^(?:src|dist)\/(?!
   platform: z.literal('node:javascript').default('node:javascript'),
   lineno: count, colno: count, in_app: z.boolean() });
 const diagnostic = {
+  ...automationContext,
+  trigger: z.enum(['manual', 'automatic', 'correction']).optional(),
   operation_id: id.optional(),
+  source: sourceName.optional(),
+  failure_kind: z.enum(['command', 'parse', 'detector']).optional(),
+  exit_code: z.number().int().min(-2147483648).max(2147483647).optional(),
+  signal: z.string().regex(/^SIG[A-Z0-9]{1,20}$/).optional(),
   component: z.enum(['slack', 'runtime', 'source', 'connection', 'settings']),
   step: technicalName.regex(/^[a-zA-Z0-9_.:-]{1,80}$/),
   connection_ref: id.optional(),
@@ -43,18 +62,18 @@ const episode = {
 };
 export const telemetryEvents = {
   app_activity: z.object({ reason: z.enum(['startup', 'daily']) }),
-  status_operation: z.object({ ...operationContext,
+  status_operation: z.object({ ...operationContext, ...automationContext,
     outcome: z.enum(['success', 'partial', 'failed', 'skipped']),
-    reason: z.enum(['delivered', 'delivery_failed', 'no_workspaces', 'invalid_action', 'protected', 'unchanged', 'cooldown', 'unexpected_error']),
+    reason: z.enum(['delivered', 'delivery_failed', 'no_workspaces', 'invalid_action', 'protected', 'unchanged', 'cooldown', 'priority', 'missing_profile', 'unexpected_error']),
     targeted_workspaces: count, successful_workspaces: count, duration_ms: count,
-    meeting_dnd: z.boolean().optional(), custom_status_count: count.optional(), protected_status: z.boolean().optional(),
     workspace_results: z.array(z.object({ connection_ref: id,
       profile: result.optional(), presence: result.optional(), dnd: result.optional() })).max(100),
   }),
   slack_request: z.object({ operation_id: id.optional(), connection_ref: id,
     step: z.enum(['users.profile.set', 'users.setPresence', 'dnd.setSnooze', 'dnd.endDnd']),
     result, attempt: count, duration_ms: count, reason: z.enum(['delivered', 'api_error', 'rate_limit_backoff']) }),
-  settings_changed: z.object({ setting: z.enum(['autostart', 'custom_statuses']),
+  settings_changed: z.object({ setting: z.enum(['autostart', 'custom_statuses', 'source', 'source_priority', 'meeting_dnd']),
+    source: sourceName.optional(), source_priority: z.array(sourceName).max(6).optional(),
     enabled: z.boolean().optional(), custom_status_count: count.optional(), reset: z.boolean().optional() }),
   $exception: z.object({ ...episode,
     $exception_level: z.enum(['error', 'fatal']).default('error'),

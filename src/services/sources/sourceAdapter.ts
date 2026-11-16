@@ -46,7 +46,7 @@ export class DelegatingSourceAdapter implements ISourceAdapter {
   constructor(private readonly config: DelegatingSourceAdapterConfig) {}
 
   async getStatus(): Promise<SourceStatus> {
-    if (!this.enabled) {
+    if (!this.enabled || !this.config.isAvailable()) {
       return {
         name: this.config.name,
         isActive: false,

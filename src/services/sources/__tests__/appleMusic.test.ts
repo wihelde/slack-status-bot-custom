@@ -72,18 +72,14 @@ describe('AppleMusicAdapter', () => {
     await adapter.getStatus();
 
     expect(readAppleScriptOutput).toHaveBeenNthCalledWith(1, [
-      'try',
       'if application "Music" is running then',
       'tell application "Music" to player state',
       'end if',
-      'end try',
-    ]);
+    ], undefined, 'player_state');
     expect(readAppleScriptOutput).toHaveBeenNthCalledWith(2, [
-      'try',
       'if application "Music" is running then',
       'tell application "Music" to artist of current track & " - " & name of current track',
       'end if',
-      'end try',
-    ]);
+    ], undefined, 'track');
   });
 });
