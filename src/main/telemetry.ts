@@ -1,6 +1,6 @@
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { telemetryEvents, sourceName, automationContext, type TelemetryEvent, type DiagnosticContext } from './telemetryEvents';
+import { telemetryEvents, sourceName, automationContext, emojiRejectionCode, type TelemetryEvent, type DiagnosticContext } from './telemetryEvents';
 import { diagnosticError, diagnosticFingerprint, sanitizeDiagnosticText, sanitizedFrames } from './diagnostics';
 export { telemetryEvents, type TelemetryEvent } from './telemetryEvents';
 import { PostHog, type PostHogOptions } from 'posthog-node';
@@ -91,7 +91,9 @@ export function createHostTelemetry(options: Options) {
         failure_kind: properties.failure_kind, exit_code: properties.exit_code, signal: properties.signal,
         network_code: properties.network_code, http_status: properties.http_status, location: sanitizedFrames(properties.stack)[0],
         needed_scopes: properties.needed_scopes, provided_scopes: properties.provided_scopes, fatal: properties.fatal };
-      const key = diagnosticFingerprint({ ...cause, connection_ref: properties.connection_ref });
+      const key = diagnosticFingerprint({ ...cause, connection_ref: properties.connection_ref,
+        ...(properties.rejected_emoji === undefined ? {} : { rejected_emoji: properties.rejected_emoji,
+          action: properties.action, status_rule_index: properties.status_rule_index, source: properties.source }) });
       const previous = episodes.get(key);
       if (previous) {
         previous.properties.occurrence_count++;
@@ -202,6 +204,11 @@ export function createHostTelemetry(options: Options) {
     const safe = schema?.safeParse(properties);
     if (!safe?.success) return;
     const data = safe.data;
+    if ('rejected_emoji' in data && (data.component !== 'slack' || data.step !== 'users.profile.set' ||
+      !emojiRejectionCode.safeParse(data.code).success ||
+      (data.rejected_emoji !== undefined && sanitizeDiagnosticText(data.rejected_emoji, options.configStore.load().slackTokens) !== data.rejected_emoji))) {
+      delete data.rejected_emoji;
+    }
     // Reapply redaction after schema validation and again at SDK output enrichment.
     if ('message' in data) data.message = sanitizeDiagnosticText(data.message);
     if ('stack' in data && data.stack) {

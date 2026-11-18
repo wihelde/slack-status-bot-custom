@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { z } from 'zod';
+import { sanitizeDiagnosticText } from '../../../main/diagnostics';
 import type { HostTelemetry } from '../../../main/telemetry';
 import type { SourceName } from '../../../config/sourceCatalog';
 import type { SourceStatus } from '../sourceAdapter';
@@ -57,12 +58,16 @@ export function reportCommandFailure(error: unknown, step: string, noMatchExitCo
   if (observationContext) observationContext.failed = true;
   const current = context(step);
   if (!current) return;
-  // Never use exec's message: it embeds the entire command and sometimes stdout.
-  const diagnostic = fields.stderr?.match(/permission denied|operation not permitted|not authorized to send Apple events|application isn't running|connection (?:refused|reset)|command not found|syntax error|timed out|no such file or directory/gi)?.join('; ');
-  const nativeCode = fields.stderr?.match(/\((-?\d+)\)/)?.[1];
-  current.telemetry.reportDiagnostic({ message: diagnostic ? `${diagnostic}${nativeCode ? ` (${nativeCode})` : ''}` : 'Source command failed', stack: fields.stack,
+  // exec's message embeds the command/stdout. Keep stderr's first diagnostic line,
+  // masking quoted values as well as credentials and paths before it leaves the probe.
+  const original = fields.stderr?.trim().split(/\r?\n/, 1)[0];
+  const diagnostic = original && sanitizeDiagnosticText(original.replace(
+    /"(?:\\.|[^"\\])*"|(?<![\p{L}\p{N}])'(?:\\.|[^'\\])*'(?![\p{L}\p{N}])|[„“][^“”]*[“”]|«[^»]*»/gu,
+    '[redacted]'));
+  const nativeCode = original?.match(/\((-?\d{1,10})\)\s*$/)?.[1];
+  current.telemetry.reportDiagnostic({ message: diagnostic || 'Source command failed', stack: fields.stack,
     code: typeof fields.code === 'string' ? fields.code : undefined }, {
-    ...current.diagnostic, failure_kind: 'command', duration_ms,
+    ...current.diagnostic, ...(nativeCode === undefined ? {} : { code: nativeCode }), failure_kind: 'command', duration_ms,
     exit_code: typeof fields.code === 'number' ? fields.code : undefined,
     signal: fields.signal ?? undefined, timeout: fields.killed === true || fields.code === 'ETIMEDOUT' || fields.code === 'ECONNABORTED',
   });

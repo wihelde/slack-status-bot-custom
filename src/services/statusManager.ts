@@ -283,6 +283,7 @@ export class StatusManager extends EventEmitter {
     const success = await this.slackExecutor.applyStatusChange({
       emoji,
       text: message,
+      statusRuleIndex: statusPlan.statusRuleIndex,
       presence: statusPlan.presence,
       dndAction: statusPlan.enableDnd ? 'enable' : 'disable',
     });
@@ -506,6 +507,7 @@ export class StatusManager extends EventEmitter {
     const success = await this.slackExecutor.applyStatusChange({
       emoji: actionPlan.emoji,
       text: actionPlan.message,
+      statusRuleIndex: actionPlan.statusRuleIndex,
       expiration: actionPlan.expiration,
       presence: actionPlan.presence,
       dndAction: !this.meetingDnd &&

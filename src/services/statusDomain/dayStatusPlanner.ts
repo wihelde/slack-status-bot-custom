@@ -9,6 +9,7 @@ export class DayStatusPlanner {
 
     const selectedStatus = dayStatuses[Math.floor(Math.random() * dayStatuses.length)];
     return {
+      statusRuleIndex: customStatuses.indexOf(selectedStatus) + 1,
       emoji: selectedStatus.emoji,
       message: selectedStatus.message,
       presence: selectedStatus.presence,

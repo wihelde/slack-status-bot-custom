@@ -8,6 +8,8 @@ export interface ReconcilerStatusState {
 }
 
 export interface DayStatusPlan {
+  /** One-based position at selection time, without sending user-authored rule IDs. */
+  statusRuleIndex?: number;
   emoji: string;
   message: string;
   presence: 'auto' | 'away';
@@ -30,6 +32,7 @@ export type ManualAction =
   | { type: 'holiday'; returnDateString: string };
 
 export interface ManualActionPlan {
+  statusRuleIndex?: number;
   emoji: string;
   message: string;
   expiration?: number;

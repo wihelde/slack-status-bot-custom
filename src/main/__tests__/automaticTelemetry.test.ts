@@ -144,6 +144,40 @@ it('describes current default source configuration even when no source has been 
   });
   expect(events.filter(event => event.event === 'status_operation' || event.event === 'settings_changed')).toEqual([]);
 });
+it.each([
+  { stderr: '42:89: execution error: Spotify hat einen Fehler erhalten: AppleEvent-Handler wurde abgewiesen: „Private song“ (-1743)',
+    message: 'AppleEvent-Handler wurde abgewiesen', code: '-1743' },
+  { stderr: "42:89: execution error: Spotify got an error: An unexpected reply arrived for 'Private song' (-609)",
+    message: 'An unexpected reply arrived', code: '-609' },
+])('preserves a sanitized original source failure and its native code $code through recurrence and recovery', async ({ stderr, message, code }) => {
+  const { daemon } = createDaemon();
+  daemon.toggleSource('zoom', false);
+  daemon.toggleSource('spotify', true);
+  let failing = true;
+  vi.mocked(exec).mockImplementation((async (command: string) => {
+    if (command.startsWith('pgrep')) return { stdout: '123', stderr: '' };
+    if (failing) throw Object.assign(new Error('Command failed: private command with raw stdout'), {
+      code: 1, stderr: `${stderr}\nPrivate artist - Private song`, stdout: 'Private song',
+    });
+    return { stdout: command.includes('player state') ? 'playing' : 'Private artist - Private song', stderr: '' };
+  }) as unknown as typeof exec);
+  expect((await daemon.getSourceStatuses()).spotify.isActive).toBe(false);
+  expect((await daemon.getSourceStatuses()).spotify.isActive).toBe(false);
+  await vi.advanceTimersByTimeAsync(65_000);
+  failing = false;
+  expect((await daemon.getSourceStatuses()).spotify.isActive).toBe(true);
+  await telemetry.shutdown();
+  const diagnosticEvents = events.filter(event => ['$exception', 'diagnostic_summary', 'diagnostic_recovered'].includes(event.event));
+  expect(diagnosticEvents.map(event => event.event)).toEqual(['$exception', 'diagnostic_summary', 'diagnostic_recovered']);
+  for (const event of diagnosticEvents) {
+    expect(event.properties).toMatchObject({ source: 'spotify', step: 'spotify.player_state', code, exit_code: 1,
+      message: expect.stringContaining(message) });
+    expect(event.properties.network_code).toBeUndefined();
+  }
+  expect(diagnosticEvents.at(-1)?.properties.occurrence_count).toBe(2);
+  expect(JSON.stringify(events)).not.toMatch(/Private song|Private artist|private command|raw stdout/);
+});
+
 it('distinguishes actionable command failure from no match, counts repeats and recovers only the affected probe', async () => {
   const { daemon } = createDaemon();
   const failure = Object.assign(new Error('Command failed: secret command and raw stdout'), {

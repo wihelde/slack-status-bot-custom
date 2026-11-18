@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosInstance, AxiosResponse, type AxiosRequestConfi
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import type { HostTelemetry } from '../main/telemetry';
-import { telemetryEvents } from '../main/telemetryEvents';
+import { telemetryEvents, emojiRejectionCode, rejectedEmoji } from '../main/telemetryEvents';
 import { z } from 'zod';
 
 export type Operation = Omit<z.input<typeof telemetryEvents.status_operation>, 'outcome' | 'reason' | 'targeted_workspaces' | 'successful_workspaces' | 'duration_ms' | 'workspace_results' | 'operation_id'>;
@@ -188,7 +188,7 @@ export class SlackService {
    * Set user profile (status emoji and text)
    * Sequential requests with delays to avoid rate limiting
    */
-  async setProfile(statusEmoji: string, statusText: string, statusExpiration: number = 0): Promise<boolean> {
+  async setProfile(statusEmoji: string, statusText: string, statusExpiration: number = 0, statusRuleIndex?: number): Promise<boolean> {
     if (this.tokens.length === 0) {
       throw new Error('No Slack tokens configured');
     }
@@ -199,6 +199,8 @@ export class SlackService {
       status_expiration: statusExpiration,
     };
     this.intendedProfile = profile;
+    const operation = this.currentOperation();
+    if (operation) operation.context.status_rule_index = statusRuleIndex;
     this.rememberOperation('profile');
 
     logger.info(`[slack] setProfile called`, { emoji: statusEmoji, text: statusText, tokenCount: this.tokens.length });
@@ -461,7 +463,13 @@ export class SlackService {
       const response = await this.axiosInstance.post(url, body, options);
       ok = response.data.ok === true;
       if (canCapture() && ok) this.telemetry?.recoverDiagnostic(context);
-      else if (canCapture()) this.telemetry?.reportDiagnostic({ response }, { ...context, duration_ms: Date.now() - started }, sensitive);
+      else if (canCapture()) {
+        const emoji = step === 'users.profile.set' && profile.success && emojiRejectionCode.safeParse(response.data.error).success
+          ? rejectedEmoji.safeParse(profile.data.profile.status_emoji) : undefined;
+        // This explicit error-only field is allowed; message/body redaction remains unchanged.
+        const rejected_emoji = emoji?.success && !this.tokens.some(token => token && emoji.data.includes(token)) ? emoji.data : undefined;
+        this.telemetry?.reportDiagnostic({ response }, { ...context, rejected_emoji, duration_ms: Date.now() - started }, sensitive);
+      }
       return response;
     } catch (error) {
       if (canCapture()) this.telemetry?.reportDiagnostic(error, { ...context, duration_ms: Date.now() - started }, sensitive);

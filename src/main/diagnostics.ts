@@ -31,7 +31,7 @@ export function sanitizeDiagnosticText(value: string, sensitive: readonly string
   }
   return text
     .replace(/(?:Bearer|Basic)\s+[^\s,;"'}]+/gi, '[credential]')
-    .replace(/(?:xox[a-z]-|xapp-|ph[cp]_|sk-)[a-zA-Z0-9_-]+/g, '[credential]')
+    .replace(/(?:xox[a-z]-|xapp-|ph[xcp]_|sk-)[a-zA-Z0-9_-]+/g, '[credential]')
     .replace(/(["']?(?:authorization|cookie|set-cookie|access_token|refresh_token|client_secret|code_verifier|code|state|token|status_text|status_emoji|song|artist|title|returnDate)["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\n]*)/gi, '$1[redacted]')
     .replace(/[a-z][a-z0-9+.-]*:\/\/[^\s)]+/gi, '[url]')
     .replace(/(?:[A-Z]:\\|\/)(?:[^\s():]+[\\/])+[^\s():]*/g, '[path]')

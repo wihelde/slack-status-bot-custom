@@ -12,6 +12,8 @@ export type EntryPoint = z.infer<typeof entryPoint>;
 export const actionCategory = z.enum(['online', 'away', 'focus', 'meeting', 'break', 'holiday', 'travel', 'sick', 'remeet', 'dog', 'custom', 'external']);
 export type ActionCategory = z.infer<typeof actionCategory>;
 export const sourceName = z.enum(['spotify', 'appleMusic', 'youtubeMusic', 'zoom', 'teams', 'huddle']);
+export const emojiRejectionCode = z.enum(['invalid_emoji', 'invalid_emoji_not_allowed', 'profile_status_set_failed_not_valid_emoji']);
+export const rejectedEmoji = z.string().max(1000).refine(value => sanitizeDiagnosticText(value) === value);
 export const automationContext = {
   enabled_sources: z.array(sourceName).max(6).optional(),
   source_priority: z.array(sourceName).max(6).optional(),
@@ -30,6 +32,7 @@ const operationContext = {
   action: actionCategory.optional(),
   source: sourceName.optional(),
   entry_point: entryPoint.optional(),
+  status_rule_index: count.min(1).optional(),
 };
 const frame = z.object({ filename: z.string().max(180).regex(/^(?:src|dist|build)\/(?!.*\.\.)[a-zA-Z0-9_./-]+\.[cm]?[jt]sx?$/),
   function: z.literal('?').default('?'),
@@ -39,6 +42,10 @@ const diagnostic = {
   ...automationContext,
   trigger: z.enum(['manual', 'automatic', 'correction']).optional(),
   operation_id: id.optional(),
+  action: actionCategory.optional(),
+  entry_point: entryPoint.optional(),
+  status_rule_index: count.min(1).optional(),
+  rejected_emoji: rejectedEmoji.optional(),
   source: sourceName.optional(),
   failure_kind: z.enum(['command', 'parse', 'detector']).optional(),
   exit_code: z.number().int().min(-2147483648).max(2147483647).optional(),

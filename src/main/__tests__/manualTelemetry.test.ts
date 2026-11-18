@@ -11,7 +11,8 @@ import { telemetryEvents, type TelemetryEvent } from '../telemetryEvents';
 import { z } from 'zod';
 import { registerPlatformIpcHandlers } from '../ipcHandlers';
 import { IPC_CHANNELS, type IpcChannel, type IpcResult } from '../../contracts/ipc';
-import { STATUS_MESSAGES } from '../../config/statusConfig';
+import { STATUS_MESSAGES, DayOfWeek } from '../../config/statusConfig';
+import { SlackService } from '../../services/slack';
 
 vi.mock('axios');
 let directory: string;
@@ -41,6 +42,63 @@ afterEach(async () => {
   await telemetry.shutdown();
   vi.restoreAllMocks();
   fs.rmSync(directory, { recursive: true, force: true });
+});
+
+it.each(['invalid_emoji', 'invalid_emoji_not_allowed', 'profile_status_set_failed_not_valid_emoji'])(
+  'keeps the rejected emoji and action for %s, with separate episodes for different values', async (emojiErrorCode) => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  let code = emojiErrorCode;
+  const post = vi.fn(async () => ({ status: 200, headers: {}, data: { ok: false, error: code } }));
+  vi.mocked(axios.create).mockReturnValue({ post } as unknown as ReturnType<typeof axios.create>);
+  const slack = new SlackService('xoxp-private-credential', telemetry);
+  for (const emoji of [':missing_one:', ':missing_two:']) {
+    await slack.runOperation({ trigger: 'manual', action: 'external', entry_point: 'external' },
+      () => slack.setProfile(emoji, 'Private status text'));
+  }
+  code = 'missing_scope';
+  await slack.runOperation({ trigger: 'manual', action: 'focus', entry_point: 'dashboard' },
+    () => slack.setProfile(':private_normal:', 'Private status text'));
+  code = emojiErrorCode;
+  await slack.runOperation({ trigger: 'manual', action: 'external' },
+    () => slack.setProfile('xoxp-private-credential', 'Private status text'));
+  await telemetry.shutdown();
+  const failures = events.filter(event => event.event === '$exception');
+  expect(failures).toHaveLength(4);
+  expect(failures.map(event => event.properties.rejected_emoji))
+    .toEqual([':missing_one:', ':missing_two:', undefined, undefined]);
+  expect(failures[0].properties).toMatchObject({ action: 'external', entry_point: 'external' });
+  expect(new Set(failures.map(event => event.properties.episode_id)).size).toBe(4);
+  expect(JSON.stringify(events)).not.toMatch(/private-credential|Private status text|private_normal/);
+});
+
+it('links a rejected scheduled emoji to the selected configuration entry without sending its ID or text', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.setSystemTime(new Date('2026-11-16T12:00:00Z'));
+  const store = createAppConfigStore({ configDir: directory });
+  store.updateDaemonSettings({ statusConfiguration: { ...store.getDaemonSettings().statusConfiguration,
+    customStatuses: [
+      { id: 'private-unselected-rule', emoji: ':unused:', message: 'Private Sunday text', days: [DayOfWeek.SUNDAY], presence: 'auto', enableDND: false, category: 'day_based' },
+      { id: 'private-selected-rule', emoji: ':missing_scheduled:', message: 'Private Monday text', days: [DayOfWeek.MONDAY], presence: 'auto', enableDND: false, category: 'day_based' },
+    ] } });
+  const post = vi.fn(async (url: string) => ({ status: 200, headers: {},
+    data: url === '/users.profile.set' ? { ok: false, error: 'invalid_emoji' } : { ok: true } }));
+  vi.mocked(axios.create).mockReturnValue({ post } as unknown as ReturnType<typeof axios.create>);
+  const daemon = new SlackStatusBotDaemon({ slackTokens: ['token-a'], configStore: store, telemetry });
+  expect(await daemon.goOnline('dashboard')).toBe(false);
+  await telemetry.shutdown();
+  expect(events.find(event => event.event === '$exception')?.properties).toMatchObject({
+    rejected_emoji: ':missing_scheduled:', action: 'online', entry_point: 'dashboard', status_rule_index: 2,
+  });
+  expect(JSON.stringify(events)).not.toMatch(/private-selected|private-unselected|Private Monday|Private Sunday|token-a/);
+});
+
+it('strips emoji context from unrelated diagnostic causes at the shared capture boundary', async () => {
+  telemetry.reportDiagnostic({ response: { data: { error: 'missing_scope' } } }, {
+    component: 'slack', step: 'users.profile.set', rejected_emoji: ':private_normal:',
+  });
+  await telemetry.shutdown();
+  expect(events.find(event => event.event === '$exception')?.properties).toMatchObject({ code: 'missing_scope' });
+  expect(JSON.stringify(events)).not.toContain(':private_normal:');
 });
 
 it('reports actual partial manual delivery and its original permission cause despite a UI state update', async () => {

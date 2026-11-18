@@ -50,6 +50,7 @@ export class ManualStatusPlanner {
 
         return {
           emoji: dayStatusPlan.emoji,
+          statusRuleIndex: dayStatusPlan.statusRuleIndex,
           message: dayStatusPlan.message,
           presence: dayStatusPlan.presence,
           dndAction: dayStatusPlan.enableDnd ? 'enable' : 'disable',

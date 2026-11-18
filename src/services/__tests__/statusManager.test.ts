@@ -908,7 +908,7 @@ describe('StatusManager', () => {
       
       vi.useRealTimers();
 
-      expect(mockSlackService.setProfile).toHaveBeenCalledWith(':smile:', 'Weekend vibes', 0);
+      expect(mockSlackService.setProfile).toHaveBeenCalledWith(':smile:', 'Weekend vibes', 0, 1);
     });
 
     it('should set empty status on weekend when user has no configuration', async () => {
