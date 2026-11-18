@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.4.1] - 2026-11-18
+
+## Fixed
+
+- update checks once again show a macOS notification when a newer version is available
+
 ## [2.4.0] - 2026-11-18
 
 ## Added

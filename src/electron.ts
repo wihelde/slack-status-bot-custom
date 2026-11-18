@@ -229,10 +229,20 @@ const updateBridge = createUpdateBridge({
       if (epoch != null && epoch === telemetry?.getCaptureEpoch()) telemetry.capture('update_interaction',
         { action, entry_point: 'notification', target_version: nextUpdate.version });
     };
+    const message = {
+      title: 'Slack Status Bot update available',
+      body: `Version ${nextUpdate.version} is available`,
+    };
+
+    // Electron's macOS notification API rejects the signing identity of our release builds.
+    if (process.platform === 'darwin') {
+      observe('notification_requested');
+      showMacosNotification(message, log);
+      return;
+    }
+
     if (Notification.isSupported()) {
-      const notification = new Notification({
-        title: 'Slack Status Bot update available', body: `Version ${nextUpdate.version} is available`, timeoutType: 'never',
-      });
+      const notification = new Notification({ ...message, timeoutType: 'never' });
       notification.on('show', () => observe('notification_shown'));
       notification.on('failed', (_event, error) => {
         observe('notification_failed');
