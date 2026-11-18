@@ -4,19 +4,15 @@ import { readAppleScriptOutput } from './probes/appleScriptProbe';
 import { MusicDetector } from './detectors/musicDetector';
 
 const APPLE_MUSIC_PLAYER_STATE_SCRIPT = [
-  'try',
   'if application "Music" is running then',
   'tell application "Music" to player state',
   'end if',
-  'end try',
 ];
 
 const APPLE_MUSIC_TRACK_SCRIPT = [
-  'try',
   'if application "Music" is running then',
   'tell application "Music" to artist of current track & " - " & name of current track',
   'end if',
-  'end try',
 ];
 
 function isMacOs(): boolean {
@@ -24,12 +20,12 @@ function isMacOs(): boolean {
 }
 
 async function getAppleMusicPlayerState(): Promise<string> {
-  const playerState = await readAppleScriptOutput(APPLE_MUSIC_PLAYER_STATE_SCRIPT);
+  const playerState = await readAppleScriptOutput(APPLE_MUSIC_PLAYER_STATE_SCRIPT, undefined, 'player_state');
   return playerState?.toLowerCase() ?? '';
 }
 
 async function getAppleMusicTrack(): Promise<string | null> {
-  const track = await readAppleScriptOutput(APPLE_MUSIC_TRACK_SCRIPT);
+  const track = await readAppleScriptOutput(APPLE_MUSIC_TRACK_SCRIPT, undefined, 'track');
   if (!track) {
     return null;
   }

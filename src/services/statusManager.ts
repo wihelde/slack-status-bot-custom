@@ -1,11 +1,12 @@
 import { EventEmitter } from 'events';
-import { SlackService, SlackProfile } from './slack';
+import { SlackService, SlackProfile, type Operation } from './slack';
 import { SlackStatusExecutor } from './slackStatusExecutor';
 import { DayOfWeek, CustomStatusConfig, getDefaultStatusConfiguration, DEFAULT_OVERRIDABLE_PATTERNS, OverridableStatusPattern, STATUS_MESSAGES } from '../config/statusConfig';
+import { sourceName } from '../main/telemetryEvents';
 import type { AppStatusChangedEvent } from '../contracts/ipc';
 import { StatusDomain } from './statusDomain/statusDomain';
 import type { ManualAction } from './statusDomain/types';
-import { managedEmojis, protectedEmojis } from './statusDomain/constants';
+import { managedEmojis, protectedEmojis, sourceEmojiMap } from './statusDomain/constants';
 import { logger } from '../utils/logger';
 
 export interface StatusCheckState {
@@ -36,7 +37,7 @@ export class StatusManager extends EventEmitter {
   private isResetting: boolean = false; // Prevent concurrent reset calls
   private readonly statusDomain: StatusDomain;
 
-  constructor(slackService: SlackService, customStatuses?: CustomStatusConfig[]) {
+  constructor(slackService: SlackService, customStatuses?: CustomStatusConfig[], private readonly getAutomationContext?: () => Partial<Operation>) {
     super(); // Call EventEmitter constructor
     this.slackService = slackService;
     this.slackExecutor = new SlackStatusExecutor(slackService);
@@ -134,9 +135,9 @@ export class StatusManager extends EventEmitter {
     }
 
     const lastProfile = await this.getLastKnownProfile();
-    return !lastProfile ||
-      lastProfile.status_emoji !== emoji ||
-      lastProfile.status_text !== message;
+    const changed = !lastProfile || lastProfile.status_emoji !== emoji || lastProfile.status_text !== message;
+    if (!changed) this.slackService.recordDecision('unchanged');
+    return changed;
   }
 
   emitObservedStatusChange(emoji: string, message: string, stateValue: 'activeSource' | 'sourceInactive'): void {
@@ -167,6 +168,9 @@ export class StatusManager extends EventEmitter {
       allowedEmojis: this.allowedEmojis,
       overridablePatterns: this.overridablePatterns,
     });
+    if (!result) this.slackService.recordDecision(profile ? 'protected' : 'missing_profile', {
+      protected_status: !!profile, user_owned: this.statusCheckState.userOwned === true,
+    });
     logger.debug(`[statusManager] isStatusClean result`, {
       emoji: profile?.status_emoji,
       text: profile?.status_text,
@@ -174,6 +178,13 @@ export class StatusManager extends EventEmitter {
       result,
     });
     return result;
+  }
+
+  /** Explain only a fresh, already-read profile; telemetry must not cause another Slack request. */
+  getObservedProtection(): boolean | undefined {
+    if (!this.profileCache || Date.now() - this.profileCacheTime >= this.PROFILE_CACHE_TTL) return undefined;
+    return !this.statusDomain.canChangeStatus({ profile: this.profileCache, state: this.statusCheckState,
+      allowedEmojis: this.allowedEmojis, overridablePatterns: this.overridablePatterns });
   }
 
   /**
@@ -211,11 +222,13 @@ export class StatusManager extends EventEmitter {
   private async performReset(): Promise<boolean> {
     // Prevent resetting if 'not working' mode is active (user has set a protected status)
     if (this.statusCheckState.value === 'not working') {
+      this.slackService.recordDecision('protected', { protected_status: true });
       logger.warn(`[statusManager] performReset() blocked - 'not working' mode is active`, { currentState: this.statusCheckState.value });
       return false;
     }
 
     if (this.statusCheckState.userOwned) {
+      this.slackService.recordDecision('protected', { protected_status: true });
       logger.warn(`[statusManager] performReset() blocked - user-owned status is active`);
       return false;
     }
@@ -270,6 +283,7 @@ export class StatusManager extends EventEmitter {
     const success = await this.slackExecutor.applyStatusChange({
       emoji,
       text: message,
+      statusRuleIndex: statusPlan.statusRuleIndex,
       presence: statusPlan.presence,
       dndAction: statusPlan.enableDnd ? 'enable' : 'disable',
     });
@@ -358,7 +372,13 @@ export class StatusManager extends EventEmitter {
         validEmojis: Array.from(validEmojisForToday),
         day: DayOfWeek[dayOfWeek],
       });
-      await this.reset();
+      if (this.getAutomationContext) {
+        const source = sourceName.safeParse(sourceEmojiMap[emoji]);
+        await this.slackService.runOperation({ ...this.getAutomationContext(), trigger: 'correction',
+          decision: 'correction', correction_reason: decision.reason,
+          source: source.success ? source.data : undefined,
+        }, () => this.reset());
+      } else await this.reset();
       return;
     }
 
@@ -487,6 +507,7 @@ export class StatusManager extends EventEmitter {
     const success = await this.slackExecutor.applyStatusChange({
       emoji: actionPlan.emoji,
       text: actionPlan.message,
+      statusRuleIndex: actionPlan.statusRuleIndex,
       expiration: actionPlan.expiration,
       presence: actionPlan.presence,
       dndAction: !this.meetingDnd &&

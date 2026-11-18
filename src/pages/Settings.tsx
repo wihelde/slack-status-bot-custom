@@ -5,6 +5,7 @@ import LogViewer from '../components/LogViewer';
 import { StatusConfigEditor } from '../components/StatusConfigEditor';
 import { DEFAULT_SOURCE_ORDER, SOURCE_CATALOG, SourceName } from '../config/sourceCatalog';
 import type { WorkspaceConnectionSummary } from '../contracts/ipc';
+import type { TelemetrySettings } from '../contracts/telemetry';
 import { buildSetupLink } from '../contracts/setupLink';
 import { applyThemePreference, readThemePreference, ThemePreference } from '../theme';
 
@@ -32,6 +33,9 @@ const Settings: React.FC = () => {
   const [autoLaunch, setAutoLaunch] = useState(false);
   const [autoLaunchLoading, setAutoLaunchLoading] = useState(false);
   const [appVersion, setAppVersion] = useState('');
+  const [telemetry, setTelemetry] = useState<TelemetrySettings | null>(null);
+  const [telemetrySaving, setTelemetrySaving] = useState(false);
+  const [telemetryMessage, setTelemetryMessage] = useState('');
   const [themePreference, setThemePreference] = useState<ThemePreference>(readThemePreference);
 
   useEffect(() => {
@@ -52,6 +56,7 @@ const Settings: React.FC = () => {
       }
 
       setMeetingDnd((await IPCService.getMeetingDnd()) ?? true);
+      setTelemetry(await IPCService.getTelemetrySettings());
 
       // Load source order
       const order = await IPCService.getSourceOrder();
@@ -120,7 +125,9 @@ const Settings: React.FC = () => {
     try {
       setError('');
       setGeneratedLink(buildSetupLink({ clientId: clientId.trim(), expectedTeamId: workspaceId.trim() || undefined }));
+      void IPCService.observe({ kind: 'setup', outcome: 'accepted', reason: 'valid_link' });
     } catch (err) {
+      void IPCService.observe({ kind: 'setup', outcome: 'rejected', reason: 'invalid_registration' });
       setError(err instanceof Error ? err.message : 'Invalid Slack registration');
     }
   };
@@ -248,7 +255,7 @@ const Settings: React.FC = () => {
           <button 
             className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
             aria-pressed={activeTab === 'logs'}
-            onClick={() => selectTab('logs')}
+            onClick={() => { if (activeTab !== 'logs') void IPCService.observe({ kind: 'ui', action: 'logs_opened' }); selectTab('logs'); }}
           >
             📋 Logs
           </button>
@@ -389,8 +396,8 @@ const Settings: React.FC = () => {
       </div>
       <div className="settings-card">
         <h2>Meetings</h2>
-        <label>
-          <input type="checkbox" checked={meetingDnd} disabled={meetingDndSaving} onChange={async event => {
+        <label className="setting-label">
+          <input type="checkbox" className="checkbox-input" checked={meetingDnd} disabled={meetingDndSaving} onChange={async event => {
             const enabled = event.target.checked;
             setMeetingDndSaving(true);
             setError('');
@@ -398,7 +405,7 @@ const Settings: React.FC = () => {
             else setError('Could not save meeting preference. Please try again.');
             setMeetingDndSaving(false);
           }} />
-          {' '}Automatically enable Do Not Disturb during meetings
+          <span className="checkbox-text">Automatically enable Do Not Disturb during meetings</span>
         </label>
       </div>
       <div className="settings-card">
@@ -448,7 +455,43 @@ const Settings: React.FC = () => {
             </label>
           </div>
         </div>
-        <p className="settings-about">Slack Status Bot{appVersion ? ` v${appVersion}` : ''} · <a href="mailto:slackbot@wihel.de">Support</a></p>
+        <section className="settings-card telemetry-settings" aria-labelledby="telemetry-heading">
+          <h2 id="telemetry-heading">Usage and diagnostics</h2>
+          <label className="setting-label">
+            <input type="checkbox" className="checkbox-input" aria-describedby="telemetry-description"
+              checked={telemetry?.enabled ?? false}
+              disabled={!telemetry || telemetrySaving} onChange={async event => {
+                const enabled = event.target.checked;
+                setTelemetrySaving(true);
+                setTelemetryMessage('');
+                const result = await IPCService.setTelemetryEnabled(enabled);
+                if (result) setTelemetry(result);
+                else setTelemetryMessage('Could not save collection preference. Please try again.');
+                setTelemetrySaving(false);
+              }} />
+            <span className="checkbox-text">Share usage statistics and error diagnostics</span>
+          </label>
+          <p id="telemetry-description" className="setting-description">
+            Help improve the app via PostHog. No Slack identities, status text or song details are sent.
+          </p>
+          {telemetry ? <div className="form-group telemetry-reference">
+            <label htmlFor="diagnostic-id">Diagnostic ID</label>
+            <div className="setup-link-controls">
+              <input id="diagnostic-id" className="input-field" readOnly value={telemetry.diagnosticId} />
+              <button className="secondary-action" aria-label="Copy diagnostic ID" onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(telemetry.diagnosticId);
+                  setTelemetryMessage('Diagnostic ID copied');
+                  void IPCService.observe({ kind: 'ui', action: 'diagnostic_id_copied' });
+                } catch {
+                  setTelemetryMessage('Copy failed; select the diagnostic ID instead.');
+                }
+              }}>Copy</button>
+            </div>
+          </div> : <p className="help-text">Collection settings unavailable. Please reopen Settings.</p>}
+          {telemetryMessage && <p className="help-text" role="status">{telemetryMessage}</p>}
+        </section>
+        <p className="settings-about">Slack Status Bot{appVersion ? ` v${appVersion}` : ''} · <a href="mailto:slackbot@wihel.de" onClick={() => void IPCService.observe({ kind: 'ui', action: 'support_opened' })}>Support</a></p>
         </>
       )}
 

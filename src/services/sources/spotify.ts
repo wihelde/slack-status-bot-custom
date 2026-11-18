@@ -5,15 +5,12 @@ import { isMacProcessRunning } from './probes/processProbe';
 import { MusicDetector } from './detectors/musicDetector';
 
 const SPOTIFY_PLAYER_STATE_SCRIPT = [
-  'try',
   'if application "Spotify" is running then',
   'tell application "Spotify" to player state',
   'end if',
-  'end try',
 ];
 
 const SPOTIFY_TRACK_SCRIPT = [
-  'try',
   'if application "Spotify" is running then',
   'tell application "Spotify"',
   'set track_artist to artist of current track',
@@ -26,7 +23,6 @@ const SPOTIFY_TRACK_SCRIPT = [
   'end if',
   'end tell',
   'end if',
-  'end try',
 ];
 
 function isMacOs(): boolean {
@@ -34,12 +30,12 @@ function isMacOs(): boolean {
 }
 
 async function getSpotifyPlayerState(): Promise<string> {
-  const playerState = await readAppleScriptOutput(SPOTIFY_PLAYER_STATE_SCRIPT);
+  const playerState = await readAppleScriptOutput(SPOTIFY_PLAYER_STATE_SCRIPT, undefined, 'player_state');
   return playerState?.toLowerCase() ?? '';
 }
 
 async function getSpotifyTrack(): Promise<string | null> {
-  const track = await readAppleScriptOutput(SPOTIFY_TRACK_SCRIPT);
+  const track = await readAppleScriptOutput(SPOTIFY_TRACK_SCRIPT, undefined, 'track');
   if (!track) {
     return null;
   }

@@ -6,7 +6,7 @@
   gap: 12px;
 }
 
-.log-controls {
+:where(.log-viewer) .log-controls {
   display: flex;
   gap: 0.75rem;
   align-items: center;
@@ -14,9 +14,9 @@
   padding: 0;
 }
 
-.refresh-btn,
-.copy-btn,
-.clear-btn {
+:where(.log-viewer) .refresh-btn,
+:where(.log-viewer) .copy-btn,
+:where(.log-viewer) .clear-btn {
   padding: 0.5rem 1rem;
   background-color: var(--surface);
   color: var(--heading);
@@ -27,26 +27,26 @@
   transition: background-color 0.2s;
 }
 
-.refresh-btn:hover:not(:disabled),
-.copy-btn:hover {
+:where(.log-viewer) .refresh-btn:hover:not(:disabled),
+:where(.log-viewer) .copy-btn:hover {
   background-color: var(--surface-hover);
 }
 
-.clear-btn {
+:where(.log-viewer) .clear-btn {
   color: var(--danger);
   border-color: transparent;
 }
 
-.clear-btn:hover {
+:where(.log-viewer) .clear-btn:hover {
   background-color: var(--danger-soft);
 }
 
-.refresh-btn:disabled {
+:where(.log-viewer) .refresh-btn:disabled {
   background-color: var(--border-strong);
   cursor: not-allowed;
 }
 
-.auto-refresh-label {
+:where(.log-viewer) .auto-refresh-label {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -55,11 +55,11 @@
   color: var(--ink);
 }
 
-.auto-refresh-label input {
+:where(.log-viewer) .auto-refresh-label input {
   cursor: pointer;
 }
 
-.log-container {
+:where(.log-viewer) .log-container {
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -69,7 +69,7 @@
   border: 1px solid var(--border);
 }
 
-.log-content {
+:where(.log-viewer) .log-content {
   margin: 0;
   font-family: 'Courier New', monospace;
   font-size: 0.85rem;
@@ -80,14 +80,14 @@
   max-width: 100%;
 }
 
-.no-logs {
+:where(.log-viewer) .no-logs {
   color: var(--muted);
   font-style: italic;
   text-align: center;
   padding: 2rem;
 }
 
-.log-info {
+:where(.log-viewer) .log-info {
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -97,31 +97,31 @@
   line-height: 1.5;
 }
 
-.log-info code {
+:where(.log-viewer) .log-info code {
   overflow-wrap: anywhere;
 }
 
 /* Scrollbar styling */
-.log-container::-webkit-scrollbar {
+:where(.log-viewer) .log-container::-webkit-scrollbar {
   width: 8px;
 }
 
-.log-container::-webkit-scrollbar-track {
+:where(.log-viewer) .log-container::-webkit-scrollbar-track {
   background: var(--console-track);
   border-radius: 4px;
 }
 
-.log-container::-webkit-scrollbar-thumb {
+:where(.log-viewer) .log-container::-webkit-scrollbar-thumb {
   background: var(--console-thumb);
   border-radius: 4px;
 }
 
-.log-container::-webkit-scrollbar-thumb:hover {
+:where(.log-viewer) .log-container::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
 
 /* Scroll to bottom button */
-.scroll-to-bottom-btn {
+:where(.log-viewer) .scroll-to-bottom-btn {
   position: sticky;
   bottom: 10px;
   left: 50%;
@@ -130,7 +130,7 @@
   margin: 10px auto 0;
   padding: 8px 16px;
   background-color: var(--accent-fill);
-  color: white;
+  color: var(--on-accent);
   border: none;
   border-radius: 20px;
   cursor: pointer;
@@ -141,7 +141,7 @@
   z-index: 10;
 }
 
-.scroll-to-bottom-btn:hover {
+:where(.log-viewer) .scroll-to-bottom-btn:hover {
   background-color: var(--accent-hover);
   transform: translateX(-50%) scale(1.05);
 }

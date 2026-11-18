@@ -36,7 +36,7 @@ Open your terminal and execute the following command:
 ## Development
 
 ### Prerequisites
-- Node.js 22.22.2 (the CI version) and npm 12.1.0
+- Node.js 26.13.1 (the CI version) and npm 12.2.2
 - macOS 10.13+ (for development)
 
 ### Setup

@@ -1,3 +1,4 @@
+import type { EntryPoint } from './telemetryEvents';
 export const EXTERNAL_STATUS_PROTOCOL = 'slack-status-bot';
 
 export type ExternalStatusCommand =
@@ -12,8 +13,8 @@ export type ExternalStatusCommand =
 
 export interface ExternalStatusCommandDaemon {
   setExternalStatus: (emoji: string, text: string, presence: 'auto' | 'away') => Promise<boolean>;
-  goOnline: () => Promise<boolean>;
-  goAway: () => Promise<boolean>;
+  goOnline: (entryPoint?: EntryPoint) => Promise<boolean>;
+  goAway: (entryPoint?: EntryPoint) => Promise<boolean>;
 }
 
 export interface ExternalStatusCommandNotification {
@@ -126,9 +127,9 @@ export function createExternalStatusCommandHandler({
     let success: boolean;
     try {
       success = command.type === 'online'
-        ? await daemon.goOnline()
+        ? await daemon.goOnline('external')
         : command.type === 'offline'
-          ? await daemon.goAway()
+          ? await daemon.goAway('external')
           : await daemon.setExternalStatus(command.emoji, command.text, command.presence);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

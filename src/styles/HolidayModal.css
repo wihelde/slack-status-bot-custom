@@ -1,4 +1,4 @@
-.modal-overlay {
+:where(.holiday-dialog).modal-overlay {
   position: fixed;
   inset: 0;
   background: light-dark(rgb(23 40 51 / 28%), rgb(0 0 0 / 48%));
@@ -8,7 +8,7 @@
   z-index: 1000;
 }
 
-.modal-content {
+:where(.holiday-dialog) .modal-content {
   width: min(420px, calc(100% - 32px));
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
@@ -23,10 +23,10 @@
     0 24px 60px light-dark(rgb(24 46 57 / 24%), rgb(0 0 0 / 48%)),
     inset 0 1px light-dark(rgb(255 255 255 / 96%), rgb(255 255 255 / 18%)),
     inset 0 -1px light-dark(rgb(55 97 105 / 10%), rgb(0 0 0 / 20%));
-  animation: slideIn 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: holiday-slide-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes slideIn {
+@keyframes holiday-slide-in {
   from {
     opacity: 0;
     transform: translateY(10px) scale(0.98);
@@ -37,14 +37,14 @@
   }
 }
 
-.modal-header {
+:where(.holiday-dialog) .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 22px 22px 0;
 }
 
-.modal-header h2 {
+:where(.holiday-dialog) .modal-header h2 {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
@@ -52,10 +52,11 @@
   color: var(--heading);
 }
 
-.modal-close {
+:where(.holiday-dialog) .modal-close {
   background: transparent;
   border: 1px solid transparent;
   font-size: 24px;
+  font-family: inherit;
   cursor: pointer;
   color: var(--muted);
   width: 34px;
@@ -67,25 +68,28 @@
   transition: background-color 160ms ease-out, color 160ms ease-out;
 }
 
-.modal-close:hover {
+:where(.holiday-dialog) .modal-close:hover {
   background: var(--control-glass);
   color: var(--ink);
 }
 
-.modal-close:focus-visible {
+:where(.holiday-dialog) .modal-close:focus-visible {
   outline: 2px solid var(--accent-fill);
   outline-offset: 2px;
 }
 
-.modal-content form {
+:where(.holiday-dialog) .modal-content form {
   padding: 18px 22px 22px;
 }
 
-.modal-content .form-group {
+:where(.holiday-dialog) .modal-content .holiday-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 22px;
 }
 
-.modal-content .form-group label {
+:where(.holiday-dialog) .modal-content .holiday-form-group label {
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
@@ -95,7 +99,7 @@
   letter-spacing: normal;
 }
 
-.date-input {
+:where(.holiday-dialog) .date-input {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border-strong);
@@ -108,19 +112,19 @@
   transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
 }
 
-.date-input:focus {
+:where(.holiday-dialog) .date-input:focus {
   outline: none;
   border-color: var(--accent-fill);
   box-shadow: 0 0 0 3px light-dark(rgb(35 122 127 / 16%), rgb(99 193 198 / 20%));
 }
 
-.date-input:disabled {
+:where(.holiday-dialog) .date-input:disabled {
   background-color: var(--surface-muted);
   color: var(--muted);
   cursor: not-allowed;
 }
 
-.modal-content .help-text {
+:where(.holiday-dialog) .modal-content .help-text {
   display: block;
   margin-top: 6px;
   color: var(--muted);
@@ -128,7 +132,7 @@
   line-height: 1.4;
 }
 
-.modal-content .preview {
+:where(.holiday-dialog) .modal-content .preview {
   background: light-dark(rgb(233 247 248 / 78%), rgb(57 91 98 / 35%));
   border: 1px solid light-dark(rgb(159 208 214 / 55%), rgb(126 186 194 / 28%));
   border-radius: 10px;
@@ -136,7 +140,7 @@
   margin-bottom: 20px;
 }
 
-.preview-label {
+:where(.holiday-dialog) .preview-label {
   font-size: 12px;
   font-weight: 600;
   color: var(--muted);
@@ -145,7 +149,7 @@
   letter-spacing: 0.5px;
 }
 
-.preview-text {
+:where(.holiday-dialog) .preview-text {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -153,66 +157,71 @@
   font-size: 14px;
 }
 
-.preview-text .emoji {
+:where(.holiday-dialog) .preview-text .emoji {
   font-size: 18px;
 }
 
-.error-message {
+:where(.holiday-dialog) .holiday-error-message {
   background-color: var(--danger-soft);
   color: var(--danger);
   padding: 10px 12px;
   border-radius: 6px;
   font-size: 13px;
-  margin-bottom: 16px;
-  border-left: 4px solid var(--danger);
+  font-weight: 400;
+  line-height: 1.45;
+  margin: 10px 0;
+  border: 0;
 }
 
-.modal-actions {
+:where(.holiday-dialog) .modal-actions {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
 }
 
-.modal-actions .btn {
+:where(.holiday-dialog) .modal-actions .btn {
   padding: 9px 15px;
   border: none;
   font-size: 13px;
+  font-family: inherit;
   font-weight: 600;
   cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
   transition: all 0.2s;
 }
 
-.cancel-btn {
+:where(.holiday-dialog) .cancel-btn {
   background-color: var(--surface-muted);
   color: var(--ink);
 }
 
-.cancel-btn:hover:not(:disabled) {
+:where(.holiday-dialog) .cancel-btn:hover:not(:disabled) {
   background-color: var(--border);
 }
 
-.set-btn {
+:where(.holiday-dialog) .set-btn {
   background-color: var(--accent-fill);
-  color: white;
+  color: var(--on-accent);
 }
 
-.set-btn:hover:not(:disabled) {
+:where(.holiday-dialog) .set-btn:hover:not(:disabled) {
   background-color: var(--accent-hover);
 }
 
-.modal-actions .btn:disabled {
+:where(.holiday-dialog) .modal-actions .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .modal-content {
+  :where(.holiday-dialog) .modal-content {
     background: var(--surface);
   }
 }
 
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .modal-content {
+  :where(.holiday-dialog) .modal-content {
     background: var(--surface);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -220,8 +229,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .modal-content {
+  :where(.holiday-dialog) .modal-content {
     animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  :where(.holiday-dialog) .modal-actions .btn {
+    width: 100%;
   }
 }
 

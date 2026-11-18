@@ -183,6 +183,7 @@ export const StatusConfigEditor: React.FC = () => {
   };
 
   const handleReset = async () => {
+    void IPCService.observe({ kind: 'ui', action: 'reset_requested' });
     if (!window.confirm('Are you sure you want to reset to defaults? This will overwrite all your custom changes.')) {
       return;
     }
@@ -415,8 +416,8 @@ export const StatusConfigEditor: React.FC = () => {
         </button>
       </div>
 
-      {successMessage && <div className="success-message">{successMessage}</div>}
-      {validationError && <div className="error-message">{validationError}</div>}
+      {successMessage && <div className="status-success-message">{successMessage}</div>}
+      {validationError && <div className="status-error-message">{validationError}</div>}
     </div>
   );
 };
@@ -464,7 +465,7 @@ const StatusItem: React.FC<StatusItemProps> = ({
   return (
     <div className="status-item">
       <div className="status-content">
-        <div className="form-group">
+        <div className="status-form-group">
           <label>Emoji</label>
           <input
             type="text"
@@ -476,7 +477,7 @@ const StatusItem: React.FC<StatusItemProps> = ({
           />
         </div>
 
-        <div className="form-group">
+        <div className="status-form-group">
           <label>Message</label>
           <textarea
             value={status.message}
@@ -487,7 +488,7 @@ const StatusItem: React.FC<StatusItemProps> = ({
           />
         </div>
 
-        <div className="form-group">
+        <div className="status-form-group">
           <label>Presence</label>
           <select value={status.presence} onChange={handlePresenceChange} className="form-input">
             <option value="auto">Auto (online)</option>
@@ -495,7 +496,7 @@ const StatusItem: React.FC<StatusItemProps> = ({
           </select>
         </div>
 
-        <div className="form-group">
+        <div className="status-form-group">
           <label className="checkbox-label">
             <input type="checkbox" checked={status.enableDND} onChange={handleDNDToggle} />
             <span>Enable Do Not Disturb (DND)</span>
@@ -503,7 +504,7 @@ const StatusItem: React.FC<StatusItemProps> = ({
         </div>
 
         {!isQuickAction && (
-          <div className="form-group">
+          <div className="status-form-group">
             <label>Days of Week</label>
             <div className="days-checkboxes">
               {DAYS_OF_WEEK.map((day, dayIndex) => {
@@ -532,7 +533,7 @@ const StatusItem: React.FC<StatusItemProps> = ({
         )}
 
         {isQuickAction && status.quickActionLabel && (
-          <div className="form-group">
+          <div className="status-form-group">
             <label>Quick Action Label (Read-only)</label>
             <input
               type="text"

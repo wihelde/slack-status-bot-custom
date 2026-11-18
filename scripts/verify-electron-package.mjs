@@ -31,10 +31,25 @@ if (packagedPackageJson.main !== expectedMain) {
 for (const requiredFile of [
   expectedMain, 'dist/preload.js', 'dist/main/ipcHandlers.js', 'build/index.html',
   'node_modules/axios/package.json', 'node_modules/electron-updater/package.json',
+  'dist/main/telemetry.js.map', 'dist/services/slack.js.map', 'dist/main/diagnosticScenario.js.map',
+  'dist/main/telemetry.js', 'dist/telemetry-config.json',
+  'node_modules/posthog-node/package.json', 'node_modules/@posthog/core/package.json',
+  'node_modules/zod/package.json',
 ]) {
   if (!packagedFiles.has(`/${requiredFile}`)) {
     throw new Error(`Missing required packaged file: ${requiredFile}`);
   }
+}
+
+const rendererMaps = [...packagedFiles].filter(file => /^\/build\/assets\/.*\.js\.map$/.test(file));
+if (!rendererMaps.length || !rendererMaps.some(file => {
+  const map = JSON.parse(asar.extractFile(packagePath, file.slice(1)).toString('utf8'));
+  return map.sources?.some(source => source.endsWith('src/rendererDiagnostics.ts'));
+})) throw new Error('Packaged renderer diagnostics need matching source maps');
+
+const diagnosticMap = JSON.parse(asar.extractFile(packagePath, 'dist/main/diagnosticScenario.js.map').toString('utf8'));
+if (!diagnosticMap.sourcesContent?.some(source => source.includes('Synthetic ECONNRESET'))) {
+  throw new Error('Packaged diagnostics need original source content for useful stack locations');
 }
 
 console.log(`Packaged Electron main verified: ${packagedPackageJson.main}`);

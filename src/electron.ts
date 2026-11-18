@@ -1,3 +1,5 @@
+import { runConnectionScenario } from './main/connectionScenario';
+import { runDiagnosticScenario } from './main/diagnosticScenario';
 import { app, BrowserWindow, Notification, dialog, ipcMain, Menu, Tray, nativeImage, powerMonitor, safeStorage, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { execSync } from 'child_process';
@@ -16,7 +18,8 @@ import {
   EXTERNAL_STATUS_PROTOCOL,
   createExternalStatusCommandHandler,
 } from './main/externalStatusCommand';
-import { registerMainIpcHandlers } from './main/ipcHandlers';
+import { registerMainIpcHandlers, registerTelemetryIpcHandlers } from './main/ipcHandlers';
+import { createHostTelemetry, resolveTelemetryConfiguration, type HostTelemetry } from './main/telemetry';
 import { createMainLogger } from './main/logging';
 import { showMacosNotification } from './main/macosNotification';
 import { exchangeSlackCode, NativeSlackOAuth } from './main/nativeSlackOAuth';
@@ -24,8 +27,10 @@ import { createSnapshotBridge } from './main/snapshotBridge';
 import { createTrayBridge } from './main/trayBridge';
 import { createUpdateBridge } from './main/updateBridge';
 import { createWindowLifecycle } from './main/windowLifecycle';
+import { telemetryEvents } from './main/telemetryEvents';
 import { WorkspaceConnections, verifySlackToken } from './main/workspaceConnections';
 
+const startupStarted = Date.now();
 console.log('[Electron] Starting up...');
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -72,6 +77,26 @@ const configStore = createAppConfigStore({
 const electronApp = app as typeof app & { isQuitting?: boolean };
 
 let daemon: SlackStatusBotDaemon | null = null;
+let telemetry: HostTelemetry | null = null;
+let daemonReady = false;
+let daemonStarted = false;
+// Monitor observes fatal Node failures without replacing Node's default crash behavior.
+process.on('uncaughtExceptionMonitor', error => telemetry?.reportDiagnostic(error,
+  { component: 'runtime', step: 'main.uncaught', fatal: true }));
+const runtimeState = () => daemonReady ? 'ready' as const : hasConfiguredTokens() ? 'failed' as const : 'unconfigured' as const;
+const onResume = () => {
+  telemetry?.capture('runtime_state', { reason: 'resume', state: runtimeState() });
+  renewWorkspaceConnections();
+};
+app.on('child-process-gone', (_event, details) => {
+  const reason = telemetryEvents.process_health.shape.reason.safeParse(details.reason);
+  telemetry?.capture('process_health', { process_type: 'child', outcome: 'gone', reason: reason.success ? reason.data : 'unknown', exit_code: details.exitCode });
+  if (details.reason !== 'clean-exit') telemetry?.reportDiagnostic(new Error(`App child process gone: ${reason.success ? reason.data : 'unknown'}`),
+    { component: 'runtime', step: 'child.gone', fatal: true });
+});
+process.setSourceMapsEnabled(true);
+let shutdownStarted = false;
+let shutdownComplete = false;
 let config: RuntimeConfig = {};
 let currentLogLevel: RendererLogLevel = 'ERROR';
 let updateAvailable: AppUpdateSnapshot | null = null;
@@ -146,6 +171,7 @@ const getSetupSnapshot = () => ({
 });
 
 const windowLifecycle = createWindowLifecycle({
+  getTelemetry: () => telemetry,
   app,
   BrowserWindow:
     BrowserWindow as unknown as Parameters<typeof createWindowLifecycle>[0]['BrowserWindow'],
@@ -166,6 +192,7 @@ const snapshotBridge = createSnapshotBridge({
 });
 
 const trayBridge = createTrayBridge({
+  onUpdateLinkOpened: version => telemetry?.capture('update_interaction', { action: 'link_opened', entry_point: 'tray', target_version: version }),
   app,
   Tray: Tray as unknown as Parameters<typeof createTrayBridge>[0]['Tray'],
   Menu,
@@ -186,6 +213,7 @@ const trayBridge = createTrayBridge({
 });
 
 const updateBridge = createUpdateBridge({
+  getTelemetry: () => telemetry,
   app,
   autoUpdater: autoUpdater as unknown as Parameters<typeof createUpdateBridge>[0]['autoUpdater'],
   isDev,
@@ -196,13 +224,24 @@ const updateBridge = createUpdateBridge({
   },
   refreshTrayMenu: () => trayBridge.refreshMenu(),
   notifyUpdateAvailable: nextUpdate => {
+    const epoch = telemetry?.getCaptureEpoch();
+    const observe = (action: 'notification_requested' | 'notification_shown' | 'notification_failed' | 'notification_unsupported') => {
+      if (epoch != null && epoch === telemetry?.getCaptureEpoch()) telemetry.capture('update_interaction',
+        { action, entry_point: 'notification', target_version: nextUpdate.version });
+    };
     if (Notification.isSupported()) {
-      new Notification({
-        title: 'Slack Status Bot update available',
-        body: `Version ${nextUpdate.version} is available`,
-        timeoutType: 'never',
-      }).show();
-    }
+      const notification = new Notification({
+        title: 'Slack Status Bot update available', body: `Version ${nextUpdate.version} is available`, timeoutType: 'never',
+      });
+      notification.on('show', () => observe('notification_shown'));
+      notification.on('failed', (_event, error) => {
+        observe('notification_failed');
+        if (epoch != null && epoch === telemetry?.getCaptureEpoch()) telemetry.reportDiagnostic(new Error(error),
+          { component: 'update', step: 'notification.show' });
+      });
+      observe('notification_requested');
+      notification.show();
+    } else observe('notification_unsupported');
   },
   request: https.request,
   setIntervalFn: setInterval,
@@ -308,6 +347,7 @@ const createDaemonInstance = (slackTokens: string[]): SlackStatusBotDaemon => {
   const activeConnections = workspaceConnections?.activeWorkspaceConnections() || [];
   return createDaemon({
     slackTokens,
+    telemetry: telemetry ?? undefined,
     workspaceConnections: slackTokens.map(token => {
       const connection = activeConnections.find(active => active.token === token);
       return {
@@ -326,24 +366,41 @@ const createDaemonInstance = (slackTokens: string[]): SlackStatusBotDaemon => {
 };
 
 const restartDaemon = async (slackTokens: string[]): Promise<void> => {
-  if (daemon) {
-    const activeConnections = workspaceConnections?.activeWorkspaceConnections() || [];
-    await daemon.updateConnections(slackTokens, slackTokens.map(token => {
-      const connection = activeConnections.find(active => active.token === token);
-      return {
-        teamId: connection?.teamId || null,
-        teamName: connection?.teamName || null,
-        userName: connection?.userName || null,
-      };
-    }));
-  } else {
-    daemon = createDaemonInstance(slackTokens);
-    applyDaemonLogLevel();
-    await daemon.start();
+  const started = Date.now();
+  const epoch = telemetry?.getCaptureEpoch();
+  daemonReady = false;
+  try {
+    if (daemon) {
+      const activeConnections = workspaceConnections?.activeWorkspaceConnections() || [];
+      await daemon.updateConnections(slackTokens, slackTokens.map(token => {
+        const connection = activeConnections.find(active => active.token === token);
+        return {
+          teamId: connection?.teamId || null,
+          teamName: connection?.teamName || null,
+          userName: connection?.userName || null,
+        };
+      }));
+    } else {
+      daemon = createDaemonInstance(slackTokens);
+      applyDaemonLogLevel();
+      await daemon.start();
+      daemonStarted = true;
+    }
+    await externalStatusCommandHandler.flushPending();
+    trayBridge.refreshMenu();
+    snapshotBridge.emitAppSnapshotChanged('daemon-status');
+    daemonReady = daemonStarted;
+    if (epoch != null && epoch === telemetry?.getCaptureEpoch()) {
+      telemetry.capture('runtime_state', { reason: 'daemon_started', state: daemonReady ? 'ready' : 'failed', duration_ms: Date.now() - started });
+      if (daemonReady) telemetry.recoverDiagnostic({ component: 'runtime', step: 'daemon.start' });
+    }
+  } catch (error) {
+    if (epoch != null && epoch === telemetry?.getCaptureEpoch()) {
+      telemetry.capture('runtime_state', { reason: 'daemon_started', state: 'failed', duration_ms: Date.now() - started });
+      telemetry.reportDiagnostic(error, { component: 'runtime', step: 'daemon.start' }, slackTokens);
+    }
+    throw error;
   }
-  await externalStatusCommandHandler.flushPending();
-  trayBridge.refreshMenu();
-  snapshotBridge.emitAppSnapshotChanged('daemon-status');
 };
 
 const stopDaemon = async (): Promise<void> => {
@@ -355,6 +412,9 @@ const stopDaemon = async (): Promise<void> => {
     await daemon.stop();
   } finally {
     daemon = null;
+    daemonReady = false;
+    daemonStarted = false;
+    telemetry?.capture('runtime_state', { reason: 'daemon_stopped', state: 'stopped' });
   }
 };
 
@@ -474,16 +534,62 @@ if (!gotTheLock) {
 
     refreshConfig();
     try {
+      const bundledPath = path.join(__dirname, 'telemetry-config.json');
+      const bundled: unknown = fs.existsSync(bundledPath)
+        ? JSON.parse(fs.readFileSync(bundledPath, 'utf8')) : {};
+      let autostartEnabled: boolean | undefined;
+      try { autostartEnabled = (await autoLaunchAdapter.getStatus()).enabled; } catch { /* Context is optional if OS settings are unavailable. */ }
+      telemetry = createHostTelemetry({
+        configStore,
+        configuration: resolveTelemetryConfiguration(bundled, process.env),
+        appVersion: app.getVersion(),
+        autostartEnabled,
+        systemVersion: process.getSystemVersion(),
+        runtimeContext: () => ({ daemon_ready: daemonReady, connected_workspaces: workspaceConnections?.list().filter(connection => connection.state === 'connected').length ?? 0,
+          configured_workspaces: workspaceConnections?.list().length ?? config.slackTokens?.length ?? 0 }),
+        readResourceUsage: () => {
+          const metrics = app.getAppMetrics();
+          return { cpu_percent: metrics.reduce((sum, metric) => sum + metric.cpu.percentCPUUsage, 0),
+            memory_mb: metrics.reduce((sum, metric) => sum + metric.memory.workingSetSize, 0) / 1024 };
+        },
+        warn: message => log(message),
+      });
+      telemetry.start();
+      if (process.env.SLACK_STATUS_BOT_POSTHOG_DIAGNOSTIC_TEST === '1') {
+        const resultPath = process.env.SLACK_STATUS_BOT_DIAGNOSTIC_RESULT;
+        if (!resultPath) throw new Error('Synthetic diagnostic result path missing');
+        void runDiagnosticScenario(telemetry, configStore).then(result => {
+          fs.writeFileSync(resultPath, JSON.stringify(result));
+        }).catch(() => {
+          fs.writeFileSync(resultPath, JSON.stringify({ error: 'Synthetic diagnostics failed' }));
+        });
+      }
+      if (process.env.SLACK_STATUS_BOT_POSTHOG_CONNECTION_TEST === '1') {
+        const resultPath = process.env.SLACK_STATUS_BOT_CONNECTION_RESULT;
+        if (!resultPath) throw new Error('Synthetic connection result path missing');
+        void runConnectionScenario(telemetry, configStore).then(result => {
+          fs.writeFileSync(resultPath, JSON.stringify(result));
+        }).catch(() => {
+          fs.writeFileSync(resultPath, JSON.stringify({ error: 'Synthetic connections failed' }));
+        });
+      }
+      registerTelemetryIpcHandlers(ipcMain, telemetry);
+    } catch {
+      log('[Telemetry] Collection unavailable; app startup continues.');
+    }
+    try {
       const connections = new WorkspaceConnections({
         directory: app.getPath('userData'),
         config: configStore,
         encryption: safeStorage,
         verify: verifySlackToken,
+        telemetry: telemetry ?? undefined,
       });
       await connections.migrate();
       workspaceConnections = connections;
       slackOAuth = new NativeSlackOAuth({
         connections,
+        telemetry: telemetry ?? undefined,
         openExternal: url => shell.openExternal(url).then(() => undefined),
         exchange: exchangeSlackCode,
         verify: verifySlackToken,
@@ -529,7 +635,10 @@ if (!gotTheLock) {
       getWorkspaceConnectionError: () => workspaceConnectionError,
       getOAuthMessage: () => oauthMessage,
       openSetupLink: async link => {
-        if (!slackOAuth || !parseSetupLink(link)) throw new Error('Invalid Setup Link');
+        if (!slackOAuth || !parseSetupLink(link)) {
+          telemetry?.capture('setup_input', { outcome: 'rejected', reason: 'invalid_link', entry_point: 'app' });
+          throw new Error('Invalid Setup Link');
+        }
         await slackOAuth.handleUrl(link);
       },
       reconnectWorkspace: async teamId => {
@@ -561,6 +670,7 @@ if (!gotTheLock) {
       clearLogs,
       setLogLevel,
       getLogLevel: () => currentLogLevel,
+      telemetry: telemetry ?? undefined,
       setAutoLaunch: enabled => autoLaunchAdapter.setEnabled(enabled),
       getAutoLaunch: () => autoLaunchAdapter.getStatus(),
       logStatusBridgeInfo,
@@ -572,7 +682,7 @@ if (!gotTheLock) {
     updateBridge.setupUpdateListeners();
     updateIntervalId = updateBridge.startScheduledChecks();
     renewalTimer = setInterval(renewWorkspaceConnections, 60_000);
-    powerMonitor.on('resume', renewWorkspaceConnections);
+    powerMonitor.on('resume', onResume);
 
     try {
       if (hasConfiguredTokens()) {
@@ -586,6 +696,7 @@ if (!gotTheLock) {
         console.error('[Daemon] Stack:', stack);
       }
     }
+    telemetry?.capture('runtime_state', { reason: 'startup', state: runtimeState(), duration_ms: Date.now() - startupStarted });
     appStartupComplete = true;
     for (const url of pendingOAuthUrls.splice(0)) await slackOAuth?.handleUrl(url);
   });
@@ -605,10 +716,14 @@ if (!gotTheLock) {
     void windowLifecycle.showWindow();
   });
 
-  app.on('before-quit', async () => {
+  app.on('before-quit', async event => {
+    if (shutdownComplete) return;
+    event.preventDefault();
+    if (shutdownStarted) return;
+    shutdownStarted = true;
     if (migrationRetryTimer) clearTimeout(migrationRetryTimer);
     if (renewalTimer) clearInterval(renewalTimer);
-    powerMonitor.removeListener('resume', renewWorkspaceConnections);
+    powerMonitor.removeListener('resume', onResume);
     electronApp.isQuitting = true;
 
     if (updateIntervalId) {
@@ -616,10 +731,13 @@ if (!gotTheLock) {
       updateIntervalId = null;
     }
 
-    try {
-      await stopDaemon();
-    } catch (error) {
+    // Stop new automation immediately while telemetry gets its bounded best-effort flush.
+    void stopDaemon().catch(error => {
       console.error('Error stopping daemon:', error);
-    }
+    });
+    telemetry?.capture('runtime_state', { reason: 'shutdown', state: 'stopped' });
+    await telemetry?.shutdown();
+    shutdownComplete = true;
+    app.quit();
   });
 }

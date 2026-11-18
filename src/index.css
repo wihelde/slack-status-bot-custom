@@ -13,6 +13,7 @@
   --border-strong: light-dark(#cbd3dc, #596a75);
   --accent-fill: #17777d;
   --accent-hover: #13676d;
+  --on-accent: #ffffff;
   --accent-soft: light-dark(#e4f2f3, #28464a);
   --accent-soft-ink: light-dark(#143b40, #dbf7f8);
   --link: light-dark(#13676d, #8edce1);
@@ -23,6 +24,11 @@
   --danger-soft: light-dark(#fee2e2, #43282c);
   --warning: light-dark(#925900, #f6c982);
   --warning-soft: light-dark(#fff3cd, #45391f);
+  --warning-border: #ffc107;
+  --daemon-running: #58e89b;
+  --daemon-stopped: #ffb4a9;
+  --source-switch-on: #63c1c6;
+  --source-switch-disabled-on: #a0c4a0;
   --console-bg: light-dark(#eef2f5, #121a20);
   --console-ink: light-dark(#33424d, #dce8ee);
   --console-track: light-dark(#e3e9ed, #253039);
@@ -46,6 +52,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: var(--canvas);
   color: var(--ink);
+}
+
+button {
+  font-family: inherit;
 }
 
 code {
@@ -75,5 +85,14 @@ textarea::placeholder {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .music-source-icon {
     filter: invert(1);
+  }
+}
+
+/* Accessibility preference applies to every app interaction, including switches. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.4.0] - 2026-11-16
+
+## Added
+
+- PostHog usage statistics and error diagnostics, enabled by default and switchable off in Settings
+- analytics for app versions, setup and updates, manual and automatic status delivery, source health, stability and performance
+- sanitized technical error causes and a copyable diagnostic ID for support; credentials, Slack identities, status text and song details are excluded from collection
+- rejected emoji values are included only for Slack emoji errors, together with the action and scheduled configuration entry
+
+## Changed
+
+- preferences in Settings, the status editor and first-run setup now use consistent native checkboxes
+- buttons now use the system typeface consistently; holiday errors are more compact and the status editor uses spacing instead of a footer divider
+- updated Electron, React and build tooling
+
+## Fixed
+
+- source diagnostics retain sanitized original command errors and AppleScript error codes instead of generic fallback messages
+- the holiday dialog now keeps keyboard focus inside, closes with Escape and returns focus to the invoking control
+- reduced-motion preferences now apply to source switches and other animated controls throughout the app
+- component styles no longer unintentionally change unrelated forms and dialogs
+
 ## [2.3.4] - 2026-10-23
 
 ## Added

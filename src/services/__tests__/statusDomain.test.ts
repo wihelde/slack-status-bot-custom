@@ -112,6 +112,7 @@ describe('status domain boundaries', () => {
     ]);
 
     expect(plan).toEqual({
+      statusRuleIndex: 1,
       emoji: STATUS_MESSAGES.SICK_EMOJI,
       message: 'Sick',
       presence: 'away',

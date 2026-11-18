@@ -4,7 +4,7 @@
   margin: 0 auto;
 }
 
-.settings-header {
+:where(.settings) .settings-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -13,20 +13,20 @@
   margin-bottom: 18px;
 }
 
-.settings-header h1 {
+:where(.settings) .settings-header h1 {
   margin: 0;
   color: var(--heading);
   font-size: 28px;
   letter-spacing: -0.02em;
 }
 
-.settings-tabs {
+:where(.settings) .settings-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.tab-btn {
+:where(.settings) .tab-btn {
   padding: 9px 13px;
   background-color: transparent;
   border: 1px solid transparent;
@@ -37,48 +37,53 @@
   color: var(--muted);
 }
 
-.tab-btn:hover {
+:where(.settings) .tab-btn:hover {
   background-color: var(--accent-soft);
   color: var(--accent-soft-ink);
 }
 
-.tab-btn.active {
+:where(.settings) .tab-btn.active {
   background-color: var(--accent-fill);
-  color: white;
+  color: var(--on-accent);
   border-color: var(--accent-fill);
 }
 
-.tab-btn:focus-visible {
+:where(.settings) .tab-btn:focus-visible {
   outline: 2px solid var(--accent-fill);
   outline-offset: 2px;
 }
 
-.settings-card {
+:where(.settings) .settings-card {
   background: var(--surface);
   border-radius: 16px;
   padding: 22px;
   margin-bottom: 16px;
 }
 
-.settings-card h2 {
+:where(.settings) .settings-card h2 {
   margin: 0 0 15px 0;
   color: var(--ink);
   font-size: 18px;
 }
 
-.form-group {
+:where(.settings) .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 15px;
 }
 
-.form-group label {
+:where(.settings) .form-group label {
   display: block;
   font-weight: 600;
   color: var(--ink);
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.input-field {
+:where(.settings) .input-field {
   width: 100%;
   padding: 10px 12px;
   background: var(--surface);
@@ -91,50 +96,54 @@
   transition: border-color 0.2s;
 }
 
-.input-field:focus {
+:where(.settings) .input-field:focus {
   outline: none;
   border-color: var(--accent-fill);
 }
 
-.help-text {
+:where(.settings) .help-text {
   display: block;
   margin-top: 8px;
   color: var(--muted);
   font-size: 12px;
 }
 
-.help-text a {
+:where(.settings) .help-text a {
   color: var(--link);
   text-decoration: none;
 }
 
-.help-text a:hover {
+:where(.settings) .help-text a:hover {
   text-decoration: underline;
 }
 
-.error-message {
-  padding: 10px 12px;
+:where(.settings) .error-message {
+  padding: 12px 16px;
   background: var(--danger-soft);
   color: var(--danger);
   border-radius: 6px;
   margin: 10px 0;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--danger-soft);
 }
 
-.success-message {
-  padding: 10px 12px;
+:where(.settings) .success-message {
+  padding: 12px 16px;
   background: var(--success-soft);
   color: var(--success);
   border-radius: 6px;
   margin: 10px 0;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--success-soft);
   display: inline-block;
 }
 
-.save-btn {
+:where(.settings) .save-btn {
   padding: 10px 20px;
   background: var(--accent-fill);
-  color: white;
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -144,15 +153,15 @@
   margin-top: 10px;
 }
 
-.save-btn:hover {
+:where(.settings) .save-btn:hover {
   background: var(--accent-hover);
 }
 
-.save-btn:active {
+:where(.settings) .save-btn:active {
   transform: translateY(0);
 }
 
-.token-display {
+:where(.settings) .token-display {
   background: var(--success-soft);
   border: 2px solid var(--success-soft);
   border-radius: 8px;
@@ -160,20 +169,20 @@
   margin-bottom: 20px;
 }
 
-.token-display h3 {
+:where(.settings) .token-display h3 {
   margin: 0 0 10px 0;
   color: var(--success);
   font-size: 14px;
 }
 
-.token-list {
+:where(.settings) .token-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-bottom: 12px;
 }
 
-.token-item {
+:where(.settings) .token-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -186,14 +195,14 @@
   text-overflow: ellipsis;
 }
 
-.token-item code {
+:where(.settings) .token-item code {
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 12px;
   color: var(--success);
   word-break: break-all;
 }
 
-.delete-btn {
+:where(.settings) .delete-btn {
   padding: 8px 16px;
   background: var(--danger-soft);
   color: var(--danger);
@@ -205,12 +214,12 @@
   transition: all 0.2s;
 }
 
-.delete-btn:hover {
+:where(.settings) .delete-btn:hover {
   background: var(--danger-soft);
   color: var(--danger);
 }
 
-.delete-confirm {
+:where(.settings) .delete-confirm {
   background: var(--surface);
   border: 1px solid var(--danger-soft);
   border-radius: 6px;
@@ -218,21 +227,21 @@
   margin-top: 10px;
 }
 
-.delete-confirm p {
+:where(.settings) .delete-confirm p {
   margin: 0 0 10px 0;
   color: var(--danger);
   font-size: 13px;
 }
 
-.confirm-buttons {
+:where(.settings) .confirm-buttons {
   display: flex;
   gap: 8px;
 }
 
-.confirm-delete-btn {
+:where(.settings) .confirm-delete-btn {
   padding: 8px 16px;
   background: var(--danger-fill);
-  color: white;
+  color: var(--on-accent);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -241,11 +250,11 @@
   transition: all 0.2s;
 }
 
-.confirm-delete-btn:hover {
+:where(.settings) .confirm-delete-btn:hover {
   background: var(--danger-fill);
 }
 
-.cancel-btn {
+:where(.settings) .cancel-btn {
   padding: 8px 16px;
   background: var(--surface-disabled);
   color: var(--ink);
@@ -257,25 +266,25 @@
   transition: all 0.2s;
 }
 
-.cancel-btn:hover {
+:where(.settings) .cancel-btn:hover {
   background: var(--surface-disabled);
 }
 
-.slack-config .token-display {
+:where(.settings) .slack-config .token-display {
   padding: 0;
   margin: 4px 0 24px;
   background: none;
   border: 0;
 }
 
-.slack-config .workspace-count {
+:where(.settings) .slack-config .workspace-count {
   margin-left: 4px;
   color: var(--muted);
   font-size: 14px;
   font-weight: 500;
 }
 
-.slack-config .token-display h3 {
+:where(.settings) .slack-config .token-display h3 {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -284,17 +293,17 @@
   font-size: 14px;
 }
 
-.slack-config .token-display h3 span {
+:where(.settings) .slack-config .token-display h3 span {
   color: var(--muted);
   font-weight: 500;
 }
 
-.slack-config .token-list {
+:where(.settings) .slack-config .token-list {
   gap: 0;
   margin-bottom: 8px;
 }
 
-.slack-config .token-item {
+:where(.settings) .slack-config .token-item {
   display: grid;
   background: transparent;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -308,15 +317,15 @@
   overflow: visible;
 }
 
-.slack-config .token-item:last-child {
+:where(.settings) .slack-config .token-item:last-child {
   border-bottom: 0;
 }
 
-.workspace-details {
+:where(.settings) .workspace-details {
   min-width: 0;
 }
 
-.workspace-name {
+:where(.settings) .workspace-name {
   color: var(--ink);
   font-size: 14px;
   font-weight: 600;
@@ -324,7 +333,7 @@
   overflow-wrap: anywhere;
 }
 
-.workspace-meta {
+:where(.settings) .workspace-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0 12px;
@@ -334,25 +343,25 @@
   line-height: 1.4;
 }
 
-.workspace-state.needs-attention {
+:where(.settings) .workspace-state.needs-attention {
   color: var(--warning);
   font-weight: 600;
 }
 
-.workspace-actions,
-.setup-link-controls {
+:where(.settings) .workspace-actions,
+:where(.settings) .setup-link-controls {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.workspace-actions {
+:where(.settings) .workspace-actions {
   flex-shrink: 0;
 }
 
-.slack-config .secondary-action,
-.slack-config .subtle-action,
-.slack-config .setup-link-toggle {
+.settings .secondary-action,
+:where(.settings) .slack-config .subtle-action,
+:where(.settings) .slack-config .setup-link-toggle {
   min-height: 34px;
   padding: 7px 11px;
   border-radius: 7px;
@@ -364,30 +373,30 @@
   cursor: pointer;
 }
 
-.slack-config .secondary-action {
+.settings .secondary-action {
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--ink);
 }
 
-.slack-config .secondary-action:hover {
+.settings .secondary-action:hover {
   background: var(--surface-hover);
   border-color: var(--border-strong);
 }
 
-.slack-config .subtle-action {
+:where(.settings) .slack-config .subtle-action {
   border: 1px solid transparent;
   background: transparent;
   color: var(--muted);
 }
 
-.slack-config .danger-action:hover,
-.slack-config .delete-btn:hover {
+:where(.settings) .slack-config .danger-action:hover,
+:where(.settings) .slack-config .delete-btn:hover {
   background: var(--danger-soft);
   color: var(--danger);
 }
 
-.slack-config .delete-btn {
+:where(.settings) .slack-config .delete-btn {
   padding: 6px 10px;
   margin-left: -10px;
   border: 0;
@@ -397,28 +406,28 @@
   font-weight: 600;
 }
 
-.slack-config .connection-message {
+:where(.settings) .slack-config .connection-message {
   margin: 0 0 16px;
   color: var(--muted);
   font-size: 13px;
 }
 
-.slack-config .setup-link-section {
+:where(.settings) .slack-config .setup-link-section {
   margin: 0;
 }
 
-.slack-config .setup-link-controls .input-field {
+:where(.settings) .slack-config .setup-link-controls .input-field {
   flex: 1;
   min-width: 0;
 }
 
-.slack-config .setup-link-controls .save-btn {
+:where(.settings) .slack-config .setup-link-controls .save-btn {
   margin: 0;
   min-height: 42px;
   white-space: nowrap;
 }
 
-.slack-config .setup-link-controls .save-btn:disabled {
+:where(.settings) .slack-config .setup-link-controls .save-btn:disabled {
   background: var(--surface-disabled);
   color: var(--muted);
   opacity: 1;
@@ -427,14 +436,14 @@
   transform: none;
 }
 
-.appearance-setting label {
+:where(.settings) .appearance-setting label {
   margin-right: 12px;
   color: var(--ink);
   font-size: 14px;
   font-weight: 600;
 }
 
-.appearance-setting select {
+:where(.settings) .appearance-setting select {
   min-width: 140px;
   padding: 8px 10px;
   border: 1px solid var(--border-strong);
@@ -444,12 +453,12 @@
   font: inherit;
 }
 
-.appearance-setting select:focus-visible {
+:where(.settings) .appearance-setting select:focus-visible {
   outline: 2px solid var(--accent-fill);
   outline-offset: 2px;
 }
 
-.slack-config .setup-link-toggle {
+:where(.settings) .slack-config .setup-link-toggle {
   align-self: flex-start;
   margin-top: 8px;
   padding-left: 0;
@@ -459,51 +468,51 @@
   color: var(--link);
 }
 
-.slack-config .setup-link-toggle:hover {
+:where(.settings) .slack-config .setup-link-toggle:hover {
   color: var(--link);
   text-decoration: underline;
 }
 
-.slack-config .setup-link-generator {
+:where(.settings) .slack-config .setup-link-generator {
   padding-top: 10px;
 }
 
-.slack-config .setup-link-fields {
+:where(.settings) .slack-config .setup-link-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-.slack-config .setup-link-generator .help-text {
+:where(.settings) .slack-config .setup-link-generator .help-text {
   margin: 10px 0;
   line-height: 1.5;
 }
 
-.slack-config .setup-link-output {
+:where(.settings) .slack-config .setup-link-output {
   margin-top: 16px;
 }
 
-.slack-config .setup-link-output label {
+:where(.settings) .slack-config .setup-link-output label {
   margin-bottom: 8px;
 }
 
-.slack-config button:focus-visible,
-.slack-config .input-field:focus-visible {
+:where(.settings) .slack-config button:focus-visible,
+:where(.settings) .slack-config .input-field:focus-visible {
   outline: 2px solid var(--accent-fill);
   outline-offset: 2px;
 }
 
-.slack-config button:active:not(:disabled) {
+:where(.settings) .slack-config button:active:not(:disabled) {
   transform: scale(0.98);
 }
 
-.settings-list {
+:where(.settings) .settings-list {
   display: flex;
   flex-direction: column;
   gap: 15px;
 }
 
-.setting-item {
+:where(.settings) .setting-item {
   padding: 15px;
   background: var(--surface-muted);
   border-radius: 8px;
@@ -511,39 +520,39 @@
   transition: all 0.2s;
 }
 
-.setting-item:hover {
+:where(.settings) .setting-item:hover {
   border-left-color: var(--success);
   background: var(--success-soft);
 }
 
-.setting-header {
+:where(.settings) .setting-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.setting-header label {
+:where(.settings) .setting-header label {
   font-weight: 600;
   color: var(--ink);
   margin: 0;
   cursor: pointer;
 }
 
-.toggle-switch {
+:where(.settings) .toggle-switch {
   position: relative;
   display: inline-block;
   width: 50px;
   height: 24px;
 }
 
-.toggle-switch input {
+:where(.settings) .toggle-switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
 
-.toggle-switch span {
+:where(.settings) .toggle-switch span {
   position: absolute;
   cursor: pointer;
   top: 0;
@@ -555,7 +564,7 @@
   border-radius: 24px;
 }
 
-.toggle-switch span:before {
+:where(.settings) .toggle-switch span:before {
   position: absolute;
   content: '';
   height: 18px;
@@ -567,66 +576,66 @@
   border-radius: 50%;
 }
 
-.toggle-switch input:checked + span {
-  background-color: #63c1c6;
+:where(.settings) .toggle-switch input:checked + span {
+  background-color: var(--source-switch-on);
 }
 
-.toggle-switch input:checked + span:before {
+:where(.settings) .toggle-switch input:checked + span:before {
   transform: translateX(26px);
 }
 
-.setting-item small {
+:where(.settings) .setting-item small {
   display: block;
   color: var(--muted);
   font-size: 13px;
 }
 
-.setting-note {
+:where(.settings) .setting-note {
   margin: 8px 0 0 0;
   color: var(--muted);
   font-size: 12px;
   font-style: italic;
 }
 
-.about-section {
+:where(.settings) .about-section {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
 }
 
-.about-section p {
+:where(.settings) .about-section p {
   margin: 10px 0;
 }
 
-.about-section strong {
+:where(.settings) .about-section strong {
   color: var(--ink);
 }
 
-.about-section ul {
+:where(.settings) .about-section ul {
   margin: 10px 0;
   padding-left: 20px;
 }
 
-.about-section li {
+:where(.settings) .about-section li {
   margin: 5px 0;
 }
 
-.about-section a {
+:where(.settings) .about-section a {
   color: var(--link);
   text-decoration: none;
 }
 
-.about-section a:hover {
+:where(.settings) .about-section a:hover {
   text-decoration: underline;
 }
 
-.logs-card {
+:where(.settings) .logs-card {
   display: flex;
   flex-direction: column;
   height: 70vh;
 }
 
-.settings-actions {
+:where(.settings) .settings-actions {
   display: flex;
   gap: 10px;
   align-items: center;
@@ -634,7 +643,7 @@
   margin-top: 20px;
 }
 
-.saved-message {
+:where(.settings) .saved-message {
   padding: 8px 16px;
   background: var(--success-soft);
   color: var(--success);
@@ -643,20 +652,20 @@
   font-size: 13px;
 }
 
-.priority-info {
+:where(.settings) .priority-info {
   color: var(--muted);
   font-size: 13px;
   margin: 0 0 12px;
 }
 
-.source-priority-list {
+:where(.settings) .source-priority-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
   margin-bottom: 12px;
 }
 
-.priority-item {
+:where(.settings) .priority-item {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -669,21 +678,21 @@
   user-select: none;
 }
 
-.priority-item:hover {
+:where(.settings) .priority-item:hover {
   background: var(--accent-soft);
 }
 
-.priority-item:active {
+:where(.settings) .priority-item:active {
   cursor: grabbing;
 }
 
-.priority-item.dragging {
+:where(.settings) .priority-item.dragging {
   opacity: 0.5;
   background: var(--accent-soft);
   transform: scale(0.98);
 }
 
-.drag-handle {
+:where(.settings) .drag-handle {
   color: var(--border-strong);
   font-weight: bold;
   font-size: 16px;
@@ -691,22 +700,22 @@
   transition: color 0.2s;
 }
 
-.priority-item:hover .drag-handle {
+:where(.settings) .priority-item:hover .drag-handle {
   color: var(--accent-fill);
 }
 
-.source-emoji {
+:where(.settings) .source-emoji {
   font-size: 18px;
   flex-shrink: 0;
 }
 
-.source-name {
+:where(.settings) .source-name {
   font-weight: 500;
   color: var(--ink);
   flex: 1;
 }
 
-.log-level-info {
+:where(.settings) .log-level-info {
   color: var(--muted);
   font-size: 13px;
   margin: 0 0 15px 0;
@@ -716,18 +725,18 @@
   border-radius: 4px;
 }
 
-.log-level-selector {
+:where(.settings) .log-level-selector {
   margin-bottom: 0;
 }
 
-.log-levels {
+:where(.settings) .log-levels {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 0;
 }
 
-.log-level-btn {
+:where(.settings) .log-level-btn {
   padding: 8px 10px;
   background: var(--surface);
   color: var(--heading);
@@ -743,38 +752,38 @@
   text-align: center;
 }
 
-.log-level-btn small {
+:where(.settings) .log-level-btn small {
   font-size: 11px;
   font-weight: 400;
   color: var(--muted);
 }
 
-.log-level-btn:hover:not(:disabled) {
+:where(.settings) .log-level-btn:hover:not(:disabled) {
   background: var(--surface-hover);
   border-color: var(--border-strong);
 }
 
-.log-level-btn.active {
+:where(.settings) .log-level-btn.active {
   background: var(--accent-fill);
-  color: white;
+  color: var(--on-accent);
   border-color: var(--accent-fill);
 }
 
-.log-level-btn.active small {
-  color: white;
+:where(.settings) .log-level-btn.active small {
+  color: var(--on-accent);
 }
 
-.log-level-btn:disabled {
+:where(.settings) .log-level-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 /* System Settings */
-.system-setting {
+:where(.settings) .system-setting {
   margin: 0;
 }
 
-.setting-label {
+:where(.settings) .setting-label {
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -783,39 +792,34 @@
   margin-bottom: 0;
 }
 
-.checkbox-input {
-  width: 20px;
-  height: 20px;
+:where(.settings) .checkbox-input {
+  flex-shrink: 0;
   cursor: pointer;
-  margin-right: 12px;
+  margin-right: 4px;
 }
 
-.checkbox-text {
-  font-weight: 500;
+:where(.settings) .checkbox-text {
+  font-weight: 400;
   color: var(--ink);
 }
 
-.setting-description {
-  margin-left: 32px;
+:where(.settings) .setting-description {
+  margin-left: 17px;
   margin-top: 0.5rem;
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.5;
 }
 
-.settings-about {
+:where(.settings) .settings-about {
   margin: 6px 0 22px;
   color: var(--muted);
   font-size: 12px;
   text-align: right;
 }
 
-.settings-about a {
+:where(.settings) .settings-about a {
   color: var(--link);
-}
-
-.checkbox-input {
-  accent-color: var(--accent-fill);
 }
 
 @media (max-width: 768px) {
@@ -823,52 +827,83 @@
     padding: 15px;
   }
 
-  .settings-card {
+  :where(.settings) .settings-card {
     padding: 15px;
   }
 
-  .setting-header {
+  :where(.settings) .setting-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
   }
 
-  .toggle-switch {
+  :where(.settings) .toggle-switch {
     align-self: flex-end;
   }
 
-  .priority-item {
+  :where(.settings) .priority-item {
     padding: 8px 10px;
     font-size: 14px;
   }
 
-  .log-levels {
+  :where(.settings) .log-levels {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 480px) {
-  .slack-config .token-item {
+  :where(.settings) .slack-config .token-item {
     grid-template-columns: 1fr;
     gap: 8px;
   }
 
-  .slack-config .workspace-actions {
+  :where(.settings) .slack-config .workspace-actions {
     flex-wrap: wrap;
   }
 
-  .slack-config .setup-link-controls {
+  :where(.settings) .slack-config .setup-link-controls {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .slack-config .setup-link-fields {
+  :where(.settings) .slack-config .setup-link-fields {
     grid-template-columns: 1fr;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slack-config button:active:not(:disabled) {
+  :where(.settings) .slack-config button:active:not(:disabled) {
     transform: none;
+  }
+}
+
+.settings .secondary-action:focus-visible {
+  outline: 2px solid var(--accent-fill);
+  outline-offset: 2px;
+}
+
+:where(.settings) .telemetry-settings .setting-description {
+  max-width: 68ch;
+  margin-bottom: 16px;
+}
+
+:where(.settings) .telemetry-reference {
+  margin-bottom: 0;
+}
+
+:where(.settings) .telemetry-settings .setup-link-controls {
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+:where(.settings) .telemetry-settings .input-field {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  :where(.settings) .telemetry-settings .secondary-action {
+    flex-grow: 1;
+    min-height: 44px;
   }
 }

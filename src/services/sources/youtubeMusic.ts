@@ -1,3 +1,4 @@
+import { reportDetectorFailure } from './probes/probeContext';
 import { STATUS_MESSAGES } from '../../config/statusConfig';
 import { DelegatingSourceAdapter, SourceStatus } from './sourceAdapter';
 import { getMacNowPlayingInfo } from './probes/nowPlayingProbe';
@@ -59,6 +60,7 @@ function createYouTubeMusicStatusProbe(): () => Promise<SourceStatus> {
       metadataGapStartedAt = null;
       return lastActiveStatus;
     } catch (error) {
+      reportDetectorFailure(error);
       console.error(`Error getting ${SOURCE_NAME} status:`, error);
       return inactiveStatus();
     }

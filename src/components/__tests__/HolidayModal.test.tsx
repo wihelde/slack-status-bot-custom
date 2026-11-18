@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import HolidayModal from '../HolidayModal';
 import { IPCService } from '../../services/ipcService';
@@ -137,6 +137,70 @@ describe('HolidayModal', () => {
     });
   });
 
+  describe('Keyboard navigation', () => {
+    it('focuses the date field without stealing focus on parent rerenders', async () => {
+      const { rerender } = render(<HolidayModal isOpen onClose={mockOnClose} onSetHoliday={mockOnSetHoliday} />);
+      await act(async () => {});
+      expect(screen.getByLabelText('Last holiday date')).toHaveFocus();
+      const cancel = screen.getByRole('button', { name: 'Cancel' });
+      cancel.focus();
+      rerender(<HolidayModal isOpen onClose={() => mockOnClose()} onSetHoliday={mockOnSetHoliday} />);
+      expect(cancel).toHaveFocus();
+    });
+
+    it('wraps Tab and Shift+Tab around enabled controls', async () => {
+      renderModal();
+      await act(async () => {});
+      const close = screen.getByRole('button', { name: 'Close holiday dialog' });
+      const cancel = screen.getByRole('button', { name: 'Cancel' });
+      cancel.focus();
+      fireEvent.keyDown(cancel, { key: 'Tab' });
+      expect(close).toHaveFocus();
+      fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
+      expect(cancel).toHaveFocus();
+
+      fireEvent.change(screen.getByLabelText('Last holiday date'), { target: { value: '2026-12-24' } });
+      const submit = screen.getByRole('button', { name: 'Set Holiday' });
+      close.focus();
+      fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
+      expect(submit).toHaveFocus();
+    });
+
+    it('contains focus, closes on Escape and restores the invoking control', async () => {
+      const opener = document.createElement('button');
+      document.body.append(opener);
+      opener.focus();
+      const { rerender } = render(<HolidayModal isOpen onClose={mockOnClose} onSetHoliday={mockOnSetHoliday} />);
+      await act(async () => {});
+      opener.focus();
+      expect(screen.getByLabelText('Last holiday date')).toHaveFocus();
+      fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+      expect(mockOnClose).toHaveBeenCalledOnce();
+      rerender(<HolidayModal isOpen={false} onClose={mockOnClose} onSetHoliday={mockOnSetHoliday} />);
+      expect(opener).toHaveFocus();
+      opener.remove();
+    });
+
+    it.each(['submit', 'date'] as const)('keeps keyboard focus inside while saving from the %s control', async (control) => {
+      mockOnSetHoliday.mockReturnValueOnce(new Promise<void>(() => {}));
+      renderModal();
+      await act(async () => {});
+      const date = screen.getByLabelText('Last holiday date');
+      const submit = screen.getByRole('button', { name: 'Set Holiday' });
+      fireEvent.change(date, { target: { value: '2026-12-24' } });
+      (control === 'submit' ? submit : date).focus();
+      fireEvent.submit(date.closest('form')!);
+      expect(date).toBeDisabled();
+      expect(submit).toBeDisabled();
+      const close = screen.getByRole('button', { name: 'Close holiday dialog' });
+      expect(close).toHaveFocus();
+      fireEvent.keyDown(close, { key: 'Tab' });
+      expect(close).toHaveFocus();
+      fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+      expect(mockOnClose).toHaveBeenCalledOnce();
+    });
+  });
+
   describe('Error Handling', () => {
     it('should show an error when setting the selected date fails', async () => {
       mockOnSetHoliday.mockRejectedValueOnce(new Error('Invalid date'));
@@ -145,7 +209,9 @@ describe('HolidayModal', () => {
       const input = screen.getByLabelText('Last holiday date') as HTMLInputElement;
       fireEvent.change(input, { target: { value: '2025-11-21' } });
       fireEvent.click(screen.getByRole('button', { name: /Set Holiday/i }));
-      expect(await screen.findByText('Invalid date')).toBeInTheDocument();
+      expect(await screen.findByRole('alert')).toHaveTextContent('Invalid date');
+      expect(input).toHaveValue('2025-11-21');
+      expect(mockOnClose).not.toHaveBeenCalled();
     });
   });
 });

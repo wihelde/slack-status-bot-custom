@@ -1,6 +1,7 @@
 import { SlackProfile, SlackService } from './slack';
 
 export interface SlackStatusChange {
+  statusRuleIndex?: number;
   emoji: string;
   text: string;
   expiration?: number;
@@ -19,7 +20,8 @@ export class SlackStatusExecutor {
     const profileSuccess = await this.slackService.setProfile(
       change.emoji,
       change.text,
-      change.expiration ?? 0
+      change.expiration ?? 0,
+      ...(change.statusRuleIndex === undefined ? [] : [change.statusRuleIndex])
     );
 
     const presenceSuccess = change.presence ? await this.slackService.setPresence(change.presence) : true;

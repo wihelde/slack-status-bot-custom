@@ -123,7 +123,7 @@ describe('source probe seams', () => {
     });
 
     expect(running).toBe(true);
-    expect(commands).toEqual(['tasklist | findstr Teams.exe || exit /b 1']);
+    expect(commands).toEqual(['tasklist']);
   });
 
   it('checks macOS UDP matches through the network probe', async () => {
@@ -136,7 +136,7 @@ describe('source probe seams', () => {
 
     expect(detected).toBe(true);
     expect(commands).toEqual([
-      `lsof -i -P -n 2>&1 | grep 'zoom' | grep UDP | grep -E '([0-9]{1,3})$' || true`,
+      'lsof -i -P -n',
     ]);
   });
 });
